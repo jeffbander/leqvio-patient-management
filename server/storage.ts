@@ -1,39 +1,90 @@
-import { users, type User, type InsertUser } from "@shared/schema";
-
-// modify the interface with any CRUD methods
-// you might need
+import { 
+  users, 
+  automationLogs, 
+  customChains,
+  type User, 
+  type InsertUser,
+  type AutomationLog,
+  type InsertAutomationLog,
+  type CustomChain,
+  type InsertCustomChain
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  
+  // Automation logs
+  createAutomationLog(log: InsertAutomationLog): Promise<AutomationLog>;
+  getAutomationLogs(limit?: number): Promise<AutomationLog[]>;
+  clearAutomationLogs(): Promise<void>;
+  
+  // Custom chains
+  createCustomChain(chain: InsertCustomChain): Promise<CustomChain>;
+  getCustomChains(): Promise<CustomChain[]>;
+  deleteCustomChain(id: number): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  currentId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.currentId = 1;
-  }
-
+export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
     return user;
+  }
+
+  async createAutomationLog(log: InsertAutomationLog): Promise<AutomationLog> {
+    const [newLog] = await db
+      .insert(automationLogs)
+      .values(log)
+      .returning();
+    return newLog;
+  }
+
+  async getAutomationLogs(limit: number = 50): Promise<AutomationLog[]> {
+    return await db
+      .select()
+      .from(automationLogs)
+      .orderBy(desc(automationLogs.createdAt))
+      .limit(limit);
+  }
+
+  async clearAutomationLogs(): Promise<void> {
+    await db.delete(automationLogs);
+  }
+
+  async createCustomChain(chain: InsertCustomChain): Promise<CustomChain> {
+    const [newChain] = await db
+      .insert(customChains)
+      .values(chain)
+      .returning();
+    return newChain;
+  }
+
+  async getCustomChains(): Promise<CustomChain[]> {
+    return await db
+      .select()
+      .from(customChains)
+      .orderBy(desc(customChains.createdAt));
+  }
+
+  async deleteCustomChain(id: number): Promise<void> {
+    await db.delete(customChains).where(eq(customChains.id, id));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

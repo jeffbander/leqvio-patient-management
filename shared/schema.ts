@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -8,10 +9,44 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
 });
 
+export const automationLogs = pgTable("automation_logs", {
+  id: serial("id").primaryKey(),
+  chainName: text("chain_name").notNull(),
+  email: text("email").notNull(),
+  status: text("status").notNull(), // 'success' | 'error'
+  response: text("response").notNull(),
+  requestData: jsonb("request_data").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const customChains = pgTable("custom_chains", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const automationLogsRelations = relations(automationLogs, ({ one }) => ({}));
+export const customChainsRelations = relations(customChains, ({ one }) => ({}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
 });
 
+export const insertAutomationLogSchema = createInsertSchema(automationLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCustomChainSchema = createInsertSchema(customChains).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type AutomationLog = typeof automationLogs.$inferSelect;
+export type InsertAutomationLog = z.infer<typeof insertAutomationLogSchema>;
+export type CustomChain = typeof customChains.$inferSelect;
+export type InsertCustomChain = z.infer<typeof insertCustomChainSchema>;
