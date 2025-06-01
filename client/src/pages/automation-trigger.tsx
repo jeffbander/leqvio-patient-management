@@ -35,6 +35,10 @@ const CHAIN_OPTIONS = [
   {
     value: "ATTACHMENT PROCESSING (SLEEP STUDY)",
     label: "Attachment Processing (Sleep Study)"
+  },
+  {
+    value: "ATTACHMENT PROCESSING (RESEARCH STUDY)",
+    label: "Attachment Processing (Research Study)"
   }
 ];
 
@@ -43,6 +47,9 @@ export default function AutomationTrigger() {
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<string | null>(null);
   const [responseStatus, setResponseStatus] = useState<'success' | 'error' | null>(null);
+  const [customChains, setCustomChains] = useState<string[]>([]);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [newChainName, setNewChainName] = useState("");
   const { toast } = useToast();
 
   const form = useForm<AutomationFormValues>({
@@ -70,6 +77,28 @@ export default function AutomationTrigger() {
       i === index ? { ...variable, [field]: value } : variable
     );
     setVariables(updated);
+  };
+
+  const addCustomChain = () => {
+    if (newChainName.trim() && !customChains.includes(newChainName.trim())) {
+      setCustomChains([...customChains, newChainName.trim()]);
+      form.setValue("chain_to_run", newChainName.trim());
+      setNewChainName("");
+      setShowCustomInput(false);
+      toast({
+        title: "Chain Added",
+        description: `"${newChainName.trim()}" has been added to your chains`,
+        variant: "default",
+      });
+    }
+  };
+
+  const getAllChainOptions = () => {
+    const allChains = [
+      ...CHAIN_OPTIONS,
+      ...customChains.map(chain => ({ value: chain, label: chain }))
+    ];
+    return allChains;
   };
 
   const onSubmit = async (data: AutomationFormValues) => {
@@ -232,9 +261,21 @@ export default function AutomationTrigger() {
                   name="chain_to_run"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center space-x-2">
-                        <Link className="h-4 w-4" />
-                        <span>Chain to Run <span className="text-red-500">*</span></span>
+                      <FormLabel className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Link className="h-4 w-4" />
+                          <span>Chain to Run <span className="text-red-500">*</span></span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowCustomInput(true)}
+                          className="text-xs"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Custom
+                        </Button>
                       </FormLabel>
                       <FormControl>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -242,7 +283,7 @@ export default function AutomationTrigger() {
                             <SelectValue placeholder="Select a chain to run" />
                           </SelectTrigger>
                           <SelectContent>
-                            {CHAIN_OPTIONS.map((chain) => (
+                            {getAllChainOptions().map((chain) => (
                               <SelectItem key={chain.value} value={chain.value}>
                                 {chain.label}
                               </SelectItem>
@@ -257,6 +298,44 @@ export default function AutomationTrigger() {
                     </FormItem>
                   )}
                 />
+
+                {/* Custom Chain Input */}
+                {showCustomInput && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Plus className="h-4 w-4 text-blue-600" />
+                      <h4 className="text-sm font-medium text-blue-900">Add Custom Chain</h4>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter chain name..."
+                        value={newChainName}
+                        onChange={(e) => setNewChainName(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addCustomChain()}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        onClick={addCustomChain}
+                        size="sm"
+                        disabled={!newChainName.trim()}
+                      >
+                        Add
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setShowCustomInput(false);
+                          setNewChainName("");
+                        }}
+                        size="sm"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Optional Fields Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
