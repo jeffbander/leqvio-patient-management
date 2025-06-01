@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
 const automationFormSchema = z.object({
@@ -25,6 +26,17 @@ interface Variable {
   key: string;
   value: string;
 }
+
+const CHAIN_OPTIONS = [
+  {
+    value: "ATTACHMENT PROCESSING (LABS)",
+    label: "Attachment Processing (Labs)"
+  },
+  {
+    value: "ATTACHMENT PROCESSING (SLEEP STUDY)",
+    label: "Attachment Processing (Sleep Study)"
+  }
+];
 
 export default function AutomationTrigger() {
   const [variables, setVariables] = useState<Variable[]>([]);
@@ -225,12 +237,22 @@ export default function AutomationTrigger() {
                         <span>Chain to Run <span className="text-red-500">*</span></span>
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Chain name"
-                          className="pl-10"
-                          {...field}
-                        />
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a chain to run" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CHAIN_OPTIONS.map((chain) => (
+                              <SelectItem key={chain.value} value={chain.value}>
+                                {chain.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </FormControl>
+                      <FormDescription>
+                        Choose which automation chain to trigger
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
