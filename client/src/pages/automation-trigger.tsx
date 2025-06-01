@@ -36,7 +36,7 @@ export default function AutomationTrigger() {
   const form = useForm<AutomationFormValues>({
     resolver: zodResolver(automationFormSchema),
     defaultValues: {
-      run_email: "Mills.reed@mswheart.com",
+      run_email: "notifications@providerloop.com",
       chain_to_run: "research study",
       folder_id: "",
       source_name: "",
