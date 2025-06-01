@@ -37,7 +37,7 @@ export default function AutomationTrigger() {
     resolver: zodResolver(automationFormSchema),
     defaultValues: {
       run_email: "Mills.reed@mswheart.com",
-      chain_to_run: "ATTACHMENT PROCESSING (LABS)",
+      chain_to_run: "research study",
       folder_id: "",
       source_name: "",
       source_id: "",
@@ -107,14 +107,14 @@ export default function AutomationTrigger() {
         setResponseStatus('success');
         toast({
           title: "Success",
-          description: "Automation triggered successfully!",
+          description: "Research study triggered successfully!",
           variant: "default",
         });
       } else {
         setResponseStatus('error');
         toast({
           title: "Error",
-          description: "Failed to trigger automation",
+          description: "Failed to trigger research study",
           variant: "destructive",
         });
       }
@@ -156,8 +156,8 @@ export default function AutomationTrigger() {
               <Settings className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Automation Trigger</h1>
-              <p className="text-sm text-gray-600">AppSheet Chain Automation Starter</p>
+              <h1 className="text-2xl font-bold text-gray-900">Research Study Trigger</h1>
+              <p className="text-sm text-gray-600">AppSheet Research Study Automation</p>
             </div>
           </div>
         </div>
@@ -180,9 +180,9 @@ export default function AutomationTrigger() {
         {/* Automation Form */}
         <Card className="shadow-sm">
           <CardHeader className="bg-gray-50 border-b">
-            <CardTitle className="text-lg">Trigger Automation</CardTitle>
+            <CardTitle className="text-lg">Trigger Research Study</CardTitle>
             <CardDescription>
-              Fill out the form below to start your AppSheet automation chain
+              Fill out the form below to start your research study automation
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
@@ -207,7 +207,7 @@ export default function AutomationTrigger() {
                         />
                       </FormControl>
                       <FormDescription>
-                        The email that will trigger the automation
+                        The email that will trigger the research study
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -226,7 +226,7 @@ export default function AutomationTrigger() {
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Chain name"
+                          placeholder="e.g., research study"
                           className="pl-10"
                           {...field}
                         />
@@ -391,7 +391,7 @@ export default function AutomationTrigger() {
                     ) : (
                       <>
                         <Send className="h-4 w-4 mr-2" />
-                        Trigger Automation
+                        Trigger Research Study
                       </>
                     )}
                   </Button>
