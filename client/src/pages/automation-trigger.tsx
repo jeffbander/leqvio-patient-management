@@ -37,7 +37,7 @@ export default function AutomationTrigger() {
     resolver: zodResolver(automationFormSchema),
     defaultValues: {
       run_email: "Mills.reed@mswheart.com",
-      chain_to_run: "ATTACHMENT PROCESSING (LABS)",
+      chain_to_run: "research study",
       folder_id: "",
       source_name: "",
       source_id: "",
