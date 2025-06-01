@@ -132,7 +132,7 @@ export default function AutomationTrigger() {
   };
 
   const addCustomChain = async () => {
-    if (newChainName.trim() && !customChains.some(chain => chain.name === newChainName.trim())) {
+    if (newChainName.trim() && !customChains.some((chain: any) => chain.name === newChainName.trim())) {
       try {
         await createChainMutation.mutateAsync({ name: newChainName.trim() });
         form.setValue("chain_to_run", newChainName.trim());
@@ -144,6 +144,7 @@ export default function AutomationTrigger() {
           variant: "default",
         });
       } catch (error) {
+        console.error('Error adding chain:', error);
         toast({
           title: "Error",
           description: "Failed to add custom chain",
@@ -156,7 +157,7 @@ export default function AutomationTrigger() {
   const getAllChainOptions = () => {
     const allChains = [
       ...CHAIN_OPTIONS,
-      ...customChains.map(chain => ({ value: chain.name, label: chain.name }))
+      ...customChains.map((chain: any) => ({ value: chain.name, label: chain.name }))
     ];
     return allChains;
   };
