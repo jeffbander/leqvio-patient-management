@@ -43,7 +43,7 @@ export default function AutomationTrigger() {
       source_name: "",
       source_id: "",
       first_step_user_input: "",
-      chainrun_chain_link: "1",
+      chainrun_chain_link: "b9c43e35",
     },
   });
 
