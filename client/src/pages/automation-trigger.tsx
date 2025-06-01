@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Settings, Mail, Link, Folder, Tag, FileText, Plus, Trash2, Send, RotateCcw, Loader2, Info, History, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const automationFormSchema = z.object({
   run_email: z.string().email("Please enter a valid email address"),
@@ -42,27 +44,65 @@ const CHAIN_OPTIONS = [
   }
 ];
 
-interface LogEntry {
-  id: string;
-  timestamp: string;
-  chainName: string;
-  email: string;
-  status: 'success' | 'error';
-  response: string;
-  requestData: any;
-}
-
 export default function AutomationTrigger() {
   const [variables, setVariables] = useState<Variable[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<string | null>(null);
   const [responseStatus, setResponseStatus] = useState<'success' | 'error' | null>(null);
-  const [customChains, setCustomChains] = useState<string[]>([]);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [newChainName, setNewChainName] = useState("");
-  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const { toast } = useToast();
+
+  // Database queries
+  const { data: automationLogs = [], refetch: refetchLogs } = useQuery({
+    queryKey: ['/api/automation-logs'],
+    queryFn: () => fetch('/api/automation-logs').then(res => res.json()),
+  });
+
+  const { data: customChains = [], refetch: refetchChains } = useQuery({
+    queryKey: ['/api/custom-chains'],
+    queryFn: () => fetch('/api/custom-chains').then(res => res.json()),
+  });
+
+  // Mutations
+  const createLogMutation = useMutation({
+    mutationFn: async (logData: any) => {
+      const response = await fetch('/api/automation-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(logData)
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/automation-logs'] });
+    }
+  });
+
+  const clearLogsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/automation-logs', { method: 'DELETE' });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/automation-logs'] });
+    }
+  });
+
+  const createChainMutation = useMutation({
+    mutationFn: async (chainData: any) => {
+      const response = await fetch('/api/custom-chains', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(chainData)
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/custom-chains'] });
+    }
+  });
 
   const form = useForm<AutomationFormValues>({
     resolver: zodResolver(automationFormSchema),
@@ -91,52 +131,70 @@ export default function AutomationTrigger() {
     setVariables(updated);
   };
 
-  const addCustomChain = () => {
-    if (newChainName.trim() && !customChains.includes(newChainName.trim())) {
-      setCustomChains([...customChains, newChainName.trim()]);
-      form.setValue("chain_to_run", newChainName.trim());
-      setNewChainName("");
-      setShowCustomInput(false);
-      toast({
-        title: "Chain Added",
-        description: `"${newChainName.trim()}" has been added to your chains`,
-        variant: "default",
-      });
+  const addCustomChain = async () => {
+    if (newChainName.trim() && !customChains.some(chain => chain.name === newChainName.trim())) {
+      try {
+        await createChainMutation.mutateAsync({ name: newChainName.trim() });
+        form.setValue("chain_to_run", newChainName.trim());
+        setNewChainName("");
+        setShowCustomInput(false);
+        toast({
+          title: "Chain Added",
+          description: `"${newChainName.trim()}" has been added to your chains`,
+          variant: "default",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to add custom chain",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   const getAllChainOptions = () => {
     const allChains = [
       ...CHAIN_OPTIONS,
-      ...customChains.map(chain => ({ value: chain, label: chain }))
+      ...customChains.map(chain => ({ value: chain.name, label: chain.name }))
     ];
     return allChains;
   };
 
-  const addLogEntry = (requestData: any, response: string, status: 'success' | 'error') => {
-    const logEntry: LogEntry = {
-      id: Date.now().toString(),
-      timestamp: new Date().toLocaleString(),
-      chainName: requestData.chain_to_run,
-      email: requestData.run_email,
-      status,
-      response,
-      requestData
-    };
-    setLogs(prev => [logEntry, ...prev]);
+  const addLogEntry = async (requestData: any, response: string, status: 'success' | 'error') => {
+    try {
+      await createLogMutation.mutateAsync({
+        chainName: requestData.chain_to_run,
+        email: requestData.run_email,
+        status,
+        response,
+        requestData,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Failed to save log entry:', error);
+    }
   };
 
-  const clearLogs = () => {
-    setLogs([]);
-    toast({
-      title: "Logs Cleared",
-      description: "All automation logs have been cleared",
-      variant: "default",
-    });
+  const clearLogs = async () => {
+    try {
+      await clearLogsMutation.mutateAsync();
+      toast({
+        title: "Logs Cleared",
+        description: "All automation logs have been cleared",
+        variant: "default",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to clear logs",
+        variant: "destructive",
+      });
+    }
   };
 
   const exportLogs = () => {
-    const logData = JSON.stringify(logs, null, 2);
+    const logData = JSON.stringify(automationLogs, null, 2);
     const blob = new Blob([logData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -271,7 +329,7 @@ export default function AutomationTrigger() {
                 className="flex items-center space-x-2"
               >
                 <History className="h-4 w-4" />
-                <span>Logs ({logs.length})</span>
+                <span>Logs ({automationLogs.length})</span>
               </Button>
             </div>
           </div>
@@ -595,7 +653,7 @@ export default function AutomationTrigger() {
                   <span>Automation Logs</span>
                 </CardTitle>
                 <div className="flex items-center space-x-2">
-                  {logs.length > 0 && (
+                  {automationLogs.length > 0 && (
                     <>
                       <Button
                         variant="outline"
@@ -626,7 +684,7 @@ export default function AutomationTrigger() {
               </div>
             </CardHeader>
             <CardContent className="p-6">
-              {logs.length === 0 ? (
+              {automationLogs.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No automation logs yet</p>
@@ -634,7 +692,7 @@ export default function AutomationTrigger() {
                 </div>
               ) : (
                 <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {logs.map((log) => (
+                  {automationLogs.map((log: any) => (
                     <div
                       key={log.id}
                       className={`border rounded-lg p-4 ${
@@ -652,9 +710,9 @@ export default function AutomationTrigger() {
                           }`}>
                             {log.status}
                           </span>
-                          <span className="text-sm font-medium">{log.chainName}</span>
+                          <span className="text-sm font-medium">{log.chainname}</span>
                         </div>
-                        <span className="text-xs text-gray-500">{log.timestamp}</span>
+                        <span className="text-xs text-gray-500">{new Date(log.timestamp).toLocaleString()}</span>
                       </div>
                       <div className="text-sm text-gray-600 mb-2">
                         Email: {log.email}
