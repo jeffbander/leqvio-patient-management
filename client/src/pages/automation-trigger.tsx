@@ -17,7 +17,6 @@ const automationFormSchema = z.object({
   source_name: z.string().optional(),
   source_id: z.string().optional(),
   first_step_user_input: z.string().optional(),
-  chainrun_chain_link: z.string().optional(),
 });
 
 type AutomationFormValues = z.infer<typeof automationFormSchema>;
@@ -38,12 +37,11 @@ export default function AutomationTrigger() {
     resolver: zodResolver(automationFormSchema),
     defaultValues: {
       run_email: "Mills.reed@mswheart.com",
-      chain_to_run: "RESEARCH STUDY",
+      chain_to_run: "ATTACHMENT PROCESSING (LABS)",
       folder_id: "",
       source_name: "",
       source_id: "",
       first_step_user_input: "",
-      chainrun_chain_link: "b9c43e35",
     },
   });
 
@@ -84,7 +82,6 @@ export default function AutomationTrigger() {
         ...(data.source_name && { source_name: data.source_name }),
         ...(data.source_id && { source_id: data.source_id }),
         ...(data.first_step_user_input && { first_step_user_input: data.first_step_user_input }),
-        ...(data.chainrun_chain_link && { chainrun_chain_link: data.chainrun_chain_link }),
         starting_variables,
       };
 
@@ -301,31 +298,6 @@ export default function AutomationTrigger() {
                           {...field}
                         />
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Chain Link Field */}
-                <FormField
-                  control={form.control}
-                  name="chainrun_chain_link"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center space-x-2">
-                        <Link className="h-4 w-4" />
-                        <span>Chain Run Link</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Chain link reference (e.g., 1)"
-                          className="pl-10"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Required for some chains like "research study"
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
