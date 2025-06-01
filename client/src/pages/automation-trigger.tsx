@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Settings, Mail, Link, Folder, Tag, FileText, Plus, Trash2, Send, RotateCcw, Loader2, Info } from "lucide-react";
+import { Settings, Mail, Link, Folder, Tag, FileText, Plus, Trash2, Send, RotateCcw, Loader2, Info, History, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -42,6 +42,16 @@ const CHAIN_OPTIONS = [
   }
 ];
 
+interface LogEntry {
+  id: string;
+  timestamp: string;
+  chainName: string;
+  email: string;
+  status: 'success' | 'error';
+  response: string;
+  requestData: any;
+}
+
 export default function AutomationTrigger() {
   const [variables, setVariables] = useState<Variable[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,6 +60,8 @@ export default function AutomationTrigger() {
   const [customChains, setCustomChains] = useState<string[]>([]);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [newChainName, setNewChainName] = useState("");
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<AutomationFormValues>({
@@ -101,38 +113,78 @@ export default function AutomationTrigger() {
     return allChains;
   };
 
+  const addLogEntry = (requestData: any, response: string, status: 'success' | 'error') => {
+    const logEntry: LogEntry = {
+      id: Date.now().toString(),
+      timestamp: new Date().toLocaleString(),
+      chainName: requestData.chain_to_run,
+      email: requestData.run_email,
+      status,
+      response,
+      requestData
+    };
+    setLogs(prev => [logEntry, ...prev]);
+  };
+
+  const clearLogs = () => {
+    setLogs([]);
+    toast({
+      title: "Logs Cleared",
+      description: "All automation logs have been cleared",
+      variant: "default",
+    });
+  };
+
+  const exportLogs = () => {
+    const logData = JSON.stringify(logs, null, 2);
+    const blob = new Blob([logData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `automation-logs-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({
+      title: "Logs Exported",
+      description: "Logs have been downloaded as JSON file",
+      variant: "default",
+    });
+  };
+
   const onSubmit = async (data: AutomationFormValues) => {
     setIsLoading(true);
     setResponse(null);
     setResponseStatus(null);
 
+    // Collect starting variables
+    const starting_variables: Record<string, string> = {};
+    variables.forEach(variable => {
+      if (variable.key.trim() && variable.value.trim()) {
+        starting_variables[variable.key.trim()] = variable.value.trim();
+      }
+    });
+
+    // Prepare the request body
+    const requestBody = {
+      run_email: data.run_email,
+      chain_to_run: data.chain_to_run,
+      ...(data.folder_id && { folder_id: data.folder_id }),
+      ...(data.source_name && { source_name: data.source_name }),
+      ...(data.source_id && { source_id: data.source_id }),
+      ...(data.first_step_user_input && { first_step_user_input: data.first_step_user_input }),
+      starting_variables,
+    };
+
+    // Remove empty optional fields
+    Object.keys(requestBody).forEach(key => {
+      if (requestBody[key as keyof typeof requestBody] === "") {
+        delete requestBody[key as keyof typeof requestBody];
+      }
+    });
+
     try {
-      // Collect starting variables
-      const starting_variables: Record<string, string> = {};
-      variables.forEach(variable => {
-        if (variable.key.trim() && variable.value.trim()) {
-          starting_variables[variable.key.trim()] = variable.value.trim();
-        }
-      });
-
-      // Prepare the request body
-      const requestBody = {
-        run_email: data.run_email,
-        chain_to_run: data.chain_to_run,
-        ...(data.folder_id && { folder_id: data.folder_id }),
-        ...(data.source_name && { source_name: data.source_name }),
-        ...(data.source_id && { source_id: data.source_id }),
-        ...(data.first_step_user_input && { first_step_user_input: data.first_step_user_input }),
-        starting_variables,
-      };
-
-      // Remove empty optional fields
-      Object.keys(requestBody).forEach(key => {
-        if (requestBody[key as keyof typeof requestBody] === "") {
-          delete requestBody[key as keyof typeof requestBody];
-        }
-      });
-
       const response = await fetch("https://start-chain-run-943506065004.us-central1.run.app", {
         method: "POST",
         headers: {
@@ -146,6 +198,7 @@ export default function AutomationTrigger() {
 
       if (response.ok) {
         setResponseStatus('success');
+        addLogEntry(requestBody, result, 'success');
         toast({
           title: "Success",
           description: "Automation triggered successfully!",
@@ -153,6 +206,7 @@ export default function AutomationTrigger() {
         });
       } else {
         setResponseStatus('error');
+        addLogEntry(requestBody, result, 'error');
         toast({
           title: "Error",
           description: "Failed to trigger automation",
@@ -161,8 +215,15 @@ export default function AutomationTrigger() {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      setResponse(`Error: ${errorMessage}`);
+      const errorResponse = `Error: ${errorMessage}`;
+      setResponse(errorResponse);
       setResponseStatus('error');
+      try {
+        addLogEntry(requestBody, errorResponse, 'error');
+      } catch {
+        // If requestBody is not available, create a minimal log entry
+        addLogEntry({ run_email: data.run_email, chain_to_run: data.chain_to_run }, errorResponse, 'error');
+      }
       toast({
         title: "Network Error",
         description: errorMessage,
@@ -192,13 +253,26 @@ export default function AutomationTrigger() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center space-x-3">
-            <div className="bg-primary text-primary-foreground rounded-lg p-2">
-              <Settings className="h-6 w-6" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-primary text-primary-foreground rounded-lg p-2">
+                <Settings className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Automation Trigger</h1>
+                <p className="text-sm text-gray-600">AppSheet Chain Automation Starter</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Automation Trigger</h1>
-              <p className="text-sm text-gray-600">AppSheet Chain Automation Starter</p>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLogs(!showLogs)}
+                className="flex items-center space-x-2"
+              >
+                <History className="h-4 w-4" />
+                <span>Logs ({logs.length})</span>
+              </Button>
             </div>
           </div>
         </div>
@@ -510,6 +584,96 @@ export default function AutomationTrigger() {
             </Form>
           </CardContent>
         </Card>
+
+        {/* Logs Panel */}
+        {showLogs && (
+          <Card className="mt-8 shadow-sm">
+            <CardHeader className="bg-gray-50 border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center space-x-2">
+                  <History className="h-5 w-5" />
+                  <span>Automation Logs</span>
+                </CardTitle>
+                <div className="flex items-center space-x-2">
+                  {logs.length > 0 && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportLogs}
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        Export
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearLogs}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Clear
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowLogs(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              {logs.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No automation logs yet</p>
+                  <p className="text-sm">Trigger an automation to see logs here</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {logs.map((log) => (
+                    <div
+                      key={log.id}
+                      className={`border rounded-lg p-4 ${
+                        log.status === 'success' 
+                          ? 'border-green-200 bg-green-50' 
+                          : 'border-red-200 bg-red-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            log.status === 'success' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {log.status}
+                          </span>
+                          <span className="text-sm font-medium">{log.chainName}</span>
+                        </div>
+                        <span className="text-xs text-gray-500">{log.timestamp}</span>
+                      </div>
+                      <div className="text-sm text-gray-600 mb-2">
+                        Email: {log.email}
+                      </div>
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
+                          View Response
+                        </summary>
+                        <div className="mt-2 p-2 bg-gray-100 rounded font-mono text-xs overflow-x-auto">
+                          {log.response}
+                        </div>
+                      </details>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Response Display */}
         {response && (
