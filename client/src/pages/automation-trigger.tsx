@@ -84,7 +84,7 @@ export default function AutomationTrigger() {
         ...(data.source_name && { source_name: data.source_name }),
         ...(data.source_id && { source_id: data.source_id }),
         ...(data.first_step_user_input && { first_step_user_input: data.first_step_user_input }),
-        ...(data.chainrun_chain_link && { ChainRun_Chain_Link: data.chainrun_chain_link }),
+        ...(data.chainrun_chain_link && { chainrun_chain_link: data.chainrun_chain_link }),
         starting_variables,
       };
 
