@@ -21,6 +21,7 @@ export interface IStorage {
   createAutomationLog(log: InsertAutomationLog): Promise<AutomationLog>;
   getAutomationLogs(limit?: number): Promise<AutomationLog[]>;
   clearAutomationLogs(): Promise<void>;
+  updateAutomationLogWithEmailResponse(uniqueId: string, emailResponse: string): Promise<AutomationLog | null>;
   
   // Custom chains
   createCustomChain(chain: InsertCustomChain): Promise<CustomChain>;
@@ -84,6 +85,18 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCustomChain(id: number): Promise<void> {
     await db.delete(customChains).where(eq(customChains.id, id));
+  }
+
+  async updateAutomationLogWithEmailResponse(uniqueId: string, emailResponse: string): Promise<AutomationLog | null> {
+    const [updatedLog] = await db
+      .update(automationLogs)
+      .set({ 
+        emailResponse, 
+        emailReceivedAt: new Date() 
+      })
+      .where(eq(automationLogs.uniqueId, uniqueId))
+      .returning();
+    return updatedLog || null;
   }
 }
 

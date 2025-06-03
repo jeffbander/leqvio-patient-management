@@ -16,6 +16,9 @@ export const automationLogs = pgTable("automation_logs", {
   status: text("status").notNull(), // 'success' | 'error'
   response: text("response").notNull(),
   requestData: jsonb("request_data").notNull(),
+  uniqueId: text("unique_id"), // Store the unique ID from API response
+  emailResponse: text("email_response"), // Store email response content
+  emailReceivedAt: timestamp("email_received_at"), // When email response was received
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
