@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Settings, Mail, Link, Folder, Tag, FileText, Plus, Trash2, Send, RotateCcw, Loader2, Info, History, Download, X } from "lucide-react";
+import { Settings, Mail, Link, Folder, Tag, FileText, Plus, Trash2, Send, RotateCcw, Loader2, Info, History, Download, X, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -164,12 +164,29 @@ export default function AutomationTrigger() {
 
   const addLogEntry = async (requestData: any, response: string, status: 'success' | 'error') => {
     try {
+      // Extract unique ID from successful response
+      let uniqueId = null;
+      if (status === 'success') {
+        try {
+          const responseObj = JSON.parse(response);
+          // Look for unique ID in various possible fields
+          uniqueId = responseObj.id || responseObj.runId || responseObj.chainRunId || responseObj.uniqueId;
+        } catch (e) {
+          // If response isn't JSON, try to extract ID with regex
+          const idMatch = response.match(/[A-Za-z0-9\-_]{20,}/);
+          if (idMatch) {
+            uniqueId = idMatch[0];
+          }
+        }
+      }
+
       await createLogMutation.mutateAsync({
         chainName: requestData.chain_to_run,
         email: requestData.run_email,
         status,
         response,
         requestData,
+        uniqueId,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
@@ -644,6 +661,39 @@ export default function AutomationTrigger() {
           </CardContent>
         </Card>
 
+        {/* Email Integration Setup Instructions */}
+        <Card className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center space-x-2 text-blue-900">
+              <Mail className="h-5 w-5" />
+              <span>Email Response Integration Setup</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-white border border-blue-200 rounded-lg p-4">
+              <h4 className="font-medium text-blue-900 mb-2">Setup Instructions:</h4>
+              <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                <li>Log into your SendGrid account and go to Settings → Inbound Parse</li>
+                <li>Add a new webhook with this URL:</li>
+                <div className="bg-blue-100 p-2 rounded mt-1 mb-2 font-mono text-xs break-all">
+                  {window.location.origin}/api/email-webhook
+                </div>
+                <li>Set up a subdomain or use an existing domain (e.g., responses.yourdomain.com)</li>
+                <li>Configure your automation chains to send responses to: automation-responses@yourdomain.com</li>
+                <li>Ensure the email subject contains the unique ID from the API response</li>
+              </ol>
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <div className="flex items-start space-x-2">
+                <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+                <div className="text-sm text-yellow-800">
+                  <strong>Important:</strong> Email responses will automatically appear in your automation logs when they contain the unique ID in the subject line.
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Logs Panel */}
         {showLogs && (
           <Card className="mt-8 shadow-sm">
@@ -717,10 +767,35 @@ export default function AutomationTrigger() {
                       </div>
                       <div className="text-sm text-gray-600 mb-2">
                         Email: {log.email}
+                        {log.uniqueid && (
+                          <div className="text-xs text-blue-600 mt-1">
+                            ID: {log.uniqueid}
+                          </div>
+                        )}
                       </div>
+                      
+                      {log.emailresponse && (
+                        <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                          <div className="text-xs font-medium text-blue-800 mb-1">
+                            Email Response Received:
+                          </div>
+                          <div className="text-xs text-blue-700">
+                            {new Date(log.emailreceivedat).toLocaleString()}
+                          </div>
+                          <details className="text-xs mt-1">
+                            <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
+                              View Email Content
+                            </summary>
+                            <div className="mt-2 p-2 bg-white rounded border text-xs overflow-x-auto max-h-32 overflow-y-auto">
+                              <div dangerouslySetInnerHTML={{ __html: log.emailresponse }} />
+                            </div>
+                          </details>
+                        </div>
+                      )}
+                      
                       <details className="text-xs">
                         <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
-                          View Response
+                          View API Response
                         </summary>
                         <div className="mt-2 p-2 bg-gray-100 rounded font-mono text-xs overflow-x-auto">
                           {log.response}
