@@ -16,11 +16,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Automation logs endpoints
   app.post("/api/automation-logs", async (req, res) => {
     try {
+      console.log("Attempting to create log with data:", JSON.stringify(req.body, null, 2));
       const validatedData = insertAutomationLogSchema.parse(req.body);
       const log = await storage.createAutomationLog(validatedData);
       res.json(log);
     } catch (error) {
-      res.status(400).json({ error: "Invalid log data" });
+      console.error("Log validation error:", error);
+      res.status(400).json({ error: "Invalid log data", details: error.message });
     }
   });
 
