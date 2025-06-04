@@ -40,6 +40,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertAutomationLogSchema = createInsertSchema(automationLogs).omit({
   id: true,
   createdAt: true,
+}).extend({
+  timestamp: z.union([z.date(), z.string().transform((str) => new Date(str))]),
 });
 
 export const insertCustomChainSchema = createInsertSchema(customChains).omit({
