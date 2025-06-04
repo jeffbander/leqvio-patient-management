@@ -690,28 +690,69 @@ export default function AutomationTrigger() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center space-x-2 text-blue-900">
               <Mail className="h-5 w-5" />
-              <span>Email Response Integration Setup</span>
+              <span>Automated Email Response Integration</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-white border border-blue-200 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-2">Setup Instructions:</h4>
-              <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-                <li>Log into your SendGrid account and go to Settings → Inbound Parse</li>
-                <li>Add a new webhook with this URL:</li>
-                <div className="bg-blue-100 p-2 rounded mt-1 mb-2 font-mono text-xs break-all">
+              <h4 className="font-medium text-blue-900 mb-3">How It Works:</h4>
+              <div className="space-y-3 text-sm text-blue-800">
+                <div className="flex items-start space-x-2">
+                  <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">1</div>
+                  <div>
+                    <strong>API Trigger:</strong> When you submit an automation, the system automatically extracts the unique ChainRun_ID from the AppSheet API response (e.g., "64abf335").
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">2</div>
+                  <div>
+                    <strong>ID Storage:</strong> The ChainRun_ID is immediately saved with your automation log for tracking.
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">3</div>
+                  <div>
+                    <strong>AppSheet Processing:</strong> Your automation chain runs in AppSheet and generates results.
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">4</div>
+                  <div>
+                    <strong>Email Response:</strong> AppSheet sends completion email to automation-responses@responses.providerloop.com containing "Output from run (ChainRun_ID)".
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">5</div>
+                  <div>
+                    <strong>Automatic Matching:</strong> The webhook extracts the ChainRun_ID from the email and links it to the correct automation log.
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">6</div>
+                  <div>
+                    <strong>Results Display:</strong> Complete HTML email content appears in your logs panel automatically.
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white border border-blue-200 rounded-lg p-4">
+              <h4 className="font-medium text-blue-900 mb-2">Current Configuration:</h4>
+              <div className="space-y-2 text-sm text-blue-800">
+                <div><strong>Webhook URL:</strong></div>
+                <div className="bg-blue-100 p-2 rounded font-mono text-xs break-all">
                   {window.location.origin}/api/email-webhook
                 </div>
-                <li>Set up a subdomain or use an existing domain (e.g., responses.yourdomain.com)</li>
-                <li>Configure your automation chains to send responses to: automation-responses@yourdomain.com</li>
-                <li>Ensure the email subject contains the unique ID from the API response</li>
-              </ol>
+                <div><strong>Email Destination:</strong> automation-responses@responses.providerloop.com</div>
+                <div><strong>Pattern Recognition:</strong> Automatically detects "Output from run (ChainRun_ID)" format</div>
+              </div>
             </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
               <div className="flex items-start space-x-2">
-                <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
-                <div className="text-sm text-yellow-800">
-                  <strong>Important:</strong> Email responses will automatically appear in your automation logs when they contain the unique ID in the subject line.
+                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                <div className="text-sm text-green-800">
+                  <strong>Status:</strong> Fully automated - no manual intervention required. Each automation automatically captures its unique ID and links email responses when they arrive.
                 </div>
               </div>
             </div>
