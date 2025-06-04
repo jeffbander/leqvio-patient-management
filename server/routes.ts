@@ -110,34 +110,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("HTML found:", html);
       console.log("Email content for ID extraction:", req.body.email?.substring(0, 500));
       
-      // Extract unique ID from subject line or email content
-      let uniqueIdMatch = subject?.match(/[A-Za-z0-9\-_]{6,}/); // Look for IDs 6+ characters in subject
+      // Extract unique ID from email content first (prioritize run ID patterns)
+      const emailContent = html || text || req.body.email || "";
+      console.log("Full email content for debugging:", emailContent?.substring(0, 1000));
       
-      // If no ID in subject, look in the email content
+      // Look for patterns like "Output from run (548d4e08)" or "run ID: 548d4e08"
+      // Also handle HTML encoded content
+      const decodedContent = emailContent?.replace(/=3D/g, '=').replace(/=\r?\n/g, '');
+      
+      // Look for ChainRun_ID first as primary identifier
+      let uniqueIdMatch = decodedContent?.match(/"ChainRun_ID"\s*:\s*"([A-Za-z0-9\-_]+)"/i);
+      console.log("ChainRun_ID match attempt:", uniqueIdMatch);
+      
       if (!uniqueIdMatch) {
-        const emailContent = html || text || req.body.email || "";
-        console.log("Full email content for debugging:", emailContent?.substring(0, 1000));
-        
-        // Look for patterns like "Output from run (548d4e08)" or "run ID: 548d4e08"
-        // Also handle HTML encoded content
-        const decodedContent = emailContent?.replace(/=3D/g, '=').replace(/=\r?\n/g, '');
-        
-        // Look for ChainRun_ID first as primary identifier
-        uniqueIdMatch = decodedContent?.match(/"ChainRun_ID"\s*:\s*"([A-Za-z0-9\-_]+)"/i);
-        
-        if (!uniqueIdMatch) {
-          // Fallback patterns if ChainRun_ID not found
-          uniqueIdMatch = decodedContent?.match(/ChainRun_ID[^"]*"([A-Za-z0-9\-_]{6,})"/i) ||
-                         decodedContent?.match(/Output\s+from\s+run\s*\(([A-Za-z0-9\-_]{6,})\)/i) || 
-                         decodedContent?.match(/run\s*\(([A-Za-z0-9\-_]{6,})\)/i);
-        }
-        if (uniqueIdMatch) {
-          uniqueIdMatch = [uniqueIdMatch[1]]; // Use the captured group
-        }
+        // Look for "Output from run (ID)" pattern which is what AppSheet sends
+        uniqueIdMatch = decodedContent?.match(/Output\s+from\s+run\s*\(([A-Za-z0-9\-_]{6,})\)/i);
+        console.log("Output from run pattern match:", uniqueIdMatch);
+      }
+      
+      if (!uniqueIdMatch) {
+        // Other fallback patterns
+        uniqueIdMatch = decodedContent?.match(/ChainRun_ID[^"]*"([A-Za-z0-9\-_]{6,})"/i) ||
+                       decodedContent?.match(/run\s*\(([A-Za-z0-9\-_]{6,})\)/i);
+        console.log("Fallback pattern match:", uniqueIdMatch);
+      }
+      
+      // If still no match, try subject line as last resort
+      if (!uniqueIdMatch) {
+        uniqueIdMatch = subject?.match(/\(([A-Za-z0-9\-_]{6,})\)/); // Look for IDs in parentheses in subject
+        console.log("Subject pattern match:", uniqueIdMatch);
+      }
+      
+      if (uniqueIdMatch && uniqueIdMatch[1]) {
+        uniqueIdMatch = [uniqueIdMatch[1]]; // Use the captured group
+        console.log("Using captured group:", uniqueIdMatch);
       }
       
       if (uniqueIdMatch) {
         const uniqueId = uniqueIdMatch[0];
+        console.log("Extracted unique ID:", uniqueId);
         
         // Extract HTML content from the raw email
         let emailContent = "No content found";
