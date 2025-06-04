@@ -56,12 +56,26 @@ export class DatabaseStorage implements IStorage {
     return newLog;
   }
 
-  async getAutomationLogs(limit: number = 50): Promise<AutomationLog[]> {
-    return await db
+  async getAutomationLogs(limit: number = 50): Promise<any[]> {
+    const logs = await db
       .select()
       .from(automationLogs)
       .orderBy(desc(automationLogs.createdAt))
       .limit(limit);
+    
+    // Transform field names to match frontend expectations
+    return logs.map(log => ({
+      id: log.id,
+      chainname: log.chainName,
+      email: log.email,
+      response: log.response,
+      status: log.status,
+      timestamp: log.timestamp,
+      uniqueid: log.uniqueId,
+      emailresponse: log.emailResponse,
+      emailreceivedat: log.emailReceivedAt,
+      createdat: log.createdAt
+    }));
   }
 
   async clearAutomationLogs(): Promise<void> {
