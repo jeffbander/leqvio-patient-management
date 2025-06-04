@@ -83,8 +83,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Log all incoming data for debugging
       console.log("Received email webhook data:", JSON.stringify(req.body, null, 2));
+      console.log("Request headers:", JSON.stringify(req.headers, null, 2));
+      console.log("Available fields:", Object.keys(req.body));
       
-      const { subject, text, html, from } = req.body;
+      // SendGrid sends form data, check common field names
+      const subject = req.body.subject || req.body.Subject || req.body.SUBJECT;
+      const text = req.body.text || req.body.Text || req.body.TEXT;
+      const html = req.body.html || req.body.Html || req.body.HTML;
+      const from = req.body.from || req.body.From || req.body.FROM;
       
       // Extract unique ID from subject line
       // Assuming format like "Response: [UNIQUE_ID]" or contains the unique ID
