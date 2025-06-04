@@ -162,21 +162,24 @@ export default function AutomationTrigger() {
     return allChains;
   };
 
-  const addLogEntry = async (requestData: any, response: string, status: 'success' | 'error') => {
+  const addLogEntry = async (requestData: any, response: string, status: 'success' | 'error', extractedChainRunId?: string) => {
     try {
-      // Extract unique ID from successful response
-      let uniqueId = null;
-      if (status === 'success') {
+      // Use the extracted ChainRun_ID or try to extract from response
+      let uniqueId = extractedChainRunId || null;
+      
+      if (!uniqueId && status === 'success') {
         try {
           const responseObj = JSON.parse(response);
-          // Look for unique ID in AppSheet response structure
-          if (responseObj.responses && responseObj.responses[0] && responseObj.responses[0].rows) {
+          // Look for ChainRun_ID first
+          uniqueId = responseObj.ChainRun_ID;
+          
+          // Fallback to AppSheet response structure
+          if (!uniqueId && responseObj.responses && responseObj.responses[0] && responseObj.responses[0].rows) {
             const firstRow = responseObj.responses[0].rows[0];
-            // Check common AppSheet ID fields
             uniqueId = firstRow["Run_ID"] || firstRow["_RowNumber"] || firstRow["ID"] || 
                       firstRow["Run_Auto_Key"] || firstRow["Chain_Run_Key"] || firstRow.id;
           }
-          // Fallback to other possible locations
+          // Other fallbacks
           if (!uniqueId) {
             uniqueId = responseObj.id || responseObj.runId || responseObj.chainRunId || responseObj.uniqueId;
           }
@@ -283,7 +286,19 @@ export default function AutomationTrigger() {
 
       if (response.ok) {
         setResponseStatus('success');
-        addLogEntry(requestBody, result, 'success');
+        
+        // Extract ChainRun_ID from the API response
+        let chainRunId = '';
+        try {
+          const chainRunMatch = result.match(/"ChainRun_ID"\s*:\s*"([^"]+)"/);
+          if (chainRunMatch) {
+            chainRunId = chainRunMatch[1];
+          }
+        } catch (e) {
+          console.log('Could not extract ChainRun_ID from response');
+        }
+        
+        addLogEntry(requestBody, result, 'success', chainRunId);
         toast({
           title: "Success",
           description: "Automation triggered successfully!",
@@ -291,7 +306,7 @@ export default function AutomationTrigger() {
         });
       } else {
         setResponseStatus('error');
-        addLogEntry(requestBody, result, 'error');
+        addLogEntry(requestBody, result, 'error', '');
         toast({
           title: "Error",
           description: "Failed to trigger automation",
