@@ -139,17 +139,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (uniqueIdMatch) {
         const uniqueId = uniqueIdMatch[0];
         
-        // Get the full email content from the raw email field
-        let emailContent = req.body.email || html || text || "No content";
+        // Extract HTML content from the raw email
+        let emailContent = "No content found";
+        const rawEmail = req.body.email || "";
         
-        // Decode quoted-printable encoding if present
-        if (emailContent.includes('=3D') || emailContent.includes('=\r\n')) {
-          emailContent = emailContent
+        // Look for HTML content between Content-Type: text/html markers
+        const htmlMatch = rawEmail.match(/Content-Type: text\/html[\s\S]*?Content-Transfer-Encoding: quoted-printable\s*([\s\S]*?)(?=--[0-9a-f]+|$)/i);
+        
+        if (htmlMatch && htmlMatch[1]) {
+          emailContent = htmlMatch[1]
             .replace(/=3D/g, '=')
             .replace(/=([0-9A-F]{2})/g, (match: string, hex: string) => {
               return String.fromCharCode(parseInt(hex, 16));
             })
-            .replace(/=\r?\n/g, '');
+            .replace(/=\r?\n/g, '')
+            .trim();
+        } else {
+          // Fallback to full email content
+          emailContent = html || text || rawEmail || "No content";
         }
         
         console.log("Processed email content length:", emailContent.length);
