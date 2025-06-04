@@ -101,10 +101,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Subject found:", subject);
       console.log("Text found:", text);
       console.log("HTML found:", html);
+      console.log("Email content for ID extraction:", req.body.email?.substring(0, 500));
       
-      // Extract unique ID from subject line
-      // Look for any alphanumeric sequence that could be an ID
-      const uniqueIdMatch = subject?.match(/[A-Za-z0-9\-_]{6,}/); // Look for IDs 6+ characters
+      // Extract unique ID from subject line or email content
+      let uniqueIdMatch = subject?.match(/[A-Za-z0-9\-_]{6,}/); // Look for IDs 6+ characters in subject
+      
+      // If no ID in subject, look in the email content
+      if (!uniqueIdMatch) {
+        const emailContent = html || text || req.body.email || "";
+        // Look for patterns like "Output from run (548d4e08)" or "run ID: 548d4e08"
+        uniqueIdMatch = emailContent.match(/run\s*\(([A-Za-z0-9\-_]{6,})\)/i) || 
+                       emailContent.match(/run\s*ID:?\s*([A-Za-z0-9\-_]{6,})/i) ||
+                       emailContent.match(/ID:?\s*([A-Za-z0-9\-_]{8,})/i);
+        if (uniqueIdMatch) {
+          uniqueIdMatch = [uniqueIdMatch[1]]; // Use the captured group
+        }
+      }
       
       if (uniqueIdMatch) {
         const uniqueId = uniqueIdMatch[0];
