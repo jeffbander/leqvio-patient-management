@@ -69,9 +69,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint to verify webhook is working
+  app.get("/api/email-webhook", (req, res) => {
+    res.json({ 
+      status: "Webhook endpoint is active", 
+      url: `${req.protocol}://${req.get('host')}/api/email-webhook`,
+      timestamp: new Date().toISOString()
+    });
+  });
+
   // Email webhook endpoint for SendGrid Inbound Parse
   app.post("/api/email-webhook", async (req, res) => {
     try {
+      // Log all incoming data for debugging
+      console.log("Received email webhook data:", JSON.stringify(req.body, null, 2));
+      
       const { subject, text, html, from } = req.body;
       
       // Extract unique ID from subject line
@@ -94,6 +106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else {
         console.log("No unique ID found in email subject:", subject);
+        console.log("Full request body:", req.body);
         res.status(400).json({ error: "No unique ID found in subject" });
       }
     } catch (error) {
