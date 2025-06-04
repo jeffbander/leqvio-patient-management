@@ -98,6 +98,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const html = req.body.html;
       const from = req.body.from;
       
+      // Log all available fields to understand the email structure
+      console.log("All email fields:");
+      Object.keys(req.body).forEach(key => {
+        const value = req.body[key];
+        console.log(`${key}: ${typeof value === 'string' ? value.substring(0, 200) : value}`);
+      });
+      
       console.log("Subject found:", subject);
       console.log("Text found:", text);
       console.log("HTML found:", html);
@@ -132,18 +139,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (uniqueIdMatch) {
         const uniqueId = uniqueIdMatch[0];
         
-        // Get the full email content, preferring HTML then text
-        let emailContent = html || text || req.body.email || "No content";
+        // Get the full email content from the raw email field
+        let emailContent = req.body.email || html || text || "No content";
         
-        // If we have HTML content, decode it properly
-        if (html) {
-          // Decode quoted-printable encoding
-          emailContent = html.replace(/=([0-9A-F]{2})/g, (match, hex) => {
-            return String.fromCharCode(parseInt(hex, 16));
-          }).replace(/=\r?\n/g, '');
+        // Decode quoted-printable encoding if present
+        if (emailContent.includes('=3D') || emailContent.includes('=\r\n')) {
+          emailContent = emailContent
+            .replace(/=3D/g, '=')
+            .replace(/=([0-9A-F]{2})/g, (match: string, hex: string) => {
+              return String.fromCharCode(parseInt(hex, 16));
+            })
+            .replace(/=\r?\n/g, '');
         }
         
         console.log("Processed email content length:", emailContent.length);
+        console.log("Email content preview:", emailContent.substring(0, 1000));
         
         // Update the automation log with email response
         const updatedLog = await storage.updateAutomationLogWithEmailResponse(uniqueId, emailContent);
