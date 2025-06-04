@@ -90,15 +90,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Request headers:", JSON.stringify(req.headers, null, 2));
       console.log("Available fields:", Object.keys(req.body));
       
-      // SendGrid sends form data, check common field names
-      const subject = req.body.subject || req.body.Subject || req.body.SUBJECT;
-      const text = req.body.text || req.body.Text || req.body.TEXT;
-      const html = req.body.html || req.body.Html || req.body.HTML;
-      const from = req.body.from || req.body.From || req.body.FROM;
+      // SendGrid sends form data, get the actual field values
+      const subject = req.body.subject;
+      const text = req.body.text;
+      const html = req.body.html;
+      const from = req.body.from;
+      
+      console.log("Subject found:", subject);
+      console.log("Text found:", text);
+      console.log("HTML found:", html);
       
       // Extract unique ID from subject line
-      // Assuming format like "Response: [UNIQUE_ID]" or contains the unique ID
-      const uniqueIdMatch = subject?.match(/[A-Za-z0-9\-_]{20,}/); // Adjust regex based on your ID format
+      // Look for any alphanumeric sequence that could be an ID
+      const uniqueIdMatch = subject?.match(/[A-Za-z0-9\-_]{6,}/); // Look for IDs 6+ characters
       
       if (uniqueIdMatch) {
         const uniqueId = uniqueIdMatch[0];
