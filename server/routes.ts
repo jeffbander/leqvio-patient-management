@@ -131,7 +131,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (uniqueIdMatch) {
         const uniqueId = uniqueIdMatch[0];
-        const emailContent = html || text || "No content";
+        
+        // Get the full email content, preferring HTML then text
+        let emailContent = html || text || req.body.email || "No content";
+        
+        // If we have HTML content, decode it properly
+        if (html) {
+          // Decode quoted-printable encoding
+          emailContent = html.replace(/=([0-9A-F]{2})/g, (match, hex) => {
+            return String.fromCharCode(parseInt(hex, 16));
+          }).replace(/=\r?\n/g, '');
+        }
+        
+        console.log("Processed email content length:", emailContent.length);
         
         // Update the automation log with email response
         const updatedLog = await storage.updateAutomationLogWithEmailResponse(uniqueId, emailContent);

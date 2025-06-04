@@ -795,8 +795,14 @@ export default function AutomationTrigger() {
                             <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
                               View Email Content
                             </summary>
-                            <div className="mt-2 p-2 bg-white rounded border text-xs overflow-x-auto max-h-32 overflow-y-auto">
-                              <div dangerouslySetInnerHTML={{ __html: log.emailresponse }} />
+                            <div className="mt-2 p-3 bg-white rounded border text-sm max-h-96 overflow-y-auto">
+                              {log.emailresponse?.includes('<') ? (
+                                <div dangerouslySetInnerHTML={{ __html: log.emailresponse }} />
+                              ) : (
+                                <div className="whitespace-pre-wrap font-mono text-xs">
+                                  {log.emailresponse}
+                                </div>
+                              )}
                             </div>
                           </details>
                         </div>
