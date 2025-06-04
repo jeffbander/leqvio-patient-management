@@ -169,11 +169,20 @@ export default function AutomationTrigger() {
       if (status === 'success') {
         try {
           const responseObj = JSON.parse(response);
-          // Look for unique ID in various possible fields
-          uniqueId = responseObj.id || responseObj.runId || responseObj.chainRunId || responseObj.uniqueId;
+          // Look for unique ID in AppSheet response structure
+          if (responseObj.responses && responseObj.responses[0] && responseObj.responses[0].rows) {
+            const firstRow = responseObj.responses[0].rows[0];
+            // Check common AppSheet ID fields
+            uniqueId = firstRow["Run_ID"] || firstRow["_RowNumber"] || firstRow["ID"] || 
+                      firstRow["Run_Auto_Key"] || firstRow["Chain_Run_Key"] || firstRow.id;
+          }
+          // Fallback to other possible locations
+          if (!uniqueId) {
+            uniqueId = responseObj.id || responseObj.runId || responseObj.chainRunId || responseObj.uniqueId;
+          }
         } catch (e) {
           // If response isn't JSON, try to extract ID with regex
-          const idMatch = response.match(/[A-Za-z0-9\-_]{20,}/);
+          const idMatch = response.match(/[A-Za-z0-9\-_]{15,}/);
           if (idMatch) {
             uniqueId = idMatch[0];
           }
