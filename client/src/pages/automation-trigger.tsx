@@ -452,7 +452,7 @@ export default function AutomationTrigger() {
                         </Button>
                       </FormLabel>
                       <FormControl>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a chain to run" />
                           </SelectTrigger>
