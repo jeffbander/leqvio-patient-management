@@ -1,9 +1,13 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import multer from "multer";
 import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configure multer for multipart form data
+  const upload = multer();
+
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
@@ -79,7 +83,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email webhook endpoint for SendGrid Inbound Parse
-  app.post("/api/email-webhook", async (req, res) => {
+  app.post("/api/email-webhook", upload.any(), async (req, res) => {
     try {
       // Log all incoming data for debugging
       console.log("Received email webhook data:", JSON.stringify(req.body, null, 2));
