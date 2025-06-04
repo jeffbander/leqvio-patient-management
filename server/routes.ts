@@ -115,12 +115,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Also handle HTML encoded content
         const decodedContent = emailContent?.replace(/=3D/g, '=').replace(/=\r?\n/g, '');
         
-        uniqueIdMatch = decodedContent?.match(/"ChainRun_ID"\s*:\s*"([A-Za-z0-9\-_]{6,})"/i) ||
-                       decodedContent?.match(/ChainRun_ID[^"]*"([A-Za-z0-9\-_]{6,})"/i) ||
-                       decodedContent?.match(/Output\s+from\s+run\s*\(([A-Za-z0-9\-_]{6,})\)/i) || 
-                       decodedContent?.match(/run\s*\(([A-Za-z0-9\-_]{6,})\)/i) || 
-                       decodedContent?.match(/run\s*ID:?\s*([A-Za-z0-9\-_]{6,})/i) ||
-                       decodedContent?.match(/ID:?\s*([A-Za-z0-9\-_]{8,})/i);
+        // Look for ChainRun_ID first as primary identifier
+        uniqueIdMatch = decodedContent?.match(/"ChainRun_ID"\s*:\s*"([A-Za-z0-9\-_]+)"/i);
+        
+        if (!uniqueIdMatch) {
+          // Fallback patterns if ChainRun_ID not found
+          uniqueIdMatch = decodedContent?.match(/ChainRun_ID[^"]*"([A-Za-z0-9\-_]{6,})"/i) ||
+                         decodedContent?.match(/Output\s+from\s+run\s*\(([A-Za-z0-9\-_]{6,})\)/i) || 
+                         decodedContent?.match(/run\s*\(([A-Za-z0-9\-_]{6,})\)/i);
+        }
         if (uniqueIdMatch) {
           uniqueIdMatch = [uniqueIdMatch[1]]; // Use the captured group
         }
