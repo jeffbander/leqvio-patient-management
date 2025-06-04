@@ -187,7 +187,7 @@ export default function AutomationTrigger() {
         response,
         requestData,
         uniqueId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date()
       });
     } catch (error) {
       console.error('Failed to save log entry:', error);
