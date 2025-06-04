@@ -109,10 +109,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If no ID in subject, look in the email content
       if (!uniqueIdMatch) {
         const emailContent = html || text || req.body.email || "";
+        console.log("Full email content for debugging:", emailContent?.substring(0, 1000));
+        
         // Look for patterns like "Output from run (548d4e08)" or "run ID: 548d4e08"
-        uniqueIdMatch = emailContent.match(/run\s*\(([A-Za-z0-9\-_]{6,})\)/i) || 
-                       emailContent.match(/run\s*ID:?\s*([A-Za-z0-9\-_]{6,})/i) ||
-                       emailContent.match(/ID:?\s*([A-Za-z0-9\-_]{8,})/i);
+        // Also handle HTML encoded content
+        const decodedContent = emailContent?.replace(/=3D/g, '=').replace(/=\r?\n/g, '');
+        
+        uniqueIdMatch = decodedContent?.match(/"ChainRun_ID"\s*:\s*"([A-Za-z0-9\-_]{6,})"/i) ||
+                       decodedContent?.match(/ChainRun_ID[^"]*"([A-Za-z0-9\-_]{6,})"/i) ||
+                       decodedContent?.match(/Output\s+from\s+run\s*\(([A-Za-z0-9\-_]{6,})\)/i) || 
+                       decodedContent?.match(/run\s*\(([A-Za-z0-9\-_]{6,})\)/i) || 
+                       decodedContent?.match(/run\s*ID:?\s*([A-Za-z0-9\-_]{6,})/i) ||
+                       decodedContent?.match(/ID:?\s*([A-Za-z0-9\-_]{8,})/i);
         if (uniqueIdMatch) {
           uniqueIdMatch = [uniqueIdMatch[1]]; // Use the captured group
         }
