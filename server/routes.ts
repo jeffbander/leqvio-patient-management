@@ -36,12 +36,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const baseUrl = `${req.protocol}://${req.get('host')}`;
-      const success = await sendMagicLink(email, baseUrl);
+      const result = await sendMagicLink(email, baseUrl);
       
-      if (success) {
-        res.json({ message: "Magic link sent to your email" });
+      if (result.success) {
+        res.json({ 
+          message: "Magic link created successfully",
+          magicLink: result.magicLink 
+        });
       } else {
-        res.status(500).json({ error: "Failed to send magic link" });
+        res.status(500).json({ error: "Failed to create magic link" });
       }
     } catch (error) {
       console.error("Magic link error:", error);

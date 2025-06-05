@@ -21,6 +21,7 @@ type LoginFormValues = z.infer<typeof loginFormSchema>;
 export default function LoginPage() {
   const [, setLocation] = useLocation();
   const [emailSent, setEmailSent] = useState(false);
+  const [magicLink, setMagicLink] = useState<string | null>(null);
   const { toast } = useToast();
 
   const form = useForm<LoginFormValues>({
@@ -35,16 +36,17 @@ export default function LoginPage() {
       const res = await apiRequest("POST", "/api/auth/send-magic-link", data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setEmailSent(true);
+      setMagicLink(data.magicLink);
       toast({
-        title: "Magic link sent",
-        description: "Check your email for the login link",
+        title: "Magic link created",
+        description: "Click the link below to log in",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to send magic link",
+        title: "Failed to create magic link",
         description: error.message,
         variant: "destructive",
       });
@@ -65,20 +67,40 @@ export default function LoginPage() {
             </div>
             <CardTitle>Check your email</CardTitle>
             <CardDescription>
-              We've sent a magic link to {form.getValues("email")}
+              Magic link created for {form.getValues("email")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-center space-y-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Click the link in your email to log in. The link will expire in 15 minutes.
-              </p>
+              {magicLink ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Click the button below to log in:
+                  </p>
+                  <Button
+                    onClick={() => window.location.href = magicLink}
+                    className="w-full"
+                  >
+                    Login to AIGENTS Automations
+                  </Button>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Link expires in 15 minutes
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Generating your login link...
+                </p>
+              )}
               <Button
                 variant="outline"
-                onClick={() => setEmailSent(false)}
+                onClick={() => {
+                  setEmailSent(false);
+                  setMagicLink(null);
+                }}
                 className="w-full"
               >
-                Send another link
+                Generate another link
               </Button>
             </div>
           </CardContent>
