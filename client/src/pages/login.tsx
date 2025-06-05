@@ -94,8 +94,8 @@ export default function LoginPage() {
         <Card className="w-full max-w-md mx-auto">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Login to Automation Trigger
+              <img src="/assets/aigents-logo.png" alt="AIGENTS" className="h-6 w-6" />
+              Login to AIGENTS Automations
             </CardTitle>
             <CardDescription>
               Enter your email to receive a secure login link
@@ -137,10 +137,10 @@ export default function LoginPage() {
         <div className="text-center lg:text-left space-y-6">
           <div className="space-y-4">
             <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white">
-              Trigger AppSheet Automations
+              AIGENTS Automations
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300">
-              Advanced API interface for streamlined workflow integrations and email response tracking
+              Intelligent automation platform for streamlined workflow integrations and real-time tracking
             </p>
           </div>
           

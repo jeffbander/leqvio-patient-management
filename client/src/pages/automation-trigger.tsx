@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Settings, Mail, Link, Folder, Tag, FileText, Plus, Trash2, Send, RotateCcw, Loader2, Info, History, Download, X, AlertTriangle } from "lucide-react";
+import { Settings, Mail, Link, Folder, Tag, FileText, Plus, Trash2, Send, RotateCcw, Loader2, Info, History, Download, X, AlertTriangle, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -45,6 +46,7 @@ const CHAIN_OPTIONS = [
 ];
 
 export default function AutomationTrigger() {
+  const { user, logoutMutation } = useAuth();
   const [variables, setVariables] = useState<Variable[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<string | null>(null);
@@ -356,11 +358,11 @@ export default function AutomationTrigger() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="bg-primary text-primary-foreground rounded-lg p-2">
-                <Settings className="h-6 w-6" />
+                <img src="/assets/aigents-logo.png" alt="AIGENTS" className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Automation Trigger</h1>
-                <p className="text-sm text-gray-600">AppSheet Chain Automation Starter</p>
+                <h1 className="text-2xl font-bold text-gray-900">AIGENTS Automations</h1>
+                <p className="text-sm text-gray-600">Intelligent Workflow Automation Platform</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -372,6 +374,16 @@ export default function AutomationTrigger() {
               >
                 <History className="h-4 w-4" />
                 <span>Logs ({automationLogs.length})</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => logoutMutation.mutate()}
+                disabled={logoutMutation.isPending}
+                className="flex items-center space-x-2"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>{logoutMutation.isPending ? "Logging out..." : "Logout"}</span>
               </Button>
             </div>
           </div>
