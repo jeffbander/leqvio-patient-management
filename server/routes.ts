@@ -1,16 +1,105 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
+import session from "express-session";
 import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/schema";
+import { sendMagicLink, verifyLoginToken } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configure session
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'fallback-secret-for-dev',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // Set to true in production with HTTPS
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  }));
+
   // Configure multer for multipart form data
   const upload = multer();
 
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  // Authentication routes
+  app.post("/api/auth/send-magic-link", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email || !email.includes("@")) {
+        return res.status(400).json({ error: "Valid email required" });
+      }
+      
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const success = await sendMagicLink(email, baseUrl);
+      
+      if (success) {
+        res.json({ message: "Magic link sent to your email" });
+      } else {
+        res.status(500).json({ error: "Failed to send magic link" });
+      }
+    } catch (error) {
+      console.error("Magic link error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/auth/verify", async (req, res) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({ error: "Invalid token" });
+      }
+      
+      const result = await verifyLoginToken(token);
+      
+      if (result.success && result.user) {
+        // Set session
+        (req.session as any).userId = result.user.id;
+        res.redirect("/");
+      } else {
+        res.redirect("/login?error=" + encodeURIComponent(result.error || "Login failed"));
+      }
+    } catch (error) {
+      console.error("Token verification error:", error);
+      res.redirect("/login?error=verification_failed");
+    }
+  });
+
+  app.get("/api/auth/user", (req, res) => {
+    const userId = (req.session as any)?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    storage.getUser(userId)
+      .then(user => {
+        if (user) {
+          res.json(user);
+        } else {
+          res.status(404).json({ error: "User not found" });
+        }
+      })
+      .catch(error => {
+        console.error("Get user error:", error);
+        res.status(500).json({ error: "Internal server error" });
+      });
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ error: "Logout failed" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
   });
 
   // Automation logs endpoints
