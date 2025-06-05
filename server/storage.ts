@@ -1,9 +1,12 @@
 import { 
   users, 
+  loginTokens,
   automationLogs, 
   customChains,
   type User, 
   type InsertUser,
+  type LoginToken,
+  type InsertLoginToken,
   type AutomationLog,
   type InsertAutomationLog,
   type CustomChain,
@@ -13,9 +16,17 @@ import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
+  // User management
   getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserLastLogin(id: number): Promise<void>;
+  
+  // Login tokens
+  createLoginToken(token: InsertLoginToken): Promise<LoginToken>;
+  getLoginToken(token: string): Promise<LoginToken | undefined>;
+  markTokenAsUsed(token: string): Promise<void>;
+  cleanupExpiredTokens(): Promise<void>;
   
   // Automation logs
   createAutomationLog(log: InsertAutomationLog): Promise<AutomationLog>;
@@ -35,8 +46,8 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user || undefined;
   }
 
@@ -46,6 +57,42 @@ export class DatabaseStorage implements IStorage {
       .values(insertUser)
       .returning();
     return user;
+  }
+
+  async updateUserLastLogin(id: number): Promise<void> {
+    await db
+      .update(users)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(users.id, id));
+  }
+
+  async createLoginToken(token: InsertLoginToken): Promise<LoginToken> {
+    const [newToken] = await db
+      .insert(loginTokens)
+      .values(token)
+      .returning();
+    return newToken;
+  }
+
+  async getLoginToken(token: string): Promise<LoginToken | undefined> {
+    const [tokenRecord] = await db
+      .select()
+      .from(loginTokens)
+      .where(eq(loginTokens.token, token));
+    return tokenRecord || undefined;
+  }
+
+  async markTokenAsUsed(token: string): Promise<void> {
+    await db
+      .update(loginTokens)
+      .set({ used: true })
+      .where(eq(loginTokens.token, token));
+  }
+
+  async cleanupExpiredTokens(): Promise<void> {
+    await db
+      .delete(loginTokens)
+      .where(eq(loginTokens.expiresAt, new Date()));
   }
 
   async createAutomationLog(log: InsertAutomationLog): Promise<AutomationLog> {

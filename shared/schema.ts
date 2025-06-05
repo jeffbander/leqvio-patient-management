@@ -5,8 +5,19 @@ import { relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastLoginAt: timestamp("last_login_at"),
+});
+
+export const loginTokens = pgTable("login_tokens", {
+  id: serial("id").primaryKey(),
+  token: text("token").notNull().unique(),
+  email: text("email").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const automationLogs = pgTable("automation_logs", {
@@ -33,8 +44,13 @@ export const automationLogsRelations = relations(automationLogs, ({ one }) => ({
 export const customChainsRelations = relations(customChains, ({ one }) => ({}));
 
 export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+  email: true,
+  name: true,
+});
+
+export const insertLoginTokenSchema = createInsertSchema(loginTokens).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertAutomationLogSchema = createInsertSchema(automationLogs).omit({
@@ -51,6 +67,8 @@ export const insertCustomChainSchema = createInsertSchema(customChains).omit({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type LoginToken = typeof loginTokens.$inferSelect;
+export type InsertLoginToken = z.infer<typeof insertLoginTokenSchema>;
 export type AutomationLog = typeof automationLogs.$inferSelect;
 export type InsertAutomationLog = z.infer<typeof insertAutomationLogSchema>;
 export type CustomChain = typeof customChains.$inferSelect;
