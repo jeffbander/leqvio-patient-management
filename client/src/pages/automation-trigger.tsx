@@ -833,8 +833,15 @@ export default function AutomationTrigger() {
                       <div className="text-sm text-gray-600 mb-2">
                         Email: {log.email}
                         {log.uniqueid && (
-                          <div className="text-xs text-blue-600 mt-1">
-                            ID: {log.uniqueid}
+                          <div className="text-xs mt-1">
+                            ID: <a 
+                              href={`https://aigents-realtime-logs-943506065004.us-central1.run.app/?chainRunId=${log.uniqueid}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                            >
+                              {log.uniqueid}
+                            </a>
                           </div>
                         )}
                       </div>
