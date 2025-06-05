@@ -27,7 +27,7 @@ function ProtectedRoute({ component: Component }: { component: () => React.JSX.E
   return <Component />;
 }
 
-function Router() {
+function AuthenticatedRouter() {
   const { user, isLoading } = useAuth();
 
   return (
@@ -49,7 +49,7 @@ function App() {
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <AuthenticatedRouter />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
