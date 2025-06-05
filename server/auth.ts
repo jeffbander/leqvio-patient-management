@@ -26,11 +26,11 @@ export async function sendMagicLink(email: string, baseUrl: string): Promise<boo
     // Send email
     const emailSent = await sendEmail({
       to: email,
-      from: "noreply@automation-trigger.com",
-      subject: "Your Login Link",
+      from: "noreply@aigents.com",
+      subject: "Your AIGENTS Automations Login Link",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Login to Automation Trigger</h2>
+          <h2>Login to AIGENTS Automations</h2>
           <p>Click the link below to log in to your account:</p>
           <p>
             <a href="${magicLink}" style="background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
@@ -41,7 +41,7 @@ export async function sendMagicLink(email: string, baseUrl: string): Promise<boo
           <p>If you didn't request this login link, you can safely ignore this email.</p>
         </div>
       `,
-      text: `Login to Automation Trigger\n\nClick this link to log in: ${magicLink}\n\nThis link will expire in 15 minutes.`
+      text: `Login to AIGENTS Automations\n\nClick this link to log in: ${magicLink}\n\nThis link will expire in 15 minutes.`
     });
     
     return emailSent;
