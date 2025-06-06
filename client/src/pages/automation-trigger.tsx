@@ -58,6 +58,8 @@ export default function AutomationTrigger() {
   const { data: automationLogs = [], refetch: refetchLogs } = useQuery({
     queryKey: ['/api/automation-logs'],
     queryFn: () => fetch('/api/automation-logs').then(res => res.json()),
+    staleTime: 0,
+    cacheTime: 0,
   });
 
   const { data: customChains = [], refetch: refetchChains } = useQuery({
