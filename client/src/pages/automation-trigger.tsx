@@ -872,6 +872,30 @@ export default function AutomationTrigger() {
                           </details>
                         </div>
                       )}
+
+                      {log.agentresponse && (
+                        <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded">
+                          <div className="text-xs font-medium text-green-800 mb-1">
+                            Agent Response Received:
+                          </div>
+                          <div className="text-xs text-green-700 mb-1">
+                            From: {log.agentname || 'Unknown Agent'}
+                          </div>
+                          <div className="text-xs text-green-700">
+                            {new Date(log.agentreceivedat).toLocaleString()}
+                          </div>
+                          <details className="text-xs mt-1">
+                            <summary className="cursor-pointer text-green-600 hover:text-green-800">
+                              View Agent Response
+                            </summary>
+                            <div className="mt-2 p-3 bg-white rounded border text-sm max-h-96 overflow-y-auto">
+                              <div className="whitespace-pre-wrap font-mono text-xs">
+                                {log.agentresponse}
+                              </div>
+                            </div>
+                          </details>
+                        </div>
+                      )}
                       
                       <details className="text-xs">
                         <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
