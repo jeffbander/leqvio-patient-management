@@ -347,10 +347,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const requestId = Date.now();
     console.log(`[WEBHOOK-AGENTS-${requestId}] === INCOMING AGENT WEBHOOK ===`);
     console.log(`[WEBHOOK-AGENTS-${requestId}] Timestamp: ${new Date().toISOString()}`);
+    console.log(`[WEBHOOK-AGENTS-${requestId}] Raw URL: ${req.url}`);
+    console.log(`[WEBHOOK-AGENTS-${requestId}] Method: ${req.method}`);
     console.log(`[WEBHOOK-AGENTS-${requestId}] Headers:`, JSON.stringify(req.headers, null, 2));
-    console.log(`[WEBHOOK-AGENTS-${requestId}] Body:`, JSON.stringify(req.body, null, 2));
     console.log(`[WEBHOOK-AGENTS-${requestId}] Content-Type: ${req.get('Content-Type')}`);
+    console.log(`[WEBHOOK-AGENTS-${requestId}] Content-Length: ${req.get('Content-Length')}`);
     console.log(`[WEBHOOK-AGENTS-${requestId}] User-Agent: ${req.get('User-Agent')}`);
+    console.log(`[WEBHOOK-AGENTS-${requestId}] Authorization: ${req.get('Authorization') ? '[PRESENT]' : '[NOT PRESENT]'}`);
+    
+    // Check for common header issues
+    const contentType = req.get('Content-Type');
+    if (!contentType) {
+      console.log(`[WEBHOOK-AGENTS-${requestId}] WARNING: No Content-Type header provided`);
+    } else if (!contentType.includes('application/json')) {
+      console.log(`[WEBHOOK-AGENTS-${requestId}] WARNING: Content-Type is not application/json: ${contentType}`);
+    }
+    
+    console.log(`[WEBHOOK-AGENTS-${requestId}] Body type: ${typeof req.body}`);
+    console.log(`[WEBHOOK-AGENTS-${requestId}] Body:`, JSON.stringify(req.body, null, 2));
     
     try {
       const { chainRunId, agentResponse, agentName, timestamp } = req.body;
