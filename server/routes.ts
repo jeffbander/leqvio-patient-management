@@ -286,6 +286,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Agent webhook endpoint to receive agent responses
+  app.post("/webhook/agents", async (req, res) => {
+    try {
+      console.log("Received agent webhook data:", JSON.stringify(req.body, null, 2));
+      
+      const { chainRunId, agentResponse, agentName, timestamp } = req.body;
+      
+      if (!chainRunId || !agentResponse) {
+        return res.status(400).json({ error: 'chainRunId and agentResponse are required' });
+      }
+
+      console.log(`Processing agent response for ChainRun_ID: ${chainRunId}`);
+
+      // Update the automation log with agent response
+      const updatedLog = await storage.updateAutomationLogWithAgentResponse(
+        chainRunId, 
+        agentResponse, 
+        agentName || 'Unknown Agent'
+      );
+      
+      if (updatedLog) {
+        console.log(`Updated automation log with agent response for ChainRun_ID: ${chainRunId}`);
+        res.status(200).json({ 
+          message: 'Agent response processed successfully', 
+          chainRunId,
+          status: 'success' 
+        });
+      } else {
+        console.log(`No matching automation log found for ChainRun_ID: ${chainRunId}`);
+        res.status(404).json({ error: 'No matching automation log found' });
+      }
+    } catch (error) {
+      console.error('Error processing agent webhook:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

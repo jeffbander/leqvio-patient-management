@@ -33,6 +33,7 @@ export interface IStorage {
   getAutomationLogs(limit?: number): Promise<AutomationLog[]>;
   clearAutomationLogs(): Promise<void>;
   updateAutomationLogWithEmailResponse(uniqueId: string, emailResponse: string): Promise<AutomationLog | null>;
+  updateAutomationLogWithAgentResponse(uniqueId: string, agentResponse: string, agentName: string): Promise<AutomationLog | null>;
   
   // Custom chains
   createCustomChain(chain: InsertCustomChain): Promise<CustomChain>;
@@ -154,6 +155,19 @@ export class DatabaseStorage implements IStorage {
       .set({ 
         emailResponse, 
         emailReceivedAt: new Date() 
+      })
+      .where(eq(automationLogs.uniqueId, uniqueId))
+      .returning();
+    return updatedLog || null;
+  }
+
+  async updateAutomationLogWithAgentResponse(uniqueId: string, agentResponse: string, agentName: string): Promise<AutomationLog | null> {
+    const [updatedLog] = await db
+      .update(automationLogs)
+      .set({ 
+        agentResponse, 
+        agentName,
+        agentReceivedAt: new Date() 
       })
       .where(eq(automationLogs.uniqueId, uniqueId))
       .returning();

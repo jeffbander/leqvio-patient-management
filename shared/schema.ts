@@ -30,6 +30,9 @@ export const automationLogs = pgTable("automation_logs", {
   uniqueId: text("unique_id"), // Store the unique ID from API response
   emailResponse: text("email_response"), // Store email response content
   emailReceivedAt: timestamp("email_received_at"), // When email response was received
+  agentResponse: text("agent_response"), // Store agent response content
+  agentName: text("agent_name"), // Name of the agent that sent the response
+  agentReceivedAt: timestamp("agent_received_at"), // When agent response was received
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
