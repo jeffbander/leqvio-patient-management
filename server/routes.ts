@@ -23,7 +23,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Health check
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+    console.log(`[HEALTH] Health check requested at ${new Date().toISOString()}`);
+    res.json({ 
+      status: "ok", 
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
+
+  // Webhook health check
+  app.get("/webhook/agents/health", (req, res) => {
+    console.log(`[WEBHOOK-HEALTH] Agent webhook health check at ${new Date().toISOString()}`);
+    res.json({ 
+      webhook: "agents",
+      status: "ready", 
+      endpoint: "/webhook/agents",
+      method: "POST",
+      timestamp: new Date().toISOString(),
+      expectedFields: ["chainRunId", "agentResponse", "agentName", "timestamp"]
+    });
   });
 
   // Authentication routes
@@ -107,25 +126,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Automation logs endpoints
   app.post("/api/automation-logs", async (req, res) => {
+    const requestId = Date.now();
+    console.log(`[API-LOGS-CREATE-${requestId}] === CREATING AUTOMATION LOG ===`);
+    console.log(`[API-LOGS-CREATE-${requestId}] Timestamp: ${new Date().toISOString()}`);
+    console.log(`[API-LOGS-CREATE-${requestId}] Request body:`, JSON.stringify(req.body, null, 2));
+    
     try {
-      console.log("Attempting to create log with data:", JSON.stringify(req.body, null, 2));
       const validatedData = insertAutomationLogSchema.parse(req.body);
+      console.log(`[API-LOGS-CREATE-${requestId}] Validation successful`);
+      console.log(`[API-LOGS-CREATE-${requestId}] Validated data:`, JSON.stringify(validatedData, null, 2));
+      
       const log = await storage.createAutomationLog(validatedData);
+      console.log(`[API-LOGS-CREATE-${requestId}] Log created successfully:`);
+      console.log(`[API-LOGS-CREATE-${requestId}] - ID: ${log.id}`);
+      console.log(`[API-LOGS-CREATE-${requestId}] - ChainName: ${log.chainName}`);
+      console.log(`[API-LOGS-CREATE-${requestId}] - UniqueId: ${log.uniqueId}`);
+      console.log(`[API-LOGS-CREATE-${requestId}] - Email: ${log.email}`);
+      console.log(`[API-LOGS-CREATE-${requestId}] - Status: ${log.status}`);
+      
       res.json(log);
     } catch (error) {
-      console.error("Log validation error:", error);
-      res.status(400).json({ error: "Invalid log data", details: error.message });
+      console.error(`[API-LOGS-CREATE-${requestId}] ERROR:`, error);
+      console.error(`[API-LOGS-CREATE-${requestId}] Error details:`, (error as any).message);
+      res.status(400).json({ 
+        error: "Invalid log data", 
+        details: (error as any).message,
+        timestamp: new Date().toISOString(),
+        requestId 
+      });
     }
+    console.log(`[API-LOGS-CREATE-${requestId}] === END CREATE LOG ===`);
   });
 
   app.get("/api/automation-logs", async (req, res) => {
+    const requestId = Date.now();
+    console.log(`[API-LOGS-GET-${requestId}] === FETCHING AUTOMATION LOGS ===`);
+    console.log(`[API-LOGS-GET-${requestId}] Query params:`, req.query);
+    
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      console.log(`[API-LOGS-GET-${requestId}] Fetching logs with limit: ${limit}`);
+      
       const logs = await storage.getAutomationLogs(limit);
+      console.log(`[API-LOGS-GET-${requestId}] Retrieved ${logs.length} logs`);
+      console.log(`[API-LOGS-GET-${requestId}] Log IDs: [${logs.map(log => log.id).join(', ')}]`);
+      console.log(`[API-LOGS-GET-${requestId}] UniqueIds: [${logs.map(log => log.uniqueid || 'null').join(', ')}]`);
+      
       res.json(logs);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch logs" });
+      console.error(`[API-LOGS-GET-${requestId}] ERROR:`, error);
+      res.status(500).json({ 
+        error: "Failed to fetch logs",
+        timestamp: new Date().toISOString(),
+        requestId 
+      });
     }
+    console.log(`[API-LOGS-GET-${requestId}] === END FETCH LOGS ===`);
   });
 
   app.delete("/api/automation-logs", async (req, res) => {
@@ -288,16 +344,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Agent webhook endpoint to receive agent responses
   app.post("/webhook/agents", async (req, res) => {
+    const requestId = Date.now();
+    console.log(`[WEBHOOK-AGENTS-${requestId}] === INCOMING AGENT WEBHOOK ===`);
+    console.log(`[WEBHOOK-AGENTS-${requestId}] Timestamp: ${new Date().toISOString()}`);
+    console.log(`[WEBHOOK-AGENTS-${requestId}] Headers:`, JSON.stringify(req.headers, null, 2));
+    console.log(`[WEBHOOK-AGENTS-${requestId}] Body:`, JSON.stringify(req.body, null, 2));
+    console.log(`[WEBHOOK-AGENTS-${requestId}] Content-Type: ${req.get('Content-Type')}`);
+    console.log(`[WEBHOOK-AGENTS-${requestId}] User-Agent: ${req.get('User-Agent')}`);
+    
     try {
-      console.log("Received agent webhook data:", JSON.stringify(req.body, null, 2));
-      
       const { chainRunId, agentResponse, agentName, timestamp } = req.body;
       
+      console.log(`[WEBHOOK-AGENTS-${requestId}] Extracted fields:`);
+      console.log(`[WEBHOOK-AGENTS-${requestId}] - chainRunId: ${chainRunId}`);
+      console.log(`[WEBHOOK-AGENTS-${requestId}] - agentResponse length: ${agentResponse ? agentResponse.length : 'null'}`);
+      console.log(`[WEBHOOK-AGENTS-${requestId}] - agentName: ${agentName}`);
+      console.log(`[WEBHOOK-AGENTS-${requestId}] - timestamp: ${timestamp}`);
+      
       if (!chainRunId || !agentResponse) {
-        return res.status(400).json({ error: 'chainRunId and agentResponse are required' });
+        console.log(`[WEBHOOK-AGENTS-${requestId}] ERROR: Missing required fields`);
+        console.log(`[WEBHOOK-AGENTS-${requestId}] - chainRunId present: ${!!chainRunId}`);
+        console.log(`[WEBHOOK-AGENTS-${requestId}] - agentResponse present: ${!!agentResponse}`);
+        return res.status(400).json({ 
+          error: 'chainRunId and agentResponse are required',
+          received: { chainRunId: !!chainRunId, agentResponse: !!agentResponse }
+        });
       }
 
-      console.log(`Processing agent response for ChainRun_ID: ${chainRunId}`);
+      console.log(`[WEBHOOK-AGENTS-${requestId}] Processing agent response for ChainRun_ID: ${chainRunId}`);
 
       // Update the automation log with agent response
       const updatedLog = await storage.updateAutomationLogWithAgentResponse(
@@ -307,20 +381,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       if (updatedLog) {
-        console.log(`Updated automation log with agent response for ChainRun_ID: ${chainRunId}`);
-        res.status(200).json({ 
+        console.log(`[WEBHOOK-AGENTS-${requestId}] SUCCESS: Updated automation log`);
+        console.log(`[WEBHOOK-AGENTS-${requestId}] - Log ID: ${updatedLog.id}`);
+        console.log(`[WEBHOOK-AGENTS-${requestId}] - Chain Name: ${updatedLog.chainName}`);
+        console.log(`[WEBHOOK-AGENTS-${requestId}] - Updated Fields: agentResponse, agentName, agentReceivedAt`);
+        
+        const response = { 
           message: 'Agent response processed successfully', 
           chainRunId,
-          status: 'success' 
-        });
+          status: 'success',
+          logId: updatedLog.id,
+          timestamp: new Date().toISOString()
+        };
+        console.log(`[WEBHOOK-AGENTS-${requestId}] Sending response:`, JSON.stringify(response, null, 2));
+        res.status(200).json(response);
       } else {
-        console.log(`No matching automation log found for ChainRun_ID: ${chainRunId}`);
-        res.status(404).json({ error: 'No matching automation log found' });
+        console.log(`[WEBHOOK-AGENTS-${requestId}] ERROR: No matching automation log found`);
+        console.log(`[WEBHOOK-AGENTS-${requestId}] - Searched for ChainRun_ID: ${chainRunId}`);
+        console.log(`[WEBHOOK-AGENTS-${requestId}] - This might indicate the automation hasn't been created yet or ChainRun_ID mismatch`);
+        res.status(404).json({ 
+          error: 'No matching automation log found',
+          chainRunId: chainRunId,
+          suggestion: 'Verify that an automation with this ChainRun_ID exists'
+        });
       }
     } catch (error) {
-      console.error('Error processing agent webhook:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error(`[WEBHOOK-AGENTS-${requestId}] CRITICAL ERROR:`, error);
+      console.error(`[WEBHOOK-AGENTS-${requestId}] Error stack:`, error.stack);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        timestamp: new Date().toISOString(),
+        requestId: requestId
+      });
     }
+    
+    console.log(`[WEBHOOK-AGENTS-${requestId}] === END AGENT WEBHOOK ===`);
   });
 
   const httpServer = createServer(app);

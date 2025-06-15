@@ -162,16 +162,52 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAutomationLogWithAgentResponse(uniqueId: string, agentResponse: string, agentName: string): Promise<AutomationLog | null> {
-    const [updatedLog] = await db
-      .update(automationLogs)
-      .set({ 
-        agentResponse, 
-        agentName,
-        agentReceivedAt: new Date() 
-      })
-      .where(eq(automationLogs.uniqueId, uniqueId))
-      .returning();
-    return updatedLog || null;
+    console.log(`[STORAGE] updateAutomationLogWithAgentResponse called`);
+    console.log(`[STORAGE] - uniqueId: ${uniqueId}`);
+    console.log(`[STORAGE] - agentResponse length: ${agentResponse.length}`);
+    console.log(`[STORAGE] - agentName: ${agentName}`);
+    
+    try {
+      // First check if the automation log exists
+      const existingLog = await db
+        .select()
+        .from(automationLogs)
+        .where(eq(automationLogs.uniqueId, uniqueId))
+        .limit(1);
+      
+      console.log(`[STORAGE] Found ${existingLog.length} matching logs for uniqueId: ${uniqueId}`);
+      
+      if (existingLog.length === 0) {
+        console.log(`[STORAGE] ERROR: No automation log found with uniqueId: ${uniqueId}`);
+        console.log(`[STORAGE] Available logs in database:`);
+        const allLogs = await db.select({ id: automationLogs.id, uniqueId: automationLogs.uniqueId, chainName: automationLogs.chainName }).from(automationLogs);
+        allLogs.forEach(log => {
+          console.log(`[STORAGE] - ID: ${log.id}, uniqueId: ${log.uniqueId}, chainName: ${log.chainName}`);
+        });
+        return null;
+      }
+      
+      const [updatedLog] = await db
+        .update(automationLogs)
+        .set({ 
+          agentResponse, 
+          agentName,
+          agentReceivedAt: new Date() 
+        })
+        .where(eq(automationLogs.uniqueId, uniqueId))
+        .returning();
+      
+      console.log(`[STORAGE] Successfully updated automation log:`);
+      console.log(`[STORAGE] - ID: ${updatedLog.id}`);
+      console.log(`[STORAGE] - chainName: ${updatedLog.chainName}`);
+      console.log(`[STORAGE] - uniqueId: ${updatedLog.uniqueId}`);
+      console.log(`[STORAGE] - agentReceivedAt: ${updatedLog.agentReceivedAt}`);
+      
+      return updatedLog || null;
+    } catch (error) {
+      console.error(`[STORAGE] ERROR in updateAutomationLogWithAgentResponse:`, error);
+      throw error;
+    }
   }
 }
 
