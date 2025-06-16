@@ -76,7 +76,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const payload = req.body || {};
       
       // Try multiple possible field names for chainRunId
-      const chainRunId = payload.chainRunId || payload.ChainRunId || payload.chainrun_id || payload.chain_run_id;
+      const chainRunId = payload.chainRunId || payload.ChainRunId || payload.chainrun_id || payload.chain_run_id || payload['Chain Run ID'];
       
       // Try multiple possible field names for response content
       const responseContent = payload.agentResponse || payload.summ || payload.response || payload.content || payload.message;
