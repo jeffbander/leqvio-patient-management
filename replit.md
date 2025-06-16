@@ -15,8 +15,10 @@ Intelligent web application for AIGENTS Automations, designed to streamline comp
 ## Current Issue - RESOLVED
 - ✓ Fixed webhook routing issue causing HTML responses instead of JSON
 - ✓ Moved webhook routes to top of registration order to prevent frontend catch-all override
-- ✓ Agents system should now receive proper JSON responses from webhook endpoints
-- Latest test: ChainRun_ID 2693dc63 for production webhook verification
+- ✓ Fixed field mapping to accept agents system field names: `summ` → `agentResponse`
+- ✓ Removed validation requirement allowing flexible webhook payloads
+- ✓ Webhook successfully tested with ChainRun_ID 96845341
+- Agents system can now send webhooks with proper field mapping
 
 ## Project Architecture
 
