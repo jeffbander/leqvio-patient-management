@@ -6,7 +6,8 @@ const options = {
   path: '/webhook/agents/debug-logs',
   method: 'GET',
   headers: {
-    'User-Agent': 'Debug-Checker/1.0'
+    'User-Agent': 'Debug-Checker/1.0',
+    'Accept': 'application/json'
   }
 };
 
