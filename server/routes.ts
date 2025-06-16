@@ -70,24 +70,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`[WEBHOOK-AGENT-${requestId}] Body:`, JSON.stringify(req.body, null, 2));
 
     try {
-      const { chainRunId, agentResponse, agentName, timestamp } = req.body;
+      // Support both field naming conventions from agents system
+      const { 
+        chainRunId, 
+        agentResponse, 
+        summ,  // agents system uses 'summ' field
+        agentName, 
+        timestamp,
+        'Current ISO DateTime': currentDateTime
+      } = req.body;
+
+      // Use agents system field names: summ -> agentResponse, Current ISO DateTime -> timestamp
+      const responseContent = agentResponse || summ;
+      const responseTimestamp = timestamp || currentDateTime;
 
       if (!chainRunId) {
         console.log(`[WEBHOOK-AGENT-${requestId}] Missing chainRunId`);
         return res.status(400).json({ error: "chainRunId is required" });
       }
 
-      if (!agentResponse) {
-        console.log(`[WEBHOOK-AGENT-${requestId}] Missing agentResponse`);
-        return res.status(400).json({ error: "agentResponse is required" });
+      if (!responseContent) {
+        console.log(`[WEBHOOK-AGENT-${requestId}] Missing response content (agentResponse or summ)`);
+        return res.status(400).json({ 
+          error: "Agent response is required", 
+          details: "Provide either 'agentResponse' or 'summ' field",
+          received: Object.keys(req.body)
+        });
       }
 
       console.log(`[WEBHOOK-AGENT-${requestId}] Processing agent response for chain: ${chainRunId}`);
+      console.log(`[WEBHOOK-AGENT-${requestId}] Response content: ${responseContent.substring(0, 100)}...`);
 
       const result = await storage.updateAutomationLogWithAgentResponse(
         chainRunId,
-        agentResponse,
-        agentName || 'Unknown Agent'
+        responseContent,
+        agentName || 'Agents System'
       );
 
       if (result) {
@@ -95,11 +112,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({
           message: "Agent response processed successfully",
           chainRunId: chainRunId,
-          status: "success"
+          status: "success",
+          timestamp: new Date().toISOString()
         });
       } else {
         console.log(`[WEBHOOK-AGENT-${requestId}] No automation found for chainRunId: ${chainRunId}`);
-        res.status(404).json({ error: "No automation found with the provided chainRunId" });
+        res.status(404).json({ 
+          error: "No automation found with the provided chainRunId",
+          chainRunId: chainRunId
+        });
       }
     } catch (error) {
       console.error(`[WEBHOOK-AGENT-${requestId}] Error processing agent webhook:`, error);
