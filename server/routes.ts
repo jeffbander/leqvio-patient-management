@@ -7,47 +7,11 @@ import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/sche
 import { sendMagicLink, verifyLoginToken } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Configure session
-  app.use(session({
-    secret: process.env.SESSION_SECRET || 'fallback-secret-for-dev',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: false, // Set to true in production with HTTPS
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-  }));
-
-  // Configure multer for multipart form data
-  const upload = multer();
-
-  // Health check
-  app.get("/api/health", (req, res) => {
-    console.log(`[HEALTH] Health check requested at ${new Date().toISOString()}`);
-    res.json({ 
-      status: "ok", 
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development'
-    });
-  });
-
-  // Webhook health check
-  app.get("/webhook/agents/health", (req, res) => {
-    console.log(`[WEBHOOK-HEALTH] Agent webhook health check at ${new Date().toISOString()}`);
-    res.json({ 
-      webhook: "agents",
-      status: "ready", 
-      endpoint: "/webhook/agents",
-      method: "POST",
-      timestamp: new Date().toISOString(),
-      expectedFields: ["chainRunId", "agentResponse", "agentName", "timestamp"]
-    });
-  });
-
-  // Store debug requests in memory for retrieval
+  // Store debug requests in memory for retrieval (moved to top)
   let debugRequests: any[] = [];
 
+  // WEBHOOK ROUTES FIRST - these must be registered before any catch-all routes
+  
   // Debug endpoint to accept any POST request and log everything
   app.post("/webhook/agents/debug", (req, res) => {
     const requestId = Date.now();
@@ -97,6 +61,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
       requests: debugRequests
     });
   });
+
+  // Production agent webhook endpoint
+  app.post("/webhook/agents", async (req, res) => {
+    const requestId = Date.now();
+    console.log(`[WEBHOOK-AGENT-${requestId}] === AGENT WEBHOOK ===`);
+    console.log(`[WEBHOOK-AGENT-${requestId}] Headers:`, JSON.stringify(req.headers, null, 2));
+    console.log(`[WEBHOOK-AGENT-${requestId}] Body:`, JSON.stringify(req.body, null, 2));
+
+    try {
+      const { chainRunId, agentResponse, agentName, timestamp } = req.body;
+
+      if (!chainRunId) {
+        console.log(`[WEBHOOK-AGENT-${requestId}] Missing chainRunId`);
+        return res.status(400).json({ error: "chainRunId is required" });
+      }
+
+      if (!agentResponse) {
+        console.log(`[WEBHOOK-AGENT-${requestId}] Missing agentResponse`);
+        return res.status(400).json({ error: "agentResponse is required" });
+      }
+
+      console.log(`[WEBHOOK-AGENT-${requestId}] Processing agent response for chain: ${chainRunId}`);
+
+      const result = await storage.updateAutomationLogWithAgentResponse(
+        chainRunId,
+        agentResponse,
+        agentName || 'Unknown Agent'
+      );
+
+      if (result) {
+        console.log(`[WEBHOOK-AGENT-${requestId}] Successfully updated automation log ID: ${result.id}`);
+        res.json({
+          message: "Agent response processed successfully",
+          chainRunId: chainRunId,
+          status: "success"
+        });
+      } else {
+        console.log(`[WEBHOOK-AGENT-${requestId}] No automation found for chainRunId: ${chainRunId}`);
+        res.status(404).json({ error: "No automation found with the provided chainRunId" });
+      }
+    } catch (error) {
+      console.error(`[WEBHOOK-AGENT-${requestId}] Error processing agent webhook:`, error);
+      res.status(500).json({ error: "Internal server error processing agent response" });
+    }
+  });
+
+  // Configure session
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'fallback-secret-for-dev',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // Set to true in production with HTTPS
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  }));
+
+  // Configure multer for multipart form data
+  const upload = multer();
+
+  // Health check
+  app.get("/api/health", (req, res) => {
+    console.log(`[HEALTH] Health check requested at ${new Date().toISOString()}`);
+    res.json({ 
+      status: "ok", 
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
+
+  // Webhook health check
+  app.get("/webhook/agents/health", (req, res) => {
+    console.log(`[WEBHOOK-HEALTH] Agent webhook health check at ${new Date().toISOString()}`);
+    res.json({ 
+      webhook: "agents",
+      status: "ready", 
+      endpoint: "/webhook/agents",
+      method: "POST",
+      timestamp: new Date().toISOString(),
+      expectedFields: ["chainRunId", "agentResponse", "agentName", "timestamp"]
+    });
+  });
+
+  // (Duplicate routes removed - webhook routes are now registered at the top)
 
   // Authentication routes
   app.post("/api/auth/send-magic-link", async (req, res) => {
