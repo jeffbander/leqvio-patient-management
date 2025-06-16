@@ -45,9 +45,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Store debug requests in memory for retrieval
+  let debugRequests: any[] = [];
+
   // Debug endpoint to accept any POST request and log everything
   app.post("/webhook/agents/debug", (req, res) => {
     const requestId = Date.now();
+    const debugData = {
+      requestId,
+      timestamp: new Date().toISOString(),
+      method: req.method,
+      url: req.url,
+      headers: req.headers,
+      body: req.body,
+      bodyType: typeof req.body,
+      contentType: req.get('Content-Type'),
+      userAgent: req.get('User-Agent')
+    };
+    
+    // Store the debug request
+    debugRequests.unshift(debugData);
+    if (debugRequests.length > 10) debugRequests.pop(); // Keep only last 10
+    
     console.log(`[WEBHOOK-DEBUG-${requestId}] === DEBUG ENDPOINT ===`);
     console.log(`[WEBHOOK-DEBUG-${requestId}] Method: ${req.method}`);
     console.log(`[WEBHOOK-DEBUG-${requestId}] URL: ${req.url}`);
@@ -61,7 +80,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       receivedData: req.body,
       receivedHeaders: req.headers,
       timestamp: new Date().toISOString(),
-      requestId: requestId
+      requestId: requestId,
+      analysis: {
+        hasChainRunId: !!req.body?.chainRunId,
+        hasAgentResponse: !!req.body?.agentResponse,
+        bodyKeys: Object.keys(req.body || {}),
+        isValidJSON: typeof req.body === 'object'
+      }
+    });
+  });
+
+  // Endpoint to retrieve debug requests
+  app.get("/webhook/agents/debug-logs", (req, res) => {
+    res.json({
+      totalRequests: debugRequests.length,
+      requests: debugRequests
     });
   });
 
