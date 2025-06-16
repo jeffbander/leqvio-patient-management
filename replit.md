@@ -12,10 +12,11 @@ Intelligent web application for AIGENTS Automations, designed to streamline comp
 - **2025-06-15**: Updated frontend to display agent responses in green-styled sections
 - **2025-06-15**: Successfully tested webhook with ChainRun_ID 9aff4ab8 integration
 
-## Current Issue
-- Agents system webhook returning 400 Bad Request
-- Latest ChainRun_ID: 46cc4a52 attempting webhook delivery
-- Comprehensive logging active for debugging request format
+## Current Issue - RESOLVED
+- ✓ Fixed webhook routing issue causing HTML responses instead of JSON
+- ✓ Moved webhook routes to top of registration order to prevent frontend catch-all override
+- ✓ Agents system should now receive proper JSON responses from webhook endpoints
+- Latest test: ChainRun_ID 2693dc63 for production webhook verification
 
 ## Project Architecture
 
