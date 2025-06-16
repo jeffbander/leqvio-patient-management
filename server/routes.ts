@@ -45,6 +45,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Debug endpoint to accept any POST request and log everything
+  app.post("/webhook/agents/debug", (req, res) => {
+    const requestId = Date.now();
+    console.log(`[WEBHOOK-DEBUG-${requestId}] === DEBUG ENDPOINT ===`);
+    console.log(`[WEBHOOK-DEBUG-${requestId}] Method: ${req.method}`);
+    console.log(`[WEBHOOK-DEBUG-${requestId}] URL: ${req.url}`);
+    console.log(`[WEBHOOK-DEBUG-${requestId}] Headers:`, JSON.stringify(req.headers, null, 2));
+    console.log(`[WEBHOOK-DEBUG-${requestId}] Body type: ${typeof req.body}`);
+    console.log(`[WEBHOOK-DEBUG-${requestId}] Body:`, JSON.stringify(req.body, null, 2));
+    console.log(`[WEBHOOK-DEBUG-${requestId}] Raw body length: ${JSON.stringify(req.body).length}`);
+    
+    res.status(200).json({
+      message: "Debug endpoint received your request",
+      receivedData: req.body,
+      receivedHeaders: req.headers,
+      timestamp: new Date().toISOString(),
+      requestId: requestId
+    });
+  });
+
   // Authentication routes
   app.post("/api/auth/send-magic-link", async (req, res) => {
     try {

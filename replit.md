@@ -4,10 +4,18 @@
 Intelligent web application for AIGENTS Automations, designed to streamline complex workflow processes with user-friendly and visually engaging interfaces. The system provides bidirectional webhook communication between AppSheet automations and agents systems.
 
 ## Recent Changes
+- **2025-06-15**: Deployed application to https://chain-automator-notifications6.replit.app
+- **2025-06-15**: Added comprehensive logging system for webhook debugging
+- **2025-06-15**: Configured agents system webhook with response mapping (String and Object types)
 - **2025-06-15**: Implemented agent webhook endpoint `/webhook/agents` for receiving responses from agents system
 - **2025-06-15**: Added database fields for agent responses: `agent_response`, `agent_name`, `agent_received_at`
 - **2025-06-15**: Updated frontend to display agent responses in green-styled sections
 - **2025-06-15**: Successfully tested webhook with ChainRun_ID 9aff4ab8 integration
+
+## Current Issue
+- Agents system webhook returning 400 Bad Request
+- Latest ChainRun_ID: 46cc4a52 attempting webhook delivery
+- Comprehensive logging active for debugging request format
 
 ## Project Architecture
 
