@@ -65,11 +65,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Production agent webhook endpoint
   app.post("/webhook/agents", async (req, res) => {
     const requestId = Date.now();
-    console.log(`[WEBHOOK-AGENT-${requestId}] === AGENT WEBHOOK ===`);
-    console.log(`[WEBHOOK-AGENT-${requestId}] Headers:`, JSON.stringify(req.headers, null, 2));
-    console.log(`[WEBHOOK-AGENT-${requestId}] Raw Body:`, JSON.stringify(req.body, null, 2));
-    console.log(`[WEBHOOK-AGENT-${requestId}] Body Type:`, typeof req.body);
-    console.log(`[WEBHOOK-AGENT-${requestId}] Body Keys:`, Object.keys(req.body || {}));
+    console.log(`\n=== AGENT API MESSAGE RECEIVED ===`);
+    console.log(`[WEBHOOK-AGENT-${requestId}] Timestamp: ${new Date().toISOString()}`);
+    console.log(`[WEBHOOK-AGENT-${requestId}] Source IP: ${req.ip || req.connection.remoteAddress}`);
+    console.log(`[WEBHOOK-AGENT-${requestId}] User-Agent: ${req.headers['user-agent']}`);
+    console.log(`[WEBHOOK-AGENT-${requestId}] Content-Type: ${req.headers['content-type']}`);
+    console.log(`[WEBHOOK-AGENT-${requestId}] Content-Length: ${req.headers['content-length']}`);
+    console.log(`\n[WEBHOOK-AGENT-${requestId}] === RAW API MESSAGE ===`);
+    console.log(`[WEBHOOK-AGENT-${requestId}]`, JSON.stringify(req.body, null, 2));
+    console.log(`[WEBHOOK-AGENT-${requestId}] === END RAW MESSAGE ===\n`);
+    console.log(`[WEBHOOK-AGENT-${requestId}] Message Type: ${typeof req.body}`);
+    console.log(`[WEBHOOK-AGENT-${requestId}] Field Count: ${Object.keys(req.body || {}).length}`);
+    console.log(`[WEBHOOK-AGENT-${requestId}] Available Fields: [${Object.keys(req.body || {}).join(', ')}]`);
 
     try {
       // Accept any payload and try to extract what we can
@@ -117,27 +124,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (result) {
         console.log(`[WEBHOOK-AGENT-${requestId}] Successfully updated automation log ID: ${result.id}`);
-        res.json({
+        
+        const successResponse = {
           message: "Agent response processed successfully",
           chainRunId: chainRunId,
           status: "success",
           timestamp: new Date().toISOString(),
           receivedFields: Object.keys(payload)
-        });
+        };
+        
+        console.log(`\n=== API RESPONSE TO AGENTS SYSTEM ===`);
+        console.log(`[WEBHOOK-AGENT-${requestId}] Status: 200 OK`);
+        console.log(`[WEBHOOK-AGENT-${requestId}] Response Body:`);
+        console.log(`[WEBHOOK-AGENT-${requestId}]`, JSON.stringify(successResponse, null, 2));
+        console.log(`[WEBHOOK-AGENT-${requestId}] === END RESPONSE ===\n`);
+        
+        res.json(successResponse);
       } else {
         console.log(`[WEBHOOK-AGENT-${requestId}] No automation found for chainRunId: ${chainRunId}`);
-        res.status(404).json({ 
+        
+        const errorResponse = { 
           error: "No automation found with the provided chainRunId",
           chainRunId: chainRunId,
           availableChains: "Check your automation logs for valid chainRunIds"
-        });
+        };
+        
+        console.log(`\n=== API RESPONSE TO AGENTS SYSTEM ===`);
+        console.log(`[WEBHOOK-AGENT-${requestId}] Status: 404 Not Found`);
+        console.log(`[WEBHOOK-AGENT-${requestId}] Response Body:`);
+        console.log(`[WEBHOOK-AGENT-${requestId}]`, JSON.stringify(errorResponse, null, 2));
+        console.log(`[WEBHOOK-AGENT-${requestId}] === END RESPONSE ===\n`);
+        
+        res.status(404).json(errorResponse);
       }
     } catch (error) {
       console.error(`[WEBHOOK-AGENT-${requestId}] Error processing agent webhook:`, error);
-      res.status(500).json({ 
+      
+      const errorResponse = { 
         error: "Internal server error processing agent response",
         details: error.message 
-      });
+      };
+      
+      console.log(`\n=== API RESPONSE TO AGENTS SYSTEM ===`);
+      console.log(`[WEBHOOK-AGENT-${requestId}] Status: 500 Internal Server Error`);
+      console.log(`[WEBHOOK-AGENT-${requestId}] Response Body:`);
+      console.log(`[WEBHOOK-AGENT-${requestId}]`, JSON.stringify(errorResponse, null, 2));
+      console.log(`[WEBHOOK-AGENT-${requestId}] === END RESPONSE ===\n`);
+      
+      res.status(500).json(errorResponse);
     }
   });
 
@@ -263,9 +297,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Automation logs endpoints
   app.post("/api/automation-logs", async (req, res) => {
     const requestId = Date.now();
-    console.log(`[API-LOGS-CREATE-${requestId}] === CREATING AUTOMATION LOG ===`);
+    console.log(`\n=== AUTOMATION TRIGGER API LOGGED ===`);
     console.log(`[API-LOGS-CREATE-${requestId}] Timestamp: ${new Date().toISOString()}`);
-    console.log(`[API-LOGS-CREATE-${requestId}] Request body:`, JSON.stringify(req.body, null, 2));
+    console.log(`[API-LOGS-CREATE-${requestId}] Source: Frontend Automation Trigger`);
+    console.log(`[API-LOGS-CREATE-${requestId}] Action: Logging successful automation response`);
+    console.log(`\n[API-LOGS-CREATE-${requestId}] === AUTOMATION LOG DATA ===`);
+    console.log(`[API-LOGS-CREATE-${requestId}]`, JSON.stringify(req.body, null, 2));
+    console.log(`[API-LOGS-CREATE-${requestId}] === END LOG DATA ===\n`);
     
     try {
       const validatedData = insertAutomationLogSchema.parse(req.body);
