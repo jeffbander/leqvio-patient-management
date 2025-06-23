@@ -4,6 +4,9 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-06-23**: Added graceful fallback for non-Replit environments with informative auth-required page
+- **2025-06-23**: Fixed type compatibility issues between old and new user schemas
+- **2025-06-23**: Implemented environment detection to skip auth setup outside Replit
 - **2025-06-23**: Implemented Replit Auth with secure user authentication and session management
 - **2025-06-23**: Created beautiful landing page for unauthenticated users with feature highlights
 - **2025-06-23**: Protected all API endpoints requiring authentication to access patient data
@@ -81,6 +84,7 @@ Patient data processing application for Providerloop Chains, designed to streaml
 - Focuses on bidirectional communication workflow
 - Values working end-to-end automation testing
 - Wants to create reusable templates for automation systems
+- Concerned about accessibility outside Replit environment
 
 ## Webhook Configuration Details
 

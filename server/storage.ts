@@ -68,24 +68,49 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  // Legacy methods using old users table
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user || undefined;
+    const [oldUser] = await db.select().from(oldUsers).where(eq(oldUsers.email, email));
+    if (!oldUser) return undefined;
+    
+    // Convert old user format to new user format
+    return {
+      id: oldUser.id.toString(),
+      email: oldUser.email,
+      firstName: null,
+      lastName: null,
+      profileImageUrl: null,
+      createdAt: oldUser.createdAt,
+      updatedAt: oldUser.createdAt,
+    };
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
+    // Create in old users table for backward compatibility
+    const [oldUser] = await db
+      .insert(oldUsers)
+      .values({
+        email: insertUser.email!,
+      })
       .returning();
-    return user;
+    
+    // Convert to new user format
+    return {
+      id: oldUser.id.toString(),
+      email: oldUser.email,
+      firstName: null,
+      lastName: null,
+      profileImageUrl: null,
+      createdAt: oldUser.createdAt!,
+      updatedAt: oldUser.createdAt!,
+    };
   }
 
   async updateUserLastLogin(id: number): Promise<void> {
     await db
-      .update(users)
+      .update(oldUsers)
       .set({ lastLoginAt: new Date() })
-      .where(eq(users.id, id));
+      .where(eq(oldUsers.id, id));
   }
 
   async createLoginToken(token: InsertLoginToken): Promise<LoginToken> {

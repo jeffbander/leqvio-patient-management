@@ -7,14 +7,19 @@ import { useAuth } from "@/hooks/useAuth";
 import AutomationTrigger from "@/pages/automation-trigger";
 import LogsPage from "@/pages/logs";
 import Landing from "@/pages/landing";
+import AuthFallback from "@/pages/auth-fallback";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isReplitRequired } = useAuth();
 
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
+      {isLoading ? (
+        <Route path="/" component={Landing} />
+      ) : isReplitRequired ? (
+        <Route path="/" component={AuthFallback} />
+      ) : !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
         <>

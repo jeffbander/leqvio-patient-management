@@ -8,8 +8,11 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+// Check if running in Replit environment
+const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
+
+if (!isReplitEnvironment) {
+  console.warn("Replit Auth environment variables not found. Authentication will be disabled.");
 }
 
 const getOidcConfig = memoize(
@@ -67,6 +70,12 @@ async function upsertUser(
 }
 
 export async function setupAuth(app: Express) {
+  // Only setup auth if in Replit environment
+  if (!isReplitEnvironment) {
+    console.log("Skipping Replit Auth setup - not in Replit environment");
+    return;
+  }
+
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
@@ -128,6 +137,14 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  // Skip auth check if not in Replit environment
+  if (!isReplitEnvironment) {
+    return res.status(401).json({ 
+      message: "Authentication unavailable - Replit environment required",
+      isReplitRequired: true 
+    });
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {
