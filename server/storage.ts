@@ -30,7 +30,7 @@ export interface IStorage {
   
   // Automation logs
   createAutomationLog(log: InsertAutomationLog): Promise<AutomationLog>;
-  getAutomationLogs(limit?: number): Promise<AutomationLog[]>;
+  getAutomationLogs(limit?: number, startDate?: string): Promise<AutomationLog[]>;
   clearAutomationLogs(): Promise<void>;
   updateAutomationLogWithEmailResponse(uniqueId: string, emailResponse: string): Promise<AutomationLog | null>;
   updateAutomationLogWithAgentResponse(uniqueId: string, agentResponse: string, agentName: string, webhookPayload?: any): Promise<AutomationLog | null>;

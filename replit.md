@@ -4,6 +4,8 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-06-23**: Added date range filtering (Last Day, 3 Days, Week, All) with default to 3 days
+- **2025-06-23**: Server-side date filtering prevents loading data older than 1 week unless "All" is selected
 - **2025-06-23**: Implemented animated loading states for log retrieval with visual feedback
 - **2025-06-23**: Added skeleton loading for logs page and spinner animations for refresh/clear operations
 - **2025-06-23**: Created separate logs page with advanced filtering by Source ID and Chain name
