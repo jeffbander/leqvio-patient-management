@@ -726,13 +726,13 @@ export default function AutomationTrigger() {
                 <div className="flex items-start space-x-2">
                   <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">5</div>
                   <div>
-                    <strong>Real-time Results:</strong> Webhook payload shows all variables and outputs in the UI instantly.
+                    <strong>API Response Display:</strong> Webhook payload appears as "API Response Received" with all variables visible.
                   </div>
                 </div>
                 <div className="flex items-start space-x-2">
                   <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">6</div>
                   <div>
-                    <strong>End-to-End Complete:</strong> No email needed - all results displayed in real-time dashboard.
+                    <strong>Complete Automation:</strong> Real-time dashboard shows all chain outputs without email dependency.
                   </div>
                 </div>
               </div>
@@ -741,12 +741,12 @@ export default function AutomationTrigger() {
             <div className="bg-white border border-blue-200 rounded-lg p-4">
               <h4 className="font-medium text-blue-900 mb-2">Current Configuration:</h4>
               <div className="space-y-2 text-sm text-blue-800">
-                <div><strong>Webhook URL:</strong></div>
+                <div><strong>Agent Webhook URL:</strong></div>
                 <div className="bg-blue-100 p-2 rounded font-mono text-xs break-all">
-                  {window.location.origin}/api/email-webhook
+                  {window.location.origin}/webhook/agents
                 </div>
-                <div><strong>Email Destination:</strong> automation-responses@responses.providerloop.com</div>
-                <div><strong>Pattern Recognition:</strong> Automatically detects "Output from run (ChainRun_ID)" format</div>
+                <div><strong>Response Format:</strong> JSON payload with all chain variables</div>
+                <div><strong>Display:</strong> Real-time API Response with webhook payload data</div>
               </div>
             </div>
             
@@ -754,7 +754,7 @@ export default function AutomationTrigger() {
               <div className="flex items-start space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
                 <div className="text-sm text-green-800">
-                  <strong>Status:</strong> Fully automated - no manual intervention required. Each automation automatically captures its unique ID and links email responses when they arrive.
+                  <strong>Status:</strong> Real-time webhook integration active. API responses appear instantly with complete payload data - no email processing needed.
                 </div>
               </div>
             </div>
@@ -848,20 +848,34 @@ export default function AutomationTrigger() {
                         )}
                       </div>
                       
-                      {log.emailresponse && (
+                      {(log.webhookpayload || log.emailresponse) && (
                         <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded">
                           <div className="text-xs font-medium text-blue-800 mb-1">
-                            Email Response Received:
+                            {log.webhookpayload ? 'API Response Received:' : 'Email Response Received:'}
                           </div>
                           <div className="text-xs text-blue-700">
-                            {new Date(log.emailreceivedat).toLocaleString()}
+                            {log.webhookpayload ? 
+                              (log.agentreceivedat ? new Date(log.agentreceivedat).toLocaleString() : 'Recent') :
+                              (log.emailreceivedat ? new Date(log.emailreceivedat).toLocaleString() : 'Recent')
+                            }
                           </div>
                           <details className="text-xs mt-1">
                             <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
-                              View Email Content
+                              {log.webhookpayload ? 'View API Payload' : 'View Email Content'}
                             </summary>
                             <div className="mt-2 p-3 bg-white rounded border text-sm max-h-96 overflow-y-auto">
-                              {log.emailresponse?.includes('<') ? (
+                              {log.webhookpayload ? (
+                                <div className="space-y-2">
+                                  {Object.entries(log.webhookpayload).map(([key, value]) => (
+                                    <div key={key} className="flex justify-between items-start border-b border-gray-100 pb-1">
+                                      <span className="font-medium text-blue-800 text-xs">{key}:</span>
+                                      <span className="text-blue-600 text-xs max-w-xs text-right break-words">
+                                        {String(value)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : log.emailresponse?.includes('<') ? (
                                 <div dangerouslySetInnerHTML={{ __html: log.emailresponse }} />
                               ) : (
                                 <div className="whitespace-pre-wrap font-mono text-xs">

@@ -122,6 +122,12 @@ export class DatabaseStorage implements IStorage {
       uniqueid: log.uniqueId,
       emailresponse: log.emailResponse,
       emailreceivedat: log.emailReceivedAt,
+      agentresponse: log.agentResponse,
+      agentname: log.agentName,
+      agentreceivedat: log.agentReceivedAt,
+      webhookpayload: log.webhookPayload,
+      chaintype: log.chainType,
+      iscompleted: log.isCompleted,
       createdat: log.createdAt
     }));
   }
