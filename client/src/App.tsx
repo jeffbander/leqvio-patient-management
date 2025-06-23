@@ -4,12 +4,14 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AutomationTrigger from "@/pages/automation-trigger";
+import LogsPage from "@/pages/logs";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={AutomationTrigger} />
+      <Route path="/logs" component={LogsPage} />
       <Route component={NotFound} />
     </Switch>
   );

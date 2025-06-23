@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { User, Calendar, Link, Plus, Trash2, Send, RotateCcw, Loader2, History, Download, X } from "lucide-react";
+import { User, Calendar, Link as LinkIcon, Plus, Trash2, Send, RotateCcw, Loader2, History, Download, X } from "lucide-react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -52,7 +53,7 @@ export default function AutomationTrigger() {
   const [responseStatus, setResponseStatus] = useState<'success' | 'error' | null>(null);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [newChainName, setNewChainName] = useState("");
-  const [showLogs, setShowLogs] = useState(false);
+
   const { toast } = useToast();
 
   // Database queries
@@ -83,15 +84,7 @@ export default function AutomationTrigger() {
     }
   });
 
-  const clearLogsMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch('/api/automation-logs', { method: 'DELETE' });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/automation-logs'] });
-    }
-  });
+
 
   const createChainMutation = useMutation({
     mutationFn: async (chainData: any) => {
@@ -230,40 +223,7 @@ export default function AutomationTrigger() {
     }
   };
 
-  const clearLogs = async () => {
-    try {
-      await clearLogsMutation.mutateAsync();
-      toast({
-        title: "Logs Cleared",
-        description: "All automation logs have been cleared",
-        variant: "default",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to clear logs",
-        variant: "destructive",
-      });
-    }
-  };
 
-  const exportLogs = () => {
-    const logData = JSON.stringify(automationLogs, null, 2);
-    const blob = new Blob([logData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `automation-logs-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast({
-      title: "Logs Exported",
-      description: "Logs have been downloaded as JSON file",
-      variant: "default",
-    });
-  };
 
   const onSubmit = async (data: AutomationFormValues) => {
     setIsLoading(true);
@@ -386,15 +346,16 @@ export default function AutomationTrigger() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowLogs(!showLogs)}
-                className="flex items-center space-x-2"
-              >
-                <History className="h-4 w-4" />
-                <span>Logs ({automationLogs.length})</span>
-              </Button>
+              <Link href="/logs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2"
+                >
+                  <History className="h-4 w-4" />
+                  <span>View Logs ({automationLogs.length})</span>
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -511,7 +472,7 @@ export default function AutomationTrigger() {
                     <FormItem>
                       <FormLabel className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <Link className="h-4 w-4" />
+                          <LinkIcon className="h-4 w-4" />
                           <span>Chain to Run <span className="text-red-500">*</span></span>
                         </div>
                         <Button
