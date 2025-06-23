@@ -16,12 +16,8 @@ import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations
-  // (IMPORTANT) these user operations are mandatory for Replit Auth.
-  getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
-  
-  // Legacy user management (keeping for backward compatibility)
+  // User management
+  getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserLastLogin(id: number): Promise<void>;
@@ -46,71 +42,29 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // User operations
-  // (IMPORTANT) these user operations are mandatory for Replit Auth.
-  async getUser(id: string): Promise<User | undefined> {
+  async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    return user || undefined;
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
-  }
-
-  // Legacy methods using old users table
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [oldUser] = await db.select().from(oldUsers).where(eq(oldUsers.email, email));
-    if (!oldUser) return undefined;
-    
-    // Convert old user format to new user format
-    return {
-      id: oldUser.id.toString(),
-      email: oldUser.email,
-      firstName: null,
-      lastName: null,
-      profileImageUrl: null,
-      createdAt: oldUser.createdAt,
-      updatedAt: oldUser.createdAt,
-    };
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    // Create in old users table for backward compatibility
-    const [oldUser] = await db
-      .insert(oldUsers)
-      .values({
-        email: insertUser.email!,
-      })
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
       .returning();
-    
-    // Convert to new user format
-    return {
-      id: oldUser.id.toString(),
-      email: oldUser.email,
-      firstName: null,
-      lastName: null,
-      profileImageUrl: null,
-      createdAt: oldUser.createdAt!,
-      updatedAt: oldUser.createdAt!,
-    };
+    return user;
   }
 
   async updateUserLastLogin(id: number): Promise<void> {
     await db
-      .update(oldUsers)
+      .update(users)
       .set({ lastLoginAt: new Date() })
-      .where(eq(oldUsers.id, id));
+      .where(eq(users.id, id));
   }
 
   async createLoginToken(token: InsertLoginToken): Promise<LoginToken> {

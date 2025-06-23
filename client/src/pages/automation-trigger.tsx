@@ -3,9 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { User, Calendar, Link as LinkIcon, Plus, Trash2, Send, RotateCcw, Loader2, History, LogOut } from "lucide-react";
+import { User, Calendar, Link as LinkIcon, Plus, Trash2, Send, RotateCcw, Loader2, History } from "lucide-react";
 import { Link } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -55,7 +54,6 @@ export default function AutomationTrigger() {
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [newChainName, setNewChainName] = useState("");
   const { toast } = useToast();
-  const { user } = useAuth();
 
   // Database queries
   const { data: automationLogs = [], isLoading: isLoadingLogs } = useQuery({
@@ -343,20 +341,6 @@ export default function AutomationTrigger() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              {user && (
-                <div className="flex items-center space-x-3 mr-4">
-                  {user.profileImageUrl && (
-                    <img 
-                      src={user.profileImageUrl} 
-                      alt="Profile" 
-                      className="h-8 w-8 rounded-full object-cover"
-                    />
-                  )}
-                  <span className="text-sm text-gray-600">
-                    {user.firstName} {user.lastName}
-                  </span>
-                </div>
-              )}
               <Link href="/logs">
                 <Button
                   variant="outline"
@@ -374,15 +358,6 @@ export default function AutomationTrigger() {
                   </span>
                 </Button>
               </Link>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.location.href = '/api/logout'}
-                className="flex items-center space-x-2"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>Sign Out</span>
-              </Button>
             </div>
           </div>
         </div>

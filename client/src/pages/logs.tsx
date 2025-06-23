@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { History, Download, Trash2, Filter, Search, Calendar, User, Link2, LogOut, ArrowLeft } from "lucide-react";
+import { History, Download, Trash2, Filter, Search, Calendar, User, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,7 +14,6 @@ export default function LogsPage() {
   const [filterChain, setFilterChain] = useState<string>("all");
   const [searchSourceId, setSearchSourceId] = useState<string>("");
   const { toast } = useToast();
-  const { user } = useAuth();
 
   // Fetch automation logs
   const { data: automationLogs = [], isLoading } = useQuery({
