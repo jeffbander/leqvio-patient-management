@@ -376,12 +376,12 @@ export default function AutomationTrigger() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="bg-primary text-primary-foreground rounded-lg p-2">
-                <img src="/assets/aigents-logo.png" alt="AIGENTS" className="h-6 w-6" />
+              <div className="bg-white rounded-lg p-2">
+                <img src="@assets/image_1750647678847.png" alt="Providerloop" className="h-8 w-8" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Patient Data Processing</h1>
-                <p className="text-sm text-gray-600">Automated Patient Data Chain Processing</p>
+                <h1 className="text-2xl font-bold text-gray-900">Providerloop Chains</h1>
+                <p className="text-sm text-gray-600">Patient Data Chain Processing</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">

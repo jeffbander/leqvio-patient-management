@@ -1,9 +1,15 @@
-# AIGENTS Automations
+# Providerloop Chains
 
 ## Overview
-Intelligent web application for AIGENTS Automations, designed to streamline complex workflow processes with user-friendly and visually engaging interfaces. The system provides bidirectional webhook communication between AppSheet automations and agents systems. **Now available as a reusable template** with comprehensive documentation for creating custom automation webhook systems.
+Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-06-23**: Completely redesigned interface for patient data processing with clean, simple UX
+- **2025-06-23**: Added auto-generation of Source ID from patient Last Name, First Name, DOB in format: LAST_FIRST__MM_DD_YYYY
+- **2025-06-23**: Handles spaces in names with underscores (e.g., "Jeff Abe" becomes "Jeff_Abe")
+- **2025-06-23**: Removed Run Email, Folder ID, Source Name fields - now uses fixed email for processing
+- **2025-06-23**: Updated branding to "Providerloop Chains" with new logo
+- **2025-06-23**: Kept Chain to Run dropdown, First Step input, Starting Variables, and logs display
 - **2025-06-23**: Improved UI to display full text content without truncation for detailed webhook payloads
 - **2025-06-23**: Created comprehensive template documentation (TEMPLATE_README.md, TEMPLATE_SETUP.md, WEBHOOK_EXAMPLES.md)
 - **2025-06-23**: Added template structure for reusable automation webhook systems
