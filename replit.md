@@ -4,6 +4,9 @@
 Intelligent web application for AIGENTS Automations, designed to streamline complex workflow processes with user-friendly and visually engaging interfaces. The system provides bidirectional webhook communication between AppSheet automations and agents systems.
 
 ## Recent Changes
+- **2025-06-23**: Replaced SendGrid email notifications with real-time webhook payload display in UI
+- **2025-06-23**: Added database storage for complete webhook payloads with chain type detection
+- **2025-06-23**: Created end-to-end solution: API trigger → Agent processing → Real-time UI results (no email needed)
 - **2025-06-23**: Enhanced webhook to capture and return ALL fields from agents system as individual variables
 - **2025-06-23**: Webhook now returns complete field mapping: `Pre Pre Chart V2` → `pre_pre_chart_v2`, etc.
 - **2025-06-23**: Added receivedFields array and indexed field names for agents system variable access
