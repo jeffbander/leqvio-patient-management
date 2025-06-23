@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { User, Calendar, Link as LinkIcon, Plus, Trash2, Send, RotateCcw, Loader2, History, Download, X } from "lucide-react";
+import { User, Calendar, Link as LinkIcon, Plus, Trash2, Send, RotateCcw, Loader2, History } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,18 +53,17 @@ export default function AutomationTrigger() {
   const [responseStatus, setResponseStatus] = useState<'success' | 'error' | null>(null);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [newChainName, setNewChainName] = useState("");
-
   const { toast } = useToast();
 
   // Database queries
-  const { data: automationLogs = [], refetch: refetchLogs } = useQuery({
+  const { data: automationLogs = [] } = useQuery({
     queryKey: ['/api/automation-logs'],
     queryFn: () => fetch('/api/automation-logs').then(res => res.json()),
     staleTime: 0,
     cacheTime: 0,
   });
 
-  const { data: customChains = [], refetch: refetchChains } = useQuery({
+  const { data: customChains = [] } = useQuery({
     queryKey: ['/api/custom-chains'],
     queryFn: () => fetch('/api/custom-chains').then(res => res.json()),
   });
@@ -83,8 +82,6 @@ export default function AutomationTrigger() {
       queryClient.invalidateQueries({ queryKey: ['/api/automation-logs'] });
     }
   });
-
-
 
   const createChainMutation = useMutation({
     mutationFn: async (chainData: any) => {
@@ -222,8 +219,6 @@ export default function AutomationTrigger() {
       console.error('Failed to save log entry:', error);
     }
   };
-
-
 
   const onSubmit = async (data: AutomationFormValues) => {
     setIsLoading(true);
@@ -363,8 +358,6 @@ export default function AutomationTrigger() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-
         {/* Patient Data Form */}
         <Card className="shadow-sm">
           <CardHeader className="bg-gray-50 border-b">
@@ -546,8 +539,6 @@ export default function AutomationTrigger() {
                   </div>
                 )}
 
-
-
                 {/* First Step Input */}
                 <FormField
                   control={form.control}
@@ -655,7 +646,7 @@ export default function AutomationTrigger() {
           </CardContent>
         </Card>
 
-        {/* Email Integration Setup Instructions */}
+        {/* Real-Time Processing Status */}
         <Card className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
           <CardHeader>
             <CardTitle className="text-lg text-blue-900">
@@ -664,49 +655,7 @@ export default function AutomationTrigger() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-white border border-blue-200 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-3">How It Works:</h4>
-              <div className="space-y-3 text-sm text-blue-800">
-                <div className="flex items-start space-x-2">
-                  <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">1</div>
-                  <div>
-                    <strong>API Trigger:</strong> When you submit an automation, the system automatically extracts the unique ChainRun_ID from the AppSheet API response (e.g., "64abf335").
-                  </div>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">2</div>
-                  <div>
-                    <strong>ID Storage:</strong> The ChainRun_ID is immediately saved with your automation log for tracking.
-                  </div>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">3</div>
-                  <div>
-                    <strong>AppSheet Processing:</strong> Your automation chain runs in AppSheet and generates results.
-                  </div>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">4</div>
-                  <div>
-                    <strong>Agent Processing:</strong> Agents system processes the automation and sends webhook with results.
-                  </div>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">5</div>
-                  <div>
-                    <strong>API Response Display:</strong> Webhook payload appears as "API Response Received" with all variables visible.
-                  </div>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">6</div>
-                  <div>
-                    <strong>Complete Automation:</strong> Real-time dashboard shows all chain outputs without email dependency.
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white border border-blue-200 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-2">Current Configuration:</h4>
+              <h4 className="font-medium text-blue-900 mb-3">Integration Details:</h4>
               <div className="space-y-2 text-sm text-blue-800">
                 <div><strong>Agent Webhook URL:</strong></div>
                 <div className="bg-blue-100 p-2 rounded font-mono text-xs break-all">
@@ -727,172 +676,6 @@ export default function AutomationTrigger() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Logs Panel */}
-        {showLogs && (
-          <Card className="mt-8 shadow-sm">
-            <CardHeader className="bg-gray-50 border-b">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center space-x-2">
-                  <History className="h-5 w-5" />
-                  <span>Automation Logs</span>
-                </CardTitle>
-                <div className="flex items-center space-x-2">
-                  {automationLogs.length > 0 && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={exportLogs}
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Export
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={clearLogs}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Clear
-                      </Button>
-                    </>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowLogs(false)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              {automationLogs.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No automation logs yet</p>
-                  <p className="text-sm">Trigger an automation to see logs here</p>
-                </div>
-              ) : (
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {automationLogs.map((log: any) => (
-                    <div
-                      key={log.id}
-                      className={`border rounded-lg p-4 ${
-                        log.status === 'success' 
-                          ? 'border-green-200 bg-green-50' 
-                          : 'border-red-200 bg-red-50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            log.status === 'success' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {log.status}
-                          </span>
-                          <span className="text-sm font-medium">{log.chainname}</span>
-                        </div>
-                        <span className="text-xs text-gray-500">{new Date(log.timestamp).toLocaleString()}</span>
-                      </div>
-                      <div className="text-sm text-gray-600 mb-2">
-                        Email: {log.email}
-                        {log.uniqueid && (
-                          <div className="text-xs mt-1">
-                            ID: <a 
-                              href={`https://aigents-realtime-logs-943506065004.us-central1.run.app/?chainRunId=${log.uniqueid}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                            >
-                              {log.uniqueid}
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {(log.webhookpayload || log.emailresponse) && (
-                        <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded">
-                          <div className="text-xs font-medium text-blue-800 mb-1">
-                            {log.webhookpayload ? 'API Response Received:' : 'Email Response Received:'}
-                          </div>
-                          <div className="text-xs text-blue-700">
-                            {log.webhookpayload ? 
-                              (log.agentreceivedat ? new Date(log.agentreceivedat).toLocaleString() : 'Recent') :
-                              (log.emailreceivedat ? new Date(log.emailreceivedat).toLocaleString() : 'Recent')
-                            }
-                          </div>
-                          <details className="text-xs mt-1">
-                            <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
-                              {log.webhookpayload ? 'View API Payload' : 'View Email Content'}
-                            </summary>
-                            <div className="mt-2 p-3 bg-white rounded border text-sm max-h-96 overflow-y-auto">
-                              {log.webhookpayload ? (
-                                <div className="space-y-3">
-                                  {Object.entries(log.webhookpayload).map(([key, value]) => (
-                                    <div key={key} className="border-b border-gray-100 pb-2">
-                                      <div className="font-medium text-blue-800 text-xs mb-1">{key}:</div>
-                                      <div className="text-blue-600 text-xs whitespace-pre-wrap break-words bg-blue-25 p-2 rounded">
-                                        {String(value)}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : log.emailresponse?.includes('<') ? (
-                                <div dangerouslySetInnerHTML={{ __html: log.emailresponse }} />
-                              ) : (
-                                <div className="whitespace-pre-wrap font-mono text-xs">
-                                  {log.emailresponse}
-                                </div>
-                              )}
-                            </div>
-                          </details>
-                        </div>
-                      )}
-
-                      {log.agentresponse && (
-                        <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded">
-                          <div className="text-xs font-medium text-green-800 mb-1">
-                            Agent Response Received:
-                          </div>
-                          <div className="text-xs text-green-700 mb-1">
-                            From: {log.agentname || 'Unknown Agent'}
-                          </div>
-                          <div className="text-xs text-green-700">
-                            {new Date(log.agentreceivedat).toLocaleString()}
-                          </div>
-                          <details className="text-xs mt-1">
-                            <summary className="cursor-pointer text-green-600 hover:text-green-800">
-                              View Agent Response
-                            </summary>
-                            <div className="mt-2 p-3 bg-white rounded border text-sm max-h-96 overflow-y-auto">
-                              <div className="whitespace-pre-wrap font-mono text-xs">
-                                {log.agentresponse}
-                              </div>
-                            </div>
-                          </details>
-                        </div>
-                      )}
-                      
-                      <details className="text-xs">
-                        <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
-                          View API Response
-                        </summary>
-                        <div className="mt-2 p-2 bg-gray-100 rounded font-mono text-xs overflow-x-auto">
-                          {log.response}
-                        </div>
-                      </details>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
 
         {/* Response Display */}
         {response && (
