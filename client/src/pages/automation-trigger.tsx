@@ -56,7 +56,7 @@ export default function AutomationTrigger() {
   const { toast } = useToast();
 
   // Database queries
-  const { data: automationLogs = [] } = useQuery({
+  const { data: automationLogs = [], isLoading: isLoadingLogs } = useQuery({
     queryKey: ['/api/automation-logs'],
     queryFn: () => fetch('/api/automation-logs').then(res => res.json()),
     staleTime: 0,
@@ -346,9 +346,16 @@ export default function AutomationTrigger() {
                   variant="outline"
                   size="sm"
                   className="flex items-center space-x-2"
+                  disabled={isLoadingLogs}
                 >
-                  <History className="h-4 w-4" />
-                  <span>View Logs ({automationLogs.length})</span>
+                  {isLoadingLogs ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <History className="h-4 w-4" />
+                  )}
+                  <span>
+                    View Logs {isLoadingLogs ? '' : `(${automationLogs.length})`}
+                  </span>
                 </Button>
               </Link>
             </div>
