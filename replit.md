@@ -4,6 +4,10 @@
 Intelligent web application for AIGENTS Automations, designed to streamline complex workflow processes with user-friendly and visually engaging interfaces. The system provides bidirectional webhook communication between AppSheet automations and agents systems.
 
 ## Recent Changes
+- **2025-06-23**: Enhanced webhook to capture and return ALL fields from agents system as individual variables
+- **2025-06-23**: Webhook now returns complete field mapping: `Pre Pre Chart V2` → `pre_pre_chart_v2`, etc.
+- **2025-06-23**: Added receivedFields array and indexed field names for agents system variable access
+- **2025-06-23**: Confirmed production webhook returning all expected variables per agents system requirements
 - **2025-06-15**: Deployed application to https://chain-automator-notifications6.replit.app
 - **2025-06-15**: Added comprehensive logging system for webhook debugging
 - **2025-06-15**: Configured agents system webhook with response mapping (String and Object types)
