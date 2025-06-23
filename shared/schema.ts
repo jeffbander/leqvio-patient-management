@@ -71,8 +71,9 @@ export const insertCustomChainSchema = createInsertSchema(customChains).omit({
   createdAt: true,
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
 export type LoginToken = typeof loginTokens.$inferSelect;
 export type InsertLoginToken = z.infer<typeof insertLoginTokenSchema>;
 export type AutomationLog = typeof automationLogs.$inferSelect;
