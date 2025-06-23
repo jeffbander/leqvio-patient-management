@@ -865,13 +865,13 @@ export default function AutomationTrigger() {
                             </summary>
                             <div className="mt-2 p-3 bg-white rounded border text-sm max-h-96 overflow-y-auto">
                               {log.webhookpayload ? (
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                   {Object.entries(log.webhookpayload).map(([key, value]) => (
-                                    <div key={key} className="flex justify-between items-start border-b border-gray-100 pb-1">
-                                      <span className="font-medium text-blue-800 text-xs">{key}:</span>
-                                      <span className="text-blue-600 text-xs max-w-xs text-right break-words">
+                                    <div key={key} className="border-b border-gray-100 pb-2">
+                                      <div className="font-medium text-blue-800 text-xs mb-1">{key}:</div>
+                                      <div className="text-blue-600 text-xs whitespace-pre-wrap break-words bg-blue-25 p-2 rounded">
                                         {String(value)}
-                                      </span>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
