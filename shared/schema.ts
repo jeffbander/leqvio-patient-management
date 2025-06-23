@@ -33,6 +33,9 @@ export const automationLogs = pgTable("automation_logs", {
   agentResponse: text("agent_response"), // Store agent response content
   agentName: text("agent_name"), // Name of the agent that sent the response
   agentReceivedAt: timestamp("agent_received_at"), // When agent response was received
+  webhookPayload: jsonb("webhook_payload"), // Store complete webhook payload from agents system
+  chainType: text("chain_type"), // Type of chain (research, pre_pre_chart, etc.)
+  isCompleted: boolean("is_completed").default(false), // Mark when chain processing is complete
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

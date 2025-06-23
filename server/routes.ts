@@ -119,7 +119,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.updateAutomationLogWithAgentResponse(
         chainRunId,
         finalResponseContent,
-        agentName
+        agentName,
+        payload
       );
 
       if (result) {

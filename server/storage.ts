@@ -33,7 +33,7 @@ export interface IStorage {
   getAutomationLogs(limit?: number): Promise<AutomationLog[]>;
   clearAutomationLogs(): Promise<void>;
   updateAutomationLogWithEmailResponse(uniqueId: string, emailResponse: string): Promise<AutomationLog | null>;
-  updateAutomationLogWithAgentResponse(uniqueId: string, agentResponse: string, agentName: string): Promise<AutomationLog | null>;
+  updateAutomationLogWithAgentResponse(uniqueId: string, agentResponse: string, agentName: string, webhookPayload?: any): Promise<AutomationLog | null>;
   
   // Custom chains
   createCustomChain(chain: InsertCustomChain): Promise<CustomChain>;
@@ -161,7 +161,7 @@ export class DatabaseStorage implements IStorage {
     return updatedLog || null;
   }
 
-  async updateAutomationLogWithAgentResponse(uniqueId: string, agentResponse: string, agentName: string): Promise<AutomationLog | null> {
+  async updateAutomationLogWithAgentResponse(uniqueId: string, agentResponse: string, agentName: string, webhookPayload?: any): Promise<AutomationLog | null> {
     console.log(`[STORAGE] updateAutomationLogWithAgentResponse called`);
     console.log(`[STORAGE] - uniqueId: ${uniqueId}`);
     console.log(`[STORAGE] - agentResponse length: ${agentResponse.length}`);
@@ -187,12 +187,18 @@ export class DatabaseStorage implements IStorage {
         return null;
       }
       
+      // Determine chain type from webhook payload
+      const chainType = this.determineChainType(webhookPayload);
+      
       const [updatedLog] = await db
         .update(automationLogs)
         .set({ 
           agentResponse, 
           agentName,
-          agentReceivedAt: new Date() 
+          agentReceivedAt: new Date(),
+          webhookPayload: webhookPayload || null,
+          chainType,
+          isCompleted: true, // Mark as completed when webhook received
         })
         .where(eq(automationLogs.uniqueId, uniqueId))
         .returning();
@@ -208,6 +214,25 @@ export class DatabaseStorage implements IStorage {
       console.error(`[STORAGE] ERROR in updateAutomationLogWithAgentResponse:`, error);
       throw error;
     }
+  }
+
+  private determineChainType(webhookPayload: any): string {
+    if (!webhookPayload) return 'unknown';
+    
+    const fields = Object.keys(webhookPayload);
+    
+    // Research chain has 'summ' field
+    if (fields.includes('summ')) {
+      return 'research';
+    }
+    
+    // Pre Pre Chart has specific v2, v3, output fields
+    if (fields.includes('Pre Pre Chart V2') || fields.includes('Pre Pre Chart V3') || fields.includes('pre_pre_output')) {
+      return 'pre_pre_chart';
+    }
+    
+    // Default to unknown for other chain types
+    return 'unknown';
   }
 }
 
