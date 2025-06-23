@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Settings, Mail, Link, Folder, Tag, FileText, Plus, Trash2, Send, RotateCcw, Loader2, Info, History, Download, X, AlertTriangle } from "lucide-react";
+import { User, Calendar, Link, Plus, Trash2, Send, RotateCcw, Loader2, History, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -14,10 +14,10 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const automationFormSchema = z.object({
-  run_email: z.string().email("Please enter a valid email address"),
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  dob: z.string().min(1, "Date of birth is required"),
   chain_to_run: z.string().min(1, "Chain to run is required"),
-  folder_id: z.string().optional(),
-  source_name: z.string().optional(),
   source_id: z.string().optional(),
   first_step_user_input: z.string().optional(),
 });
@@ -109,14 +109,35 @@ export default function AutomationTrigger() {
   const form = useForm<AutomationFormValues>({
     resolver: zodResolver(automationFormSchema),
     defaultValues: {
-      run_email: "Mills.reed@mswheart.com",
+      first_name: "",
+      last_name: "",
+      dob: "",
       chain_to_run: "ATTACHMENT PROCESSING (LABS)",
-      folder_id: "",
-      source_name: "",
       source_id: "",
       first_step_user_input: "",
     },
   });
+
+  // Auto-generate Source ID when patient info changes
+  useEffect(() => {
+    const firstName = form.watch("first_name");
+    const lastName = form.watch("last_name");
+    const dob = form.watch("dob");
+
+    if (firstName && lastName && dob) {
+      // Convert names to use underscores for spaces
+      const formattedFirstName = firstName.trim().replace(/\s+/g, '_');
+      const formattedLastName = lastName.trim().replace(/\s+/g, '_');
+      
+      // Format DOB from YYYY-MM-DD to MM_DD_YYYY
+      const dobFormatted = dob.split('-').length === 3 
+        ? `${dob.split('-')[1]}_${dob.split('-')[2]}_${dob.split('-')[0]}`
+        : dob.replace(/\//g, '_');
+      
+      const sourceId = `${formattedLastName}_${formattedFirstName}__${dobFormatted}`;
+      form.setValue("source_id", sourceId);
+    }
+  }, [form.watch("first_name"), form.watch("last_name"), form.watch("dob")]);
 
   const addVariable = () => {
     setVariables([...variables, { key: "", value: "" }]);
@@ -258,10 +279,8 @@ export default function AutomationTrigger() {
 
     // Prepare the request body
     const requestBody = {
-      run_email: data.run_email,
+      run_email: "Mills.reed@mswheart.com", // Fixed email for patient data processing
       chain_to_run: data.chain_to_run,
-      ...(data.folder_id && { folder_id: data.folder_id }),
-      ...(data.source_name && { source_name: data.source_name }),
       ...(data.source_id && { source_id: data.source_id }),
       ...(data.first_step_user_input && { first_step_user_input: data.first_step_user_input }),
       starting_variables,
@@ -324,7 +343,7 @@ export default function AutomationTrigger() {
         addLogEntry(requestBody, errorResponse, 'error');
       } catch {
         // If requestBody is not available, create a minimal log entry
-        addLogEntry({ run_email: data.run_email, chain_to_run: data.chain_to_run }, errorResponse, 'error');
+        addLogEntry({ run_email: "Mills.reed@mswheart.com", chain_to_run: data.chain_to_run }, errorResponse, 'error');
       }
       toast({
         title: "Network Error",
@@ -361,8 +380,8 @@ export default function AutomationTrigger() {
                 <img src="/assets/aigents-logo.png" alt="AIGENTS" className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">AIGENTS Automations</h1>
-                <p className="text-sm text-gray-600">Intelligent Workflow Automation Platform</p>
+                <h1 className="text-2xl font-bold text-gray-900">Patient Data Processing</h1>
+                <p className="text-sm text-gray-600">Automated Patient Data Chain Processing</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -382,51 +401,103 @@ export default function AutomationTrigger() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* API Endpoint Info */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
-          <div className="flex items-center space-x-2 mb-2">
-            <Info className="h-4 w-4 text-blue-600" />
-            <h3 className="text-sm font-semibold text-blue-900">API Endpoint</h3>
-          </div>
-          <div className="text-sm text-blue-800">
-            <span className="font-mono bg-blue-100 px-2 py-1 rounded">POST</span>
-            <span className="ml-2">https://start-chain-run-943506065004.us-central1.run.app</span>
-          </div>
-        </div>
 
-        {/* Automation Form */}
+
+        {/* Patient Data Form */}
         <Card className="shadow-sm">
           <CardHeader className="bg-gray-50 border-b">
-            <CardTitle className="text-lg">Trigger Automation</CardTitle>
+            <CardTitle className="text-lg">Patient Information</CardTitle>
             <CardDescription>
-              Fill out the form below to start your AppSheet automation chain
+              Enter patient details to process data through automation chains
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Email Field */}
+                {/* Patient Info Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Last Name */}
+                  <FormField
+                    control={form.control}
+                    name="last_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center space-x-2">
+                          <User className="h-4 w-4" />
+                          <span>Last Name <span className="text-red-500">*</span></span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter last name"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* First Name */}
+                  <FormField
+                    control={form.control}
+                    name="first_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center space-x-2">
+                          <User className="h-4 w-4" />
+                          <span>First Name <span className="text-red-500">*</span></span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter first name"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Date of Birth */}
+                  <FormField
+                    control={form.control}
+                    name="dob"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center space-x-2">
+                          <Calendar className="h-4 w-4" />
+                          <span>Date of Birth <span className="text-red-500">*</span></span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Source ID - Auto-generated */}
                 <FormField
                   control={form.control}
-                  name="run_email"
+                  name="source_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center space-x-2">
-                        <Mail className="h-4 w-4" />
-                        <span>Run Email <span className="text-red-500">*</span></span>
-                      </FormLabel>
+                      <FormLabel>Generated Source ID</FormLabel>
                       <FormControl>
                         <Input
-                          type="email"
-                          placeholder="Enter email address"
-                          className="pl-10"
                           {...field}
+                          readOnly
+                          className="bg-gray-50 text-gray-700"
+                          placeholder="Source ID will be auto-generated from patient info"
                         />
                       </FormControl>
                       <FormDescription>
-                        The email that will trigger the automation
+                        Format: LAST_FIRST__MM_DD_YYYY (auto-generated from patient information)
                       </FormDescription>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -513,72 +584,7 @@ export default function AutomationTrigger() {
                   </div>
                 )}
 
-                {/* Optional Fields Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="folder_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center space-x-2">
-                          <Folder className="h-4 w-4" />
-                          <span>Folder ID <span className="text-gray-400">(Optional)</span></span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Optional folder identifier"
-                            className="pl-10"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
 
-                  <FormField
-                    control={form.control}
-                    name="source_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center space-x-2">
-                          <Tag className="h-4 w-4" />
-                          <span>Source ID</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="ID of triggering record"
-                            className="pl-10"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Source Name Field */}
-                <FormField
-                  control={form.control}
-                  name="source_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center space-x-2">
-                        <FileText className="h-4 w-4" />
-                        <span>Source Name</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Human readable trigger source reminder"
-                          className="pl-10"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 {/* First Step Input */}
                 <FormField
@@ -690,9 +696,8 @@ export default function AutomationTrigger() {
         {/* Email Integration Setup Instructions */}
         <Card className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center space-x-2 text-blue-900">
-              <Mail className="h-5 w-5" />
-              <span>Automated Email Response Integration</span>
+            <CardTitle className="text-lg text-blue-900">
+              <span>Real-Time Processing Status</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
