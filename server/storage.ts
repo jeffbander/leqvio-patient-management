@@ -190,6 +190,9 @@ export class DatabaseStorage implements IStorage {
       // Determine chain type from webhook payload
       const chainType = this.determineChainType(webhookPayload);
       
+      console.log(`[STORAGE] Updating with chainType: ${chainType}, isCompleted: true`);
+      console.log(`[STORAGE] webhookPayload:`, JSON.stringify(webhookPayload, null, 2));
+      
       const [updatedLog] = await db
         .update(automationLogs)
         .set({ 

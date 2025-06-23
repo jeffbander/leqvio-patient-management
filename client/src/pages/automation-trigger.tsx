@@ -720,19 +720,19 @@ export default function AutomationTrigger() {
                 <div className="flex items-start space-x-2">
                   <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">4</div>
                   <div>
-                    <strong>Email Response:</strong> AppSheet sends completion email to automation-responses@responses.providerloop.com containing "Output from run (ChainRun_ID)".
+                    <strong>Agent Processing:</strong> Agents system processes the automation and sends webhook with results.
                   </div>
                 </div>
                 <div className="flex items-start space-x-2">
                   <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">5</div>
                   <div>
-                    <strong>Automatic Matching:</strong> The webhook extracts the ChainRun_ID from the email and links it to the correct automation log.
+                    <strong>Real-time Results:</strong> Webhook payload shows all variables and outputs in the UI instantly.
                   </div>
                 </div>
                 <div className="flex items-start space-x-2">
                   <div className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">6</div>
                   <div>
-                    <strong>Results Display:</strong> Complete HTML email content appears in your logs panel automatically.
+                    <strong>End-to-End Complete:</strong> No email needed - all results displayed in real-time dashboard.
                   </div>
                 </div>
               </div>
