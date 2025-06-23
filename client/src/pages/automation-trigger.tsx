@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import providerloopLogo from "@assets/image_1750647678847.png";
 
 const automationFormSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
@@ -376,8 +377,8 @@ export default function AutomationTrigger() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="bg-white rounded-lg p-2">
-                <img src="@assets/image_1750647678847.png" alt="Providerloop" className="h-8 w-8" />
+              <div className="bg-white rounded-lg p-2 shadow-sm">
+                <img src={providerloopLogo} alt="Providerloop" className="h-8 w-8" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Providerloop Chains</h1>
