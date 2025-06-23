@@ -125,6 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (result) {
         console.log(`[WEBHOOK-AGENT-${requestId}] Successfully updated automation log ID: ${result.id}`);
         
+        // Create response with all received fields as variables
         const successResponse = {
           message: "Agent response processed successfully",
           chainRunId: chainRunId,
@@ -132,6 +133,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           timestamp: new Date().toISOString(),
           receivedFields: Object.keys(payload)
         };
+
+        // Add each received field as a separate variable for agents system
+        const fieldNames = Object.keys(payload);
+        console.log(`[WEBHOOK-AGENT-${requestId}] Adding ${fieldNames.length} fields to response:`);
+        
+        fieldNames.forEach((fieldName, index) => {
+          const cleanFieldName = fieldName.replace(/\s+/g, '_').toLowerCase();
+          successResponse[`receivedFields_${index}`] = fieldName;
+          successResponse[cleanFieldName] = payload[fieldName];
+          console.log(`[WEBHOOK-AGENT-${requestId}] - Field ${index}: "${fieldName}" -> "${cleanFieldName}" = "${payload[fieldName]}"`);
+        });
+        
+        // Add receivedFields as array
+        successResponse.receivedFields_array = fieldNames;
+        
+        console.log(`[WEBHOOK-AGENT-${requestId}] Complete response object keys:`, Object.keys(successResponse));
         
         console.log(`\n=== API RESPONSE TO AGENTS SYSTEM ===`);
         console.log(`[WEBHOOK-AGENT-${requestId}] Status: 200 OK`);
