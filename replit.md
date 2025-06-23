@@ -1,15 +1,17 @@
 # AIGENTS Automations
 
 ## Overview
-Intelligent web application for AIGENTS Automations, designed to streamline complex workflow processes with user-friendly and visually engaging interfaces. The system provides bidirectional webhook communication between AppSheet automations and agents systems.
+Intelligent web application for AIGENTS Automations, designed to streamline complex workflow processes with user-friendly and visually engaging interfaces. The system provides bidirectional webhook communication between AppSheet automations and agents systems. **Now available as a reusable template** with comprehensive documentation for creating custom automation webhook systems.
 
 ## Recent Changes
+- **2025-06-23**: Improved UI to display full text content without truncation for detailed webhook payloads
+- **2025-06-23**: Created comprehensive template documentation (TEMPLATE_README.md, TEMPLATE_SETUP.md, WEBHOOK_EXAMPLES.md)
+- **2025-06-23**: Added template structure for reusable automation webhook systems
 - **2025-06-23**: Replaced SendGrid email notifications with real-time webhook payload display in UI
 - **2025-06-23**: Added database storage for complete webhook payloads with chain type detection
 - **2025-06-23**: Created end-to-end solution: API trigger → Agent processing → Real-time UI results (no email needed)
 - **2025-06-23**: Enhanced webhook to capture and return ALL fields from agents system as individual variables
 - **2025-06-23**: Webhook now returns complete field mapping: `Pre Pre Chart V2` → `pre_pre_chart_v2`, etc.
-- **2025-06-23**: Added receivedFields array and indexed field names for agents system variable access
 - **2025-06-23**: Confirmed production webhook returning all expected variables per agents system requirements
 - **2025-06-15**: Deployed application to https://chain-automator-notifications6.replit.app
 - **2025-06-15**: Added comprehensive logging system for webhook debugging
@@ -60,6 +62,7 @@ Intelligent web application for AIGENTS Automations, designed to streamline comp
 - Needs clear webhook configuration examples
 - Focuses on bidirectional communication workflow
 - Values working end-to-end automation testing
+- Wants to create reusable templates for automation systems
 
 ## Webhook Configuration Details
 
