@@ -13,7 +13,7 @@ import {
   type InsertCustomChain
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, gte } from "drizzle-orm";
 
 export interface IStorage {
   // User management
@@ -30,7 +30,7 @@ export interface IStorage {
   
   // Automation logs
   createAutomationLog(log: InsertAutomationLog): Promise<AutomationLog>;
-  getAutomationLogs(limit?: number, startDate?: string): Promise<AutomationLog[]>;
+  getAutomationLogs(limit?: number, dateFilter?: Date | null): Promise<AutomationLog[]>;
   clearAutomationLogs(): Promise<void>;
   updateAutomationLogWithEmailResponse(uniqueId: string, emailResponse: string): Promise<AutomationLog | null>;
   updateAutomationLogWithAgentResponse(uniqueId: string, agentResponse: string, agentName: string, webhookPayload?: any): Promise<AutomationLog | null>;

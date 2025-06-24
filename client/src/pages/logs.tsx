@@ -1,27 +1,45 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { History, Download, Trash2, Filter, Search, Calendar, User, Link2 } from "lucide-react";
+import { History, Search, Filter, Download, Trash2, ArrowUpDown, Calendar, User, Link as LinkIcon, Loader2, RefreshCw } from "lucide-react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import providerloopLogo from "@assets/image_1750647678847.png";
 
 export default function LogsPage() {
-  const [sortBy, setSortBy] = useState<string>("timestamp");
-  const [filterChain, setFilterChain] = useState<string>("all");
-  const [searchSourceId, setSearchSourceId] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [chainFilter, setChainFilter] = useState("all");
+  const [dateRange, setDateRange] = useState("3days");
+  const [sortBy, setSortBy] = useState("timestamp-desc");
   const { toast } = useToast();
 
-  // Fetch automation logs
-  const { data: automationLogs = [], isLoading } = useQuery({
-    queryKey: ['/api/automation-logs'],
-    queryFn: () => fetch('/api/automation-logs').then(res => res.json()),
+  // Database queries with date range filtering
+  const { 
+    data: automationLogs = [], 
+    refetch: refetchLogs,
+    isLoading: isLoadingLogs,
+    isFetching: isFetchingLogs 
+  } = useQuery({
+    queryKey: ['/api/automation-logs', dateRange],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (dateRange !== 'all') {
+        params.set('dateRange', dateRange);
+      }
+      return fetch(`/api/automation-logs?${params.toString()}`).then(res => res.json());
+    },
     staleTime: 0,
     cacheTime: 0,
+  });
+
+  const { data: customChains = [] } = useQuery({
+    queryKey: ['/api/custom-chains'],
+    queryFn: () => fetch('/api/custom-chains').then(res => res.json()),
   });
 
   // Clear logs mutation
@@ -37,34 +55,61 @@ export default function LogsPage() {
         description: "All automation logs have been cleared",
         variant: "default",
       });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to clear logs",
+        variant: "destructive",
+      });
     }
   });
 
-  // Get unique chains for filter dropdown
-  const uniqueChains = [...new Set(automationLogs.map((log: any) => log.chainname))];
+  // Get unique chains for filter
+  const uniqueChains = useMemo(() => {
+    const chains = automationLogs.map((log: any) => log.chainname || log.chainName).filter(Boolean);
+    return [...new Set(chains)];
+  }, [automationLogs]);
 
   // Filter and sort logs
-  const filteredAndSortedLogs = automationLogs
-    .filter((log: any) => {
-      const chainMatch = filterChain === "all" || log.chainname === filterChain;
-      const sourceIdMatch = !searchSourceId || (log.requestdata?.source_id || "").toLowerCase().includes(searchSourceId.toLowerCase());
-      return chainMatch && sourceIdMatch;
-    })
-    .sort((a: any, b: any) => {
+  const filteredAndSortedLogs = useMemo(() => {
+    let filtered = automationLogs.filter((log: any) => {
+      const matchesSearch = searchTerm === "" || 
+        (log.uniqueid && log.uniqueid.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (log.chainname && log.chainname.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesChain = chainFilter === "all" || log.chainname === chainFilter;
+      
+      // Date filtering is now handled server-side
+      return matchesSearch && matchesChain;
+    });
+
+    // Sort the filtered logs
+    const sorted = [...filtered].sort((a, b) => {
       switch (sortBy) {
-        case "sourceId":
-          const sourceIdA = a.requestdata?.source_id || "";
-          const sourceIdB = b.requestdata?.source_id || "";
-          return sourceIdA.localeCompare(sourceIdB);
-        case "chain":
-          return a.chainname.localeCompare(b.chainname);
-        case "status":
-          return a.status.localeCompare(b.status);
-        case "timestamp":
+        case "timestamp-desc":
+          return new Date(b.timestamp || b.createdAt).getTime() - new Date(a.timestamp || a.createdAt).getTime();
+        case "timestamp-asc":
+          return new Date(a.timestamp || a.createdAt).getTime() - new Date(b.timestamp || b.createdAt).getTime();
+        case "sourceid-asc":
+          return (a.uniqueid || "").localeCompare(b.uniqueid || "");
+        case "sourceid-desc":
+          return (b.uniqueid || "").localeCompare(a.uniqueid || "");
+        case "chain-asc":
+          return (a.chainname || "").localeCompare(b.chainname || "");
+        case "chain-desc":
+          return (b.chainname || "").localeCompare(a.chainname || "");
+        case "status-success":
+          return a.status === "success" ? -1 : b.status === "success" ? 1 : 0;
+        case "status-error":
+          return a.status === "error" ? -1 : b.status === "error" ? 1 : 0;
         default:
-          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+          return 0;
       }
     });
+
+    return sorted;
+  }, [automationLogs, searchTerm, chainFilter, sortBy]);
 
   const exportLogs = () => {
     const logData = JSON.stringify(filteredAndSortedLogs, null, 2);
@@ -72,7 +117,7 @@ export default function LogsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `providerloop-logs-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `automation-logs-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -97,14 +142,23 @@ export default function LogsPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <History className="h-8 w-8 text-blue-600" />
+              <div className="bg-white rounded-lg p-2 shadow-sm">
+                <img src={providerloopLogo} alt="Providerloop" className="h-8 w-8" />
+              </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Processing Logs</h1>
                 <p className="text-sm text-gray-600">View and manage patient data processing history</p>
               </div>
             </div>
-            <div className="text-sm text-gray-500">
-              {filteredAndSortedLogs.length} of {automationLogs.length} logs
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-500">
+                {filteredAndSortedLogs.length} of {automationLogs.length} logs
+              </div>
+              <Link href="/">
+                <Button variant="outline" size="sm">
+                  ← Back to Main
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -115,37 +169,91 @@ export default function LogsPage() {
         {/* Filters and Controls */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center space-x-2">
-              <Filter className="h-5 w-5" />
-              <span>Filter & Sort</span>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Filter className="h-5 w-5" />
+                <span className="text-lg font-semibold">Filter & Sort Options</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                {automationLogs.length > 0 && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={exportLogs}
+                      disabled={isLoadingLogs}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Export JSON
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearLogs}
+                      disabled={clearLogsMutation.isPending}
+                    >
+                      {clearLogsMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-1" />
+                      )}
+                      Clear All
+                    </Button>
+                  </>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refetchLogs()}
+                  disabled={isFetchingLogs}
+                >
+                  {isFetchingLogs ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                  )}
+                  Refresh
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Search by Source ID */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Search Source ID
-                </label>
+            {/* Search and Filters */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              {/* Search Input */}
+              <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
-                    placeholder="Enter Source ID..."
-                    value={searchSourceId}
-                    onChange={(e) => setSearchSourceId(e.target.value)}
+                    placeholder="Search by Source ID or Chain name..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
                   />
                 </div>
               </div>
 
-              {/* Filter by Chain */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Filter by Chain
-                </label>
-                <Select value={filterChain} onValueChange={setFilterChain}>
+              {/* Date Range Filter */}
+              <div className="sm:w-40">
+                <Select value={dateRange} onValueChange={setDateRange}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select chain" />
+                    <Calendar className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Date range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1day">Last Day</SelectItem>
+                    <SelectItem value="3days">Last 3 Days</SelectItem>
+                    <SelectItem value="week">Last Week</SelectItem>
+                    <SelectItem value="all">All Time</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Chain Filter */}
+              <div className="sm:w-48">
+                <Select value={chainFilter} onValueChange={setChainFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by chain" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Chains</SelectItem>
@@ -158,49 +266,24 @@ export default function LogsPage() {
                 </Select>
               </div>
 
-              {/* Sort By */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sort By
-                </label>
+              {/* Sort Options */}
+              <div className="sm:w-48">
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger>
+                    <ArrowUpDown className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="timestamp">Latest First</SelectItem>
-                    <SelectItem value="sourceId">Source ID</SelectItem>
-                    <SelectItem value="chain">Chain Name</SelectItem>
-                    <SelectItem value="status">Status</SelectItem>
+                    <SelectItem value="timestamp-desc">Newest First</SelectItem>
+                    <SelectItem value="timestamp-asc">Oldest First</SelectItem>
+                    <SelectItem value="sourceid-asc">Source ID A-Z</SelectItem>
+                    <SelectItem value="sourceid-desc">Source ID Z-A</SelectItem>
+                    <SelectItem value="chain-asc">Chain Name A-Z</SelectItem>
+                    <SelectItem value="chain-desc">Chain Name Z-A</SelectItem>
+                    <SelectItem value="status-success">Success First</SelectItem>
+                    <SelectItem value="status-error">Errors First</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* Actions */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Actions
-                </label>
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={exportLogs}
-                    disabled={filteredAndSortedLogs.length === 0}
-                  >
-                    <Download className="h-4 w-4 mr-1" />
-                    Export
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearLogs}
-                    disabled={automationLogs.length === 0}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Clear
-                  </Button>
-                </div>
               </div>
             </div>
           </CardContent>
@@ -209,33 +292,52 @@ export default function LogsPage() {
         {/* Logs Display */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Processing History</CardTitle>
-            <CardDescription>
-              Patient data processing logs with detailed information
-            </CardDescription>
+            <div className="flex items-center space-x-2">
+              <History className="h-5 w-5" />
+              <span className="text-lg font-semibold">Automation Logs</span>
+            </div>
           </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="text-center py-8 text-gray-500">
-                Loading logs...
+          <CardContent className="p-6">
+            {isLoadingLogs ? (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                  <span className="text-sm text-gray-600">Loading automation logs...</span>
+                </div>
+                {/* Loading skeletons */}
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Skeleton className="h-6 w-16" />
+                        <Skeleton className="h-6 w-32" />
+                      </div>
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                ))}
               </div>
             ) : filteredAndSortedLogs.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                {automationLogs.length === 0 ? (
-                  <>
-                    <p>No processing logs yet</p>
-                    <p className="text-sm">Process patient data to see logs here</p>
-                  </>
-                ) : (
-                  <>
-                    <p>No logs match your filters</p>
-                    <p className="text-sm">Try adjusting your search criteria</p>
-                  </>
-                )}
+              <div className="text-center py-12 text-gray-500">
+                <History className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                <h3 className="text-lg font-medium mb-2">No automation logs found</h3>
+                <p className="text-sm">
+                  {searchTerm || chainFilter || dateRange !== 'all' ? 
+                    "Try adjusting your search criteria or filters" : 
+                    "Trigger an automation to see logs here"
+                  }
+                </p>
               </div>
             ) : (
-              <div className="space-y-4 max-h-[600px] overflow-y-auto">
+              <div className="space-y-4">
+                {isFetchingLogs && (
+                  <div className="flex items-center justify-center py-2 bg-blue-50 rounded-lg border border-blue-200">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500 mr-2" />
+                    <span className="text-sm text-blue-700">Refreshing logs...</span>
+                  </div>
+                )}
                 {filteredAndSortedLogs.map((log: any) => (
                   <div
                     key={log.id}
@@ -245,77 +347,65 @@ export default function LogsPage() {
                         : 'border-red-200 bg-red-50'
                     }`}
                   >
-                    {/* Log Header */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
                           log.status === 'success' 
                             ? 'bg-green-100 text-green-800' 
                             : 'bg-red-100 text-red-800'
                         }`}>
                           {log.status}
                         </span>
-                        <span className="text-sm font-medium text-gray-900">{log.chainname}</span>
-                        <span className="text-xs text-gray-500">
-                          {new Date(log.timestamp).toLocaleString()}
-                        </span>
+                        <span className="text-sm font-medium">{log.chainname}</span>
                       </div>
-                      {log.uniqueid && (
-                        <div className="text-xs text-gray-500 font-mono">
-                          ID: {log.uniqueid}
-                        </div>
-                      )}
+                      <span className="text-xs text-gray-500">{new Date(log.timestamp).toLocaleString()}</span>
                     </div>
-
-                    {/* Patient/Source Info */}
-                    {log.requestdata?.source_id && (
-                      <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <User className="h-4 w-4 text-gray-600" />
-                          <span className="text-sm font-medium text-gray-700">Patient Information</span>
+                    
+                    {log.uniqueid && (
+                      <div className="mb-2 text-xs text-gray-600">
+                        <span className="font-medium">Chain Run ID:</span>
+                        <div className="inline-block ml-2">
+                          <a 
+                            href={`https://www.appsheet.com/start/343e3df2-59c2-4b6b-a72b-db7bdd0ad1b8#appName=Chain%20Management&tableName=Chain%20Runs&viewName=Chain%20Run%20View&row=${encodeURIComponent(log.uniqueid)}`}
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline font-mono"
+                          >
+                            {log.uniqueid}
+                          </a>
                         </div>
-                        <div className="text-sm text-gray-600">
-                          <span className="font-medium">Source ID:</span> {log.requestdata.source_id}
-                        </div>
-                        {log.requestdata.first_step_user_input && (
-                          <div className="text-sm text-gray-600 mt-1">
-                            <span className="font-medium">Notes:</span> {log.requestdata.first_step_user_input}
-                          </div>
-                        )}
                       </div>
                     )}
                     
-                    {/* Webhook/Agent Response */}
                     {(log.webhookpayload || log.emailresponse) && (
-                      <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Link2 className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm font-medium text-blue-800">
-                            {log.webhookpayload ? 'API Response Received' : 'Email Response Received'}
-                          </span>
+                      <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                        <div className="text-xs font-medium text-blue-800 mb-1">
+                          {log.webhookpayload ? 'API Response Received:' : 'Email Response Received:'}
                         </div>
-                        <div className="text-xs text-blue-700 mb-2">
+                        <div className="text-xs text-blue-700">
                           {log.webhookpayload ? 
                             (log.agentreceivedat ? new Date(log.agentreceivedat).toLocaleString() : 'Recent') :
                             (log.emailreceivedat ? new Date(log.emailreceivedat).toLocaleString() : 'Recent')
                           }
                         </div>
-                        <details className="text-xs">
-                          <summary className="cursor-pointer text-blue-600 hover:text-blue-800 mb-2">
+                        <details className="text-xs mt-1">
+                          <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
                             {log.webhookpayload ? 'View API Payload' : 'View Email Content'}
                           </summary>
-                          <div className="mt-2 p-3 bg-white rounded border text-sm max-h-64 overflow-y-auto">
+                          <div className="mt-2 p-3 bg-white rounded border text-sm max-h-96 overflow-y-auto">
                             {log.webhookpayload ? (
-                              <div className="space-y-2">
+                              <div className="space-y-3">
                                 {Object.entries(log.webhookpayload).map(([key, value]) => (
-                                  <div key={key} className="border-b border-gray-100 pb-1">
-                                    <div className="font-medium text-blue-800 text-xs">{key}:</div>
-                                    <div className="text-blue-600 text-xs whitespace-pre-wrap break-words">
+                                  <div key={key} className="border-b border-gray-100 pb-2">
+                                    <div className="font-medium text-blue-800 text-xs mb-1">{key}:</div>
+                                    <div className="text-blue-600 text-xs whitespace-pre-wrap break-words bg-blue-25 p-2 rounded">
                                       {String(value)}
                                     </div>
                                   </div>
                                 ))}
                               </div>
+                            ) : log.emailresponse?.includes('<') ? (
+                              <div dangerouslySetInnerHTML={{ __html: log.emailresponse }} />
                             ) : (
                               <div className="whitespace-pre-wrap font-mono text-xs">
                                 {log.emailresponse}
@@ -326,21 +416,22 @@ export default function LogsPage() {
                       </div>
                     )}
 
-                    {/* Agent Response */}
                     {log.agentresponse && (
-                      <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Calendar className="h-4 w-4 text-green-600" />
-                          <span className="text-sm font-medium text-green-800">Agent Response</span>
+                      <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded">
+                        <div className="text-xs font-medium text-green-800 mb-1">
+                          Agent Response Received:
                         </div>
-                        <div className="text-xs text-green-700 mb-2">
-                          From: {log.agentname || 'Unknown Agent'} • {new Date(log.agentreceivedat).toLocaleString()}
+                        <div className="text-xs text-green-700 mb-1">
+                          From: {log.agentname || 'Unknown Agent'}
                         </div>
-                        <details className="text-xs">
-                          <summary className="cursor-pointer text-green-600 hover:text-green-800 mb-2">
+                        <div className="text-xs text-green-700">
+                          {new Date(log.agentreceivedat).toLocaleString()}
+                        </div>
+                        <details className="text-xs mt-1">
+                          <summary className="cursor-pointer text-green-600 hover:text-green-800">
                             View Agent Response
                           </summary>
-                          <div className="mt-2 p-3 bg-white rounded border text-sm max-h-64 overflow-y-auto">
+                          <div className="mt-2 p-3 bg-white rounded border text-sm max-h-96 overflow-y-auto">
                             <div className="whitespace-pre-wrap font-mono text-xs">
                               {log.agentresponse}
                             </div>
@@ -349,12 +440,11 @@ export default function LogsPage() {
                       </div>
                     )}
                     
-                    {/* API Response */}
                     <details className="text-xs">
                       <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
-                        View Raw API Response
+                        View API Response
                       </summary>
-                      <div className="mt-2 p-3 bg-gray-100 rounded font-mono text-xs overflow-x-auto max-h-32 overflow-y-auto">
+                      <div className="mt-2 p-2 bg-gray-100 rounded font-mono text-xs overflow-x-auto">
                         {log.response}
                       </div>
                     </details>
