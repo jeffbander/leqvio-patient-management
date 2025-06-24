@@ -104,12 +104,18 @@ export class DatabaseStorage implements IStorage {
     return newLog;
   }
 
-  async getAutomationLogs(limit: number = 50): Promise<any[]> {
-    const logs = await db
+  async getAutomationLogs(limit: number = 50, dateFilter: Date | null = null): Promise<any[]> {
+    let query = db
       .select()
       .from(automationLogs)
-      .orderBy(desc(automationLogs.createdAt))
-      .limit(limit);
+      .orderBy(desc(automationLogs.createdAt));
+    
+    // Apply date filter if provided
+    if (dateFilter) {
+      query = query.where(gte(automationLogs.createdAt, dateFilter));
+    }
+    
+    const logs = await query.limit(limit);
     
     // Transform field names to match frontend expectations
     return logs.map(log => ({
@@ -120,6 +126,7 @@ export class DatabaseStorage implements IStorage {
       status: log.status,
       timestamp: log.timestamp,
       uniqueid: log.uniqueId,
+      requestdata: log.requestData,
       emailresponse: log.emailResponse,
       emailreceivedat: log.emailReceivedAt,
       agentresponse: log.agentResponse,

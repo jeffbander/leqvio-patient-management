@@ -357,9 +357,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
-      console.log(`[API-LOGS-GET-${requestId}] Fetching logs with limit: ${limit}`);
+      const dateRange = req.query.dateRange as string;
+      let dateFilter = null;
       
-      const logs = await storage.getAutomationLogs(limit);
+      // Calculate date filter based on range
+      if (dateRange && dateRange !== 'all') {
+        const now = new Date();
+        const filterDate = new Date();
+        
+        switch (dateRange) {
+          case '1day':
+            filterDate.setDate(now.getDate() - 1);
+            break;
+          case '3days':
+            filterDate.setDate(now.getDate() - 3);
+            break;
+          case 'week':
+            filterDate.setDate(now.getDate() - 7);
+            break;
+          default:
+            filterDate.setDate(now.getDate() - 3); // Default to 3 days
+        }
+        dateFilter = filterDate;
+      }
+      
+      console.log(`[API-LOGS-GET-${requestId}] Fetching logs with limit: ${limit}, dateFilter: ${dateFilter ? dateFilter.toISOString() : 'null'}`);
+      
+      const logs = await storage.getAutomationLogs(limit, dateFilter);
       console.log(`[API-LOGS-GET-${requestId}] Retrieved ${logs.length} logs`);
       console.log(`[API-LOGS-GET-${requestId}] Log IDs: [${logs.map(log => log.id).join(', ')}]`);
       console.log(`[API-LOGS-GET-${requestId}] UniqueIds: [${logs.map(log => log.uniqueid || 'null').join(', ')}]`);
