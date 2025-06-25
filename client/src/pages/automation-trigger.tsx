@@ -90,10 +90,24 @@ export default function AutomationTrigger() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(chainData)
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || errorData.error || 'Failed to create chain');
+      }
+      
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/custom-chains'] });
+    },
+    onError: (error) => {
+      console.error('Chain creation error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add custom chain",
+        variant: "destructive",
+      });
     }
   });
 
@@ -146,25 +160,39 @@ export default function AutomationTrigger() {
   };
 
   const addCustomChain = async () => {
-    if (newChainName.trim() && !customChains.some((chain: any) => chain.name === newChainName.trim())) {
-      try {
-        await createChainMutation.mutateAsync({ name: newChainName.trim() });
-        form.setValue("chain_to_run", newChainName.trim());
-        setNewChainName("");
-        setShowCustomInput(false);
-        toast({
-          title: "Chain Added",
-          description: `"${newChainName.trim()}" has been added to your chains`,
-          variant: "default",
-        });
-      } catch (error) {
-        console.error('Error adding chain:', error);
-        toast({
-          title: "Error",
-          description: "Failed to add custom chain",
-          variant: "destructive",
-        });
-      }
+    const trimmedName = newChainName.trim();
+    
+    if (!trimmedName) {
+      toast({
+        title: "Invalid Input",
+        description: "Chain name cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (customChains.some((chain: any) => chain.name === trimmedName)) {
+      toast({
+        title: "Chain Already Exists",
+        description: `"${trimmedName}" already exists in your chains`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      await createChainMutation.mutateAsync({ name: trimmedName });
+      form.setValue("chain_to_run", trimmedName);
+      setNewChainName("");
+      setShowCustomInput(false);
+      toast({
+        title: "Chain Added",
+        description: `"${trimmedName}" has been added to your chains`,
+        variant: "default",
+      });
+    } catch (error) {
+      // Error handling is now in the mutation's onError
+      console.error('Error adding chain:', error);
     }
   };
 
@@ -527,9 +555,13 @@ export default function AutomationTrigger() {
                         type="button"
                         onClick={addCustomChain}
                         size="sm"
-                        disabled={!newChainName.trim()}
+                        disabled={!newChainName.trim() || createChainMutation.isPending}
                       >
-                        Add
+                        {createChainMutation.isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          "Add"
+                        )}
                       </Button>
                       <Button
                         type="button"

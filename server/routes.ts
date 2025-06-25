@@ -411,13 +411,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Custom chains endpoints
   app.post("/api/custom-chains", async (req, res) => {
+    const requestId = Date.now();
+    console.log(`[CUSTOM-CHAIN-CREATE-${requestId}] === CREATING CUSTOM CHAIN ===`);
+    console.log(`[CUSTOM-CHAIN-CREATE-${requestId}] Request body:`, JSON.stringify(req.body, null, 2));
+    
     try {
       const validatedData = insertCustomChainSchema.parse(req.body);
+      console.log(`[CUSTOM-CHAIN-CREATE-${requestId}] Validation successful:`, validatedData);
+      
       const chain = await storage.createCustomChain(validatedData);
+      console.log(`[CUSTOM-CHAIN-CREATE-${requestId}] Chain created successfully:`, chain);
+      
       res.json(chain);
     } catch (error) {
-      res.status(400).json({ error: "Invalid chain data" });
+      console.error(`[CUSTOM-CHAIN-CREATE-${requestId}] ERROR:`, error);
+      console.error(`[CUSTOM-CHAIN-CREATE-${requestId}] Error details:`, (error as any).message);
+      res.status(400).json({ 
+        error: "Invalid chain data", 
+        details: (error as any).message,
+        timestamp: new Date().toISOString(),
+        requestId 
+      });
     }
+    console.log(`[CUSTOM-CHAIN-CREATE-${requestId}] === END CREATE CHAIN ===`);
+  }
   });
 
   app.get("/api/custom-chains", async (req, res) => {
