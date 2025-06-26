@@ -366,7 +366,7 @@ export default function LogsPage() {
                         <span className="font-medium">Chain Run ID:</span>
                         <div className="inline-block ml-2">
                           <a 
-                            href={`https://www.appsheet.com/start/343e3df2-59c2-4b6b-a72b-db7bdd0ad1b8#appName=Chain%20Management&tableName=Chain%20Runs&viewName=Chain%20Run%20View&row=${encodeURIComponent(log.uniqueid)}`}
+                            href={`https://aigents-realtime-logs-943506065004.us-central1.run.app/?chainRunId=${log.uniqueid}`}
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-800 underline font-mono"
