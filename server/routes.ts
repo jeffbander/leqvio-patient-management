@@ -434,7 +434,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
     console.log(`[CUSTOM-CHAIN-CREATE-${requestId}] === END CREATE CHAIN ===`);
-  }
   });
 
   app.get("/api/custom-chains", async (req, res) => {
