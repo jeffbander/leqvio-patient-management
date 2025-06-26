@@ -4,6 +4,7 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-06-26**: Added "external app" to human_readable_record field in all automation triggers
 - **2025-06-26**: Updated Chain Run ID links to point to AIGENTS realtime logs dashboard: `https://aigents-realtime-logs-943506065004.us-central1.run.app/?chainRunId={chainRunId}`
 - **2025-06-26**: Fixed syntax error in server/routes.ts preventing application startup
 - **2025-06-23**: Added date range filtering (Last Day, 3 Days, Week, All) with default to 3 days

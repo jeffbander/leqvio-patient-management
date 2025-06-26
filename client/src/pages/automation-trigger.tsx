@@ -263,8 +263,9 @@ export default function AutomationTrigger() {
 
     // Prepare the request body
     const requestBody = {
-      run_email: "Mills.reed@mswheart.com", // Fixed email for patient data processing
+      run_email: "jeffrey.Bander@providerloop.com", // Fixed email for patient data processing
       chain_to_run: data.chain_to_run,
+      human_readable_record: "external app",
       ...(data.source_id && { source_id: data.source_id }),
       ...(data.first_step_user_input && { first_step_user_input: data.first_step_user_input }),
       starting_variables,
@@ -327,7 +328,7 @@ export default function AutomationTrigger() {
         addLogEntry(requestBody, errorResponse, 'error');
       } catch {
         // If requestBody is not available, create a minimal log entry
-        addLogEntry({ run_email: "Mills.reed@mswheart.com", chain_to_run: data.chain_to_run }, errorResponse, 'error');
+        addLogEntry({ run_email: "jeffrey.Bander@providerloop.com", chain_to_run: data.chain_to_run }, errorResponse, 'error');
       }
       toast({
         title: "Network Error",
