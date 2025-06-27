@@ -3,6 +3,7 @@ import {
   loginTokens,
   automationLogs, 
   customChains,
+  apiAnalytics,
   type User, 
   type InsertUser,
   type LoginToken,
@@ -10,7 +11,9 @@ import {
   type AutomationLog,
   type InsertAutomationLog,
   type CustomChain,
-  type InsertCustomChain
+  type InsertCustomChain,
+  type ApiAnalytics,
+  type InsertApiAnalytics
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gte } from "drizzle-orm";
@@ -39,6 +42,14 @@ export interface IStorage {
   createCustomChain(chain: InsertCustomChain): Promise<CustomChain>;
   getCustomChains(): Promise<CustomChain[]>;
   deleteCustomChain(id: number): Promise<void>;
+  
+  // API Analytics
+  createApiAnalytics(analytics: InsertApiAnalytics): Promise<ApiAnalytics>;
+  getApiAnalytics(timeRange?: string): Promise<ApiAnalytics[]>;
+  getAnalyticsSummary(timeRange?: string): Promise<any>;
+  getEndpointStats(timeRange?: string): Promise<any[]>;
+  getResponseTimeStats(timeRange?: string): Promise<any>;
+  getErrorRateStats(timeRange?: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -249,6 +260,143 @@ export class DatabaseStorage implements IStorage {
     
     // Default to unknown for other chain types
     return 'unknown';
+  }
+
+  // API Analytics methods
+  async createApiAnalytics(analytics: InsertApiAnalytics): Promise<ApiAnalytics> {
+    const [newAnalytics] = await db.insert(apiAnalytics).values(analytics).returning();
+    return newAnalytics;
+  }
+
+  async getApiAnalytics(timeRange: string = '24h'): Promise<ApiAnalytics[]> {
+    let dateFilter: Date | null = null;
+    
+    switch (timeRange) {
+      case '1h':
+        dateFilter = new Date(Date.now() - 60 * 60 * 1000);
+        break;
+      case '24h':
+        dateFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        dateFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        dateFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    }
+
+    const query = db.select().from(apiAnalytics).orderBy(desc(apiAnalytics.timestamp));
+    
+    if (dateFilter) {
+      return query.where(gte(apiAnalytics.timestamp, dateFilter));
+    }
+    
+    return query;
+  }
+
+  async getAnalyticsSummary(timeRange: string = '24h'): Promise<any> {
+    const analytics = await this.getApiAnalytics(timeRange);
+    
+    const totalRequests = analytics.length;
+    const successfulRequests = analytics.filter(a => a.statusCode >= 200 && a.statusCode < 400).length;
+    const errorRequests = analytics.filter(a => a.statusCode >= 400).length;
+    const avgResponseTime = analytics.length > 0 
+      ? Math.round(analytics.reduce((sum, a) => sum + a.responseTime, 0) / analytics.length)
+      : 0;
+    
+    const uniqueEndpoints = [...new Set(analytics.map(a => a.endpoint))];
+    const chainTypes = [...new Set(analytics.filter(a => a.chainType).map(a => a.chainType))];
+    
+    return {
+      totalRequests,
+      successfulRequests,
+      errorRequests,
+      successRate: totalRequests > 0 ? Math.round((successfulRequests / totalRequests) * 100) : 0,
+      avgResponseTime,
+      uniqueEndpoints: uniqueEndpoints.length,
+      chainTypes: chainTypes.length,
+      timeRange
+    };
+  }
+
+  async getEndpointStats(timeRange: string = '24h'): Promise<any[]> {
+    const analytics = await this.getApiAnalytics(timeRange);
+    
+    const endpointStats = analytics.reduce((acc, curr) => {
+      const key = `${curr.method} ${curr.endpoint}`;
+      if (!acc[key]) {
+        acc[key] = {
+          endpoint: curr.endpoint,
+          method: curr.method,
+          requests: 0,
+          successfulRequests: 0,
+          errorRequests: 0,
+          totalResponseTime: 0,
+          avgResponseTime: 0
+        };
+      }
+      
+      acc[key].requests++;
+      if (curr.statusCode >= 200 && curr.statusCode < 400) {
+        acc[key].successfulRequests++;
+      } else {
+        acc[key].errorRequests++;
+      }
+      acc[key].totalResponseTime += curr.responseTime;
+      acc[key].avgResponseTime = Math.round(acc[key].totalResponseTime / acc[key].requests);
+      
+      return acc;
+    }, {} as Record<string, any>);
+    
+    return Object.values(endpointStats).sort((a, b) => b.requests - a.requests);
+  }
+
+  async getResponseTimeStats(timeRange: string = '24h'): Promise<any> {
+    const analytics = await this.getApiAnalytics(timeRange);
+    
+    if (analytics.length === 0) {
+      return { min: 0, max: 0, avg: 0, p95: 0, p99: 0 };
+    }
+    
+    const responseTimes = analytics.map(a => a.responseTime).sort((a, b) => a - b);
+    const min = responseTimes[0];
+    const max = responseTimes[responseTimes.length - 1];
+    const avg = Math.round(responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length);
+    const p95Index = Math.floor(responseTimes.length * 0.95);
+    const p99Index = Math.floor(responseTimes.length * 0.99);
+    const p95 = responseTimes[p95Index] || max;
+    const p99 = responseTimes[p99Index] || max;
+    
+    return { min, max, avg, p95, p99 };
+  }
+
+  async getErrorRateStats(timeRange: string = '24h'): Promise<any> {
+    const analytics = await this.getApiAnalytics(timeRange);
+    
+    const errorsByStatus = analytics
+      .filter(a => a.statusCode >= 400)
+      .reduce((acc, curr) => {
+        const status = curr.statusCode.toString();
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+    
+    const errorsByEndpoint = analytics
+      .filter(a => a.statusCode >= 400)
+      .reduce((acc, curr) => {
+        const endpoint = curr.endpoint;
+        acc[endpoint] = (acc[endpoint] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+    
+    return {
+      errorsByStatus,
+      errorsByEndpoint,
+      totalErrors: Object.values(errorsByStatus).reduce((sum, count) => sum + count, 0)
+    };
   }
 }
 

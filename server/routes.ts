@@ -6,7 +6,49 @@ import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
 
+// Analytics middleware to track API requests
+const analyticsMiddleware = (req: any, res: any, next: any) => {
+  const startTime = Date.now();
+  const originalSend = res.send;
+  let responseSize = 0;
+
+  res.send = function(data: any) {
+    const responseTime = Date.now() - startTime;
+    responseSize = data ? Buffer.byteLength(data, 'utf8') : 0;
+    
+    // Only track API endpoints and webhooks, skip static files
+    if (req.path.startsWith('/api') || req.path.startsWith('/webhook')) {
+      const analyticsData = {
+        endpoint: req.path,
+        method: req.method,
+        statusCode: res.statusCode,
+        responseTime,
+        userAgent: req.get('User-Agent') || '',
+        ipAddress: req.ip || req.connection.remoteAddress || '',
+        chainType: req.body?.chain_to_run || req.body?.chainType || null,
+        uniqueId: req.body?.uniqueId || req.body?.["Chain Run ID"] || null,
+        requestSize: req.get('Content-Length') ? parseInt(req.get('Content-Length')) : 0,
+        responseSize,
+        errorMessage: res.statusCode >= 400 ? (data?.error || data?.message || 'Unknown error') : null,
+        requestData: req.method !== 'GET' ? req.body : null
+      };
+
+      // Store analytics asynchronously
+      storage.createApiAnalytics(analyticsData).catch(error => {
+        console.error('Failed to store analytics:', error);
+      });
+    }
+
+    return originalSend.call(this, data);
+  };
+
+  next();
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Apply analytics middleware to all routes
+  app.use(analyticsMiddleware);
+  
   // Store debug requests in memory for retrieval (moved to top)
   let debugRequests: any[] = [];
 
@@ -574,7 +616,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // (Duplicate agent webhook route removed - using the one registered at the top)
+  // API Analytics endpoints
+  app.get("/api/analytics/summary", async (req, res) => {
+    try {
+      const timeRange = req.query.timeRange as string || '24h';
+      const summary = await storage.getAnalyticsSummary(timeRange);
+      res.json(summary);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch analytics summary" });
+    }
+  });
+
+  app.get("/api/analytics/endpoints", async (req, res) => {
+    try {
+      const timeRange = req.query.timeRange as string || '24h';
+      const endpointStats = await storage.getEndpointStats(timeRange);
+      res.json(endpointStats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch endpoint stats" });
+    }
+  });
+
+  app.get("/api/analytics/response-times", async (req, res) => {
+    try {
+      const timeRange = req.query.timeRange as string || '24h';
+      const responseTimeStats = await storage.getResponseTimeStats(timeRange);
+      res.json(responseTimeStats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch response time stats" });
+    }
+  });
+
+  app.get("/api/analytics/errors", async (req, res) => {
+    try {
+      const timeRange = req.query.timeRange as string || '24h';
+      const errorStats = await storage.getErrorRateStats(timeRange);
+      res.json(errorStats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch error stats" });
+    }
+  });
+
+  app.get("/api/analytics/raw", async (req, res) => {
+    try {
+      const timeRange = req.query.timeRange as string || '24h';
+      const analytics = await storage.getApiAnalytics(timeRange);
+      res.json(analytics);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch raw analytics" });
+    }
+  });
 
   const httpServer = createServer(app);
 
