@@ -5,6 +5,7 @@ import session from "express-session";
 import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
+import { extractPatientDataFromImage } from "./openai-service";
 
 // Analytics middleware to track API requests
 const analyticsMiddleware = (req: any, res: any, next: any) => {
@@ -664,6 +665,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(analytics);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch raw analytics" });
+    }
+  });
+
+  // Photo text extraction endpoint
+  app.post("/api/extract-patient-data", upload.single('photo'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No photo file uploaded" });
+      }
+
+      // Convert uploaded file to base64
+      const base64Image = req.file.buffer.toString('base64');
+      
+      // Extract patient data using OpenAI Vision
+      const extractedData = await extractPatientDataFromImage(base64Image);
+      
+      console.log("Photo text extraction completed:", {
+        fileName: req.file.originalname,
+        confidence: extractedData.confidence,
+        extractedFields: {
+          firstName: extractedData.firstName,
+          lastName: extractedData.lastName,
+          dateOfBirth: extractedData.dateOfBirth
+        }
+      });
+      
+      res.json(extractedData);
+    } catch (error) {
+      console.error("Photo extraction error:", error);
+      res.status(500).json({ 
+        error: "Failed to extract patient data from photo",
+        details: (error as Error).message 
+      });
     }
   });
 
