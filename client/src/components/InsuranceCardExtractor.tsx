@@ -55,6 +55,7 @@ interface ExtractedInsuranceData {
   metadata: {
     image_side: "front" | "back" | "unknown";
     capture_timestamp: string;
+    processing_time_ms?: number;
     ocr_confidence: {
       member_id: number;
       subscriber_name: number;
@@ -62,6 +63,21 @@ interface ExtractedInsuranceData {
     };
     raw_text: string;
     unmapped_lines: string[];
+  };
+  cardscan_feedback?: {
+    cardscan_confidence: number;
+    openai_confidence: number;
+    field_comparison: {
+      matches: number;
+      total_fields: number;
+      accuracy_percentage: number;
+    };
+    validation_status: 'valid' | 'warning' | 'error';
+    recommendations: string[];
+    processing_time_comparison: {
+      cardscan_ms: number;
+      openai_ms: number;
+    };
   };
 }
 
@@ -144,10 +160,14 @@ export default function InsuranceCardExtractor({ onDataExtracted, isDisabled = f
       setExtractedData(data);
       onDataExtracted?.(data);
 
+      const cardScanStatus = data.cardscan_feedback ? 
+        ` • CardScan.ai: ${data.cardscan_feedback.field_comparison.accuracy_percentage}% match` : 
+        ` • CardScan.ai: unavailable`;
+
       toast({
         title: "Insurance Card Processed",
-        description: `Extracted data from ${data.metadata.image_side} side with ${Math.round(data.metadata.ocr_confidence.overall * 100)}% confidence`,
-        variant: "default",
+        description: `Extracted data from ${data.metadata.image_side} side with ${Math.round(data.metadata.ocr_confidence.overall * 100)}% confidence${cardScanStatus}`,
+        variant: data.cardscan_feedback?.validation_status === 'error' ? "destructive" : "default",
       });
 
     } catch (error) {
@@ -283,12 +303,15 @@ export default function InsuranceCardExtractor({ onDataExtracted, isDisabled = f
             </div>
 
             <Tabs defaultValue="member" className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="member">Member</TabsTrigger>
                 <TabsTrigger value="insurer">Insurer</TabsTrigger>
                 <TabsTrigger value="pharmacy">Pharmacy</TabsTrigger>
                 <TabsTrigger value="costs">Costs</TabsTrigger>
                 <TabsTrigger value="contact">Contact</TabsTrigger>
+                {extractedData.cardscan_feedback && (
+                  <TabsTrigger value="validation">CardScan.ai</TabsTrigger>
+                )}
                 <TabsTrigger value="raw">Raw Data</TabsTrigger>
               </TabsList>
 
@@ -404,6 +427,81 @@ export default function InsuranceCardExtractor({ onDataExtracted, isDisabled = f
                   )}
                 </div>
               </TabsContent>
+
+              {extractedData.cardscan_feedback && (
+                <TabsContent value="validation" className="space-y-4">
+                  {/* Validation Status */}
+                  <div className={`p-4 rounded-lg border-l-4 ${
+                    extractedData.cardscan_feedback.validation_status === 'valid' ? 'bg-green-50 border-green-500' :
+                    extractedData.cardscan_feedback.validation_status === 'warning' ? 'bg-yellow-50 border-yellow-500' :
+                    'bg-red-50 border-red-500'
+                  }`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-gray-900">CardScan.ai Validation</h4>
+                      <Badge variant={
+                        extractedData.cardscan_feedback.validation_status === 'valid' ? 'default' :
+                        extractedData.cardscan_feedback.validation_status === 'warning' ? 'secondary' :
+                        'destructive'
+                      }>
+                        {extractedData.cardscan_feedback.validation_status.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-700">
+                      Field accuracy: {extractedData.cardscan_feedback.field_comparison.accuracy_percentage}% 
+                      ({extractedData.cardscan_feedback.field_comparison.matches}/{extractedData.cardscan_feedback.field_comparison.total_fields} fields match)
+                    </p>
+                  </div>
+
+                  {/* Confidence Comparison */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">OpenAI Vision</label>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {Math.round(extractedData.cardscan_feedback.openai_confidence * 100)}%
+                      </p>
+                      <p className="text-xs text-gray-600">Confidence</p>
+                    </div>
+                    <div className="p-4 bg-green-50 rounded-lg">
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">CardScan.ai</label>
+                      <p className="text-2xl font-bold text-green-600">
+                        {Math.round(extractedData.cardscan_feedback.cardscan_confidence * 100)}%
+                      </p>
+                      <p className="text-xs text-gray-600">Confidence</p>
+                    </div>
+                  </div>
+
+                  {/* Processing Time Comparison */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-purple-50 rounded-lg">
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">OpenAI Processing</label>
+                      <p className="text-lg font-bold text-purple-600">
+                        {extractedData.cardscan_feedback.processing_time_comparison.openai_ms}ms
+                      </p>
+                    </div>
+                    <div className="p-4 bg-orange-50 rounded-lg">
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">CardScan Processing</label>
+                      <p className="text-lg font-bold text-orange-600">
+                        {extractedData.cardscan_feedback.processing_time_comparison.cardscan_ms}ms
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Recommendations */}
+                  {extractedData.cardscan_feedback.recommendations.length > 0 && (
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Recommendations</label>
+                      <ul className="mt-2 space-y-1">
+                        {extractedData.cardscan_feedback.recommendations.map((rec, index) => (
+                          <li key={index} className="text-sm text-gray-700 flex items-start">
+                            <span className="text-blue-500 mr-2">•</span>
+                            {rec}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </TabsContent>
+              )}
 
               <TabsContent value="raw" className="space-y-3">
                 <div className="p-4 bg-gray-50 rounded-lg">

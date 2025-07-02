@@ -57,6 +57,7 @@ export interface ExtractedInsuranceData {
   metadata: {
     image_side: "front" | "back" | "unknown";
     capture_timestamp: string;
+    processing_time_ms?: number;
     ocr_confidence: {
       member_id: number;
       subscriber_name: number;

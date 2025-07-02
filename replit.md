@@ -4,6 +4,9 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-02**: Integrated CardScan.ai service for real-time insurance card validation and feedback
+- **2025-07-02**: Added CardScan.ai comparison tab showing field accuracy, confidence scores, and processing time analysis
+- **2025-07-02**: Enhanced insurance extraction with dual-service validation (OpenAI Vision + CardScan.ai)
 - **2025-07-02**: Implemented comprehensive insurance card data extraction using OpenAI Vision
 - **2025-07-02**: Added InsuranceCardExtractor component with tabbed interface for all insurance data fields
 - **2025-07-02**: Created dedicated insurance extraction page (/insurance) with JSON export functionality
@@ -71,7 +74,16 @@ Patient data processing application for Providerloop Chains, designed to streaml
 - PostgreSQL database with Drizzle ORM
 - Webhook endpoints for bidirectional communication
 - OpenAI Vision API integration for OCR and data extraction
+- CardScan.ai integration for real-time insurance card validation
 - Real-time API analytics tracking
+
+### CardScan.ai Integration
+- **Service**: Industry-standard insurance card processing and validation
+- **Features**: Real-time field comparison, confidence scoring, processing time analysis
+- **Validation**: Member ID format validation, BIN/PCN verification, overall quality assessment
+- **Comparison**: Side-by-side analysis of OpenAI Vision vs CardScan.ai extraction results
+- **Feedback**: Automated recommendations for image quality and data accuracy
+- **Endpoint**: `/api/cardscan/health` for service status monitoring
 
 ### Webhook System
 - **Email Webhook**: `/api/email-webhook` - Receives AppSheet automation responses via email
