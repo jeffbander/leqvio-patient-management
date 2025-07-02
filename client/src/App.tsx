@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import AutomationTrigger from "@/pages/automation-trigger";
 import LogsPage from "@/pages/logs";
 import AnalyticsPage from "@/pages/analytics";
+import InsuranceExtractionPage from "@/pages/insurance-extraction";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -14,6 +15,7 @@ function Router() {
       <Route path="/" component={AutomationTrigger} />
       <Route path="/logs" component={LogsPage} />
       <Route path="/analytics" component={AnalyticsPage} />
+      <Route path="/insurance" component={InsuranceExtractionPage} />
       <Route component={NotFound} />
     </Switch>
   );

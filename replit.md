@@ -4,6 +4,11 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-02**: Implemented comprehensive insurance card data extraction using OpenAI Vision
+- **2025-07-02**: Added InsuranceCardExtractor component with tabbed interface for all insurance data fields
+- **2025-07-02**: Created dedicated insurance extraction page (/insurance) with JSON export functionality
+- **2025-07-02**: Enhanced photo text extraction to support both patient data and full insurance card analysis
+- **2025-07-02**: Added real-time API usage analytics system with dashboard, charts, and automated request tracking
 - **2025-06-26**: Created complete AIGENTS integration package for reuse in other Replit apps
 - **2025-06-26**: Generated deployment templates and integration guides
 - **2025-06-26**: Changed initiating email from Mills.reed@mswheart.com to jeffrey.Bander@providerloop.com
@@ -58,11 +63,15 @@ Patient data processing application for Providerloop Chains, designed to streaml
 - TanStack React Query for data management
 - Wouter for routing
 - Direct access (no authentication required)
+- Photo upload and text extraction with OpenAI Vision
+- Comprehensive insurance card data extraction interface
 
 ### Backend
 - Express.js server
 - PostgreSQL database with Drizzle ORM
 - Webhook endpoints for bidirectional communication
+- OpenAI Vision API integration for OCR and data extraction
+- Real-time API analytics tracking
 
 ### Webhook System
 - **Email Webhook**: `/api/email-webhook` - Receives AppSheet automation responses via email

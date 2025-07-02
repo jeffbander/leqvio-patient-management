@@ -5,7 +5,7 @@ import session from "express-session";
 import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
-import { extractPatientDataFromImage } from "./openai-service";
+import { extractPatientDataFromImage, extractInsuranceCardData } from "./openai-service";
 
 // Analytics middleware to track API requests
 const analyticsMiddleware = (req: any, res: any, next: any) => {
@@ -668,7 +668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Photo text extraction endpoint
+  // Photo text extraction endpoint - Basic patient data
   app.post("/api/extract-patient-data", upload.single('photo'), async (req, res) => {
     try {
       if (!req.file) {
@@ -696,6 +696,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Photo extraction error:", error);
       res.status(500).json({ 
         error: "Failed to extract patient data from photo",
+        details: (error as Error).message 
+      });
+    }
+  });
+
+  // Insurance card comprehensive extraction endpoint
+  app.post("/api/extract-insurance-card", upload.single('photo'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No insurance card image uploaded" });
+      }
+
+      // Convert uploaded file to base64
+      const base64Image = req.file.buffer.toString('base64');
+      
+      // Extract comprehensive insurance card data using OpenAI Vision
+      const extractedData = await extractInsuranceCardData(base64Image);
+      
+      console.log("Insurance card extraction completed:", {
+        fileName: req.file.originalname,
+        imageSide: extractedData.metadata.image_side,
+        overallConfidence: extractedData.metadata.ocr_confidence.overall,
+        extractedFields: {
+          insurerName: extractedData.insurer.name,
+          memberId: extractedData.member.member_id,
+          subscriberName: extractedData.member.subscriber_name,
+          groupNumber: extractedData.insurer.group_number,
+          pharmacyBin: extractedData.pharmacy.bin,
+          customerServicePhone: extractedData.contact.customer_service_phone
+        }
+      });
+      
+      res.json(extractedData);
+    } catch (error) {
+      console.error("Insurance card extraction error:", error);
+      res.status(500).json({ 
+        error: "Failed to extract insurance card data",
         details: (error as Error).message 
       });
     }

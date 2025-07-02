@@ -1,0 +1,157 @@
+When you scan or photograph a patient’s insurance card, you’ll want to extract everything you need to 1) identify the member and their plan, 2) look up eligibility/benefits in downstream systems, and 3) record any copay/coverage details printed on the card itself. Here’s a suggested breakdown of fields to OCR and normalize:
+
+1. Insurer & Plan Identification
+Payer Name (e.g. “Blue Cross Blue Shield”)
+
+Payer ID (numeric code used by clearinghouses)
+
+Plan Name (e.g. “BCBS PPO Gold”)
+
+Plan Type (HMO / PPO / EPO / POS)
+
+Group Number (employer-sponsored group ID)
+
+Plan Effective Date (if printed)
+
+Plan Termination Date (if printed)
+
+2. Member (Subscriber) Details
+Member ID (aka Policy Number)
+
+Subscriber Name (exactly as printed)
+
+Dependent Name & Relationship (if shown separately)
+
+Date of Birth (subscriber’s DOB, if present)
+
+Member Tier (e.g. Primary, Child, Spouse)
+
+3. Pharmacy (Rx) Routing
+BIN (Bank Identification Number)
+
+PCN (Processor Control Number)
+
+Rx Group (sometimes same as “Group Number” or a separate field)
+
+Rx ID (member’s prescription ID)
+
+Pharmacy Help Line (phone number)
+
+4. Contact & Support Info
+Customer Service Phone (for eligibility inquiries)
+
+Dental / Vision Help Line (if separate)
+
+Website / Portal URL
+
+Mailing Address (payer’s claims address)
+
+5. Cost-Share Details (when printed)
+PCP Copay (e.g. $20)
+
+Specialist Copay (e.g. $40)
+
+Emergency Room Copay (e.g. $100)
+
+Deductible & OOP Max (if shown)
+
+Note: many cards simply refer you to “see plan documents” for most cost-share details; capture whatever is present.
+
+6. Card Security & Metadata
+Card Number (if separate from Member ID)
+
+Barcode / QR Data (raw string or decoded payload)
+
+Magnetic-Stripe Track Data (if swiped)
+
+Front/Back Indicator (flag which side)
+
+Image Capture Timestamp
+
+OCR Confidence Scores (per field)
+
+7. “Catch-all” Fields
+Full-Card Raw Text (store the entire OCR output for audit)
+
+Unmapped Text Lines (for future schema updates)
+
+Card Image Reference (link or GUID to stored image)
+
+Putting it into a JSON schema
+json
+Copy
+Edit
+{
+  "insurer": {
+    "name": "...",
+    "payer_id": "...",
+    "plan_name": "...",
+    "plan_type": "...",
+    "group_number": "...",
+    "effective_date": "...",
+    "termination_date": "..."
+  },
+  "member": {
+    "member_id": "...",
+    "subscriber_name": "...",
+    "dependent": {
+      "name": "...",
+      "relationship": "..."
+    },
+    "dob": "..."
+  },
+  "pharmacy": {
+    "bin": "...",
+    "pcn": "...",
+    "rx_group": "...",
+    "rx_id": "...",
+    "pharmacy_phone": "..."
+  },
+  "contact": {
+    "customer_service_phone": "...",
+    "website_url": "...",
+    "mailing_address": "..."
+  },
+  "cost_share": {
+    "pcp_copay": "...",
+    "specialist_copay": "...",
+    "er_copay": "...",
+    "deductible": "...",
+    "oop_max": "..."
+  },
+  "security": {
+    "card_number": "...",
+    "barcode_data": "...",
+    "magstripe_data": "..."
+  },
+  "metadata": {
+    "image_side": "front",
+    "capture_timestamp": "...",
+    "ocr_confidence": {
+      "member_id": 0.98,
+      "...": "..."
+    },
+    "raw_text": "...",
+    "unmapped_lines": ["...", "..."]
+  }
+}
+Tips for Reliable Extraction
+Template Matching + Layout Analysis: insurer logos tend to cluster the fields in the same spots.
+
+Field-specific OCR models: e.g. a numeric-only model for IDs, date-only for DOB/effective dates.
+
+Validation against lookup tables: confirm BIN/PCN values against known payer lists.
+
+Fallback “free-text”: capture everything in a raw_text field so you can iterate as new card designs appear.
+
+With these fields in place, you’ll have all the identifiers needed to drive eligibility API calls, plus any on-card benefit hints to show immediately to your end users.
+
+
+
+
+
+
+
+
+
+Ask ChatGPT

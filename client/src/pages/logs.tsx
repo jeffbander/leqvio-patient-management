@@ -154,6 +154,11 @@ export default function LogsPage() {
               <div className="text-sm text-gray-500">
                 {filteredAndSortedLogs.length} of {automationLogs.length} logs
               </div>
+              <Link href="/insurance">
+                <Button variant="outline" size="sm">
+                  💳 Insurance Cards
+                </Button>
+              </Link>
               <Link href="/analytics">
                 <Button variant="outline" size="sm">
                   📊 Analytics

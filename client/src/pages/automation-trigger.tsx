@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { User, Calendar, Link as LinkIcon, Plus, Trash2, Send, RotateCcw, Loader2, History, TrendingUp } from "lucide-react";
+import { User, Calendar, Link as LinkIcon, Plus, Trash2, Send, RotateCcw, Loader2, History, TrendingUp, CreditCard } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -395,6 +395,16 @@ export default function AutomationTrigger() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <Link href="/insurance">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  <span>Insurance Cards</span>
+                </Button>
+              </Link>
               <Link href="/analytics">
                 <Button
                   variant="outline"
