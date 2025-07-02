@@ -355,6 +355,30 @@ export default function AutomationTrigger() {
     }
   };
 
+  // Handle photo data extraction
+  const handlePhotoDataExtracted = (extractedData: any) => {
+    if (extractedData.firstName) {
+      form.setValue("first_name", extractedData.firstName);
+    }
+    if (extractedData.lastName) {
+      form.setValue("last_name", extractedData.lastName);
+    }
+    if (extractedData.dateOfBirth) {
+      // Convert MM/DD/YYYY to YYYY-MM-DD format for the date input
+      const dateParts = extractedData.dateOfBirth.split('/');
+      if (dateParts.length === 3) {
+        const formattedDate = `${dateParts[2]}-${dateParts[0].padStart(2, '0')}-${dateParts[1].padStart(2, '0')}`;
+        form.setValue("dob", formattedDate);
+      }
+    }
+    
+    toast({
+      title: "Patient Data Filled",
+      description: `Automatically filled form with extracted data (${Math.round(extractedData.confidence * 100)}% confidence)`,
+      variant: "default",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -414,6 +438,14 @@ export default function AutomationTrigger() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
+            {/* Photo Upload Section */}
+            <div className="mb-6">
+              <PhotoUpload 
+                onDataExtracted={handlePhotoDataExtracted}
+                isDisabled={isLoading}
+              />
+            </div>
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Patient Info Grid */}
