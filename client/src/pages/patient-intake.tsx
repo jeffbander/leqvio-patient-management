@@ -8,11 +8,13 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
+import providerloopLogo from "/generated-icon.png";
 
 interface PatientData {
   firstName: string;
   lastName: string;
-  dateOfBirth: string;
+  dateOfBirth: string; // MM/DD/YYYY format
   confidence: number;
   rawText?: string;
 }
@@ -89,16 +91,7 @@ interface InsuranceData {
   };
 }
 
-interface IntakeStep {
-  id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'processing' | 'completed' | 'error';
-  required: boolean;
-}
-
 export default function PatientIntake() {
-  const [currentStep, setCurrentStep] = useState(0);
   const [idCardImage, setIdCardImage] = useState<string | null>(null);
   const [insuranceFrontImage, setInsuranceFrontImage] = useState<string | null>(null);
   const [insuranceBackImage, setInsuranceBackImage] = useState<string | null>(null);
@@ -110,45 +103,14 @@ export default function PatientIntake() {
   const [processingStep, setProcessingStep] = useState<string>("");
   const { toast } = useToast();
 
-  const steps: IntakeStep[] = [
-    {
-      id: 'id-card',
-      title: 'ID Card Scan',
-      description: 'Take a photo of patient ID card or driver\'s license',
-      status: idCardImage ? (patientData ? 'completed' : 'processing') : 'pending',
-      required: true
-    },
-    {
-      id: 'insurance-front',
-      title: 'Insurance Card Front',
-      description: 'Take a photo of the front of the insurance card',
-      status: insuranceFrontImage ? (insuranceFrontData ? 'completed' : 'processing') : 'pending',
-      required: true
-    },
-    {
-      id: 'insurance-back',
-      title: 'Insurance Card Back',
-      description: 'Take a photo of the back of the insurance card',
-      status: insuranceBackImage ? (insuranceBackData ? 'completed' : 'processing') : 'pending',
-      required: false
-    },
-    {
-      id: 'review',
-      title: 'Review & Submit',
-      description: 'Review extracted data and submit for processing',
-      status: (patientData && insuranceFrontData) ? 'pending' : 'pending',
-      required: true
-    }
-  ];
-
   const generateSourceId = useCallback((firstName: string, lastName: string, dob: string) => {
-    const cleanFirst = firstName.replace(/\s+/g, '_').toUpperCase();
-    const cleanLast = lastName.replace(/\s+/g, '_').toUpperCase();
+    const cleanLast = lastName.replace(/\s+/g, '_');
+    const cleanFirst = firstName.replace(/\s+/g, '_');
     const [month, day, year] = dob.split('/');
     return `${cleanLast}_${cleanFirst}__${month}_${day}_${year}`;
   }, []);
 
-  const handleFileUpload = useCallback(async (file: File, type: 'id' | 'insurance-front' | 'insurance-back') => {
+  const handleFileUpload = useCallback((file: File, type: 'id' | 'insurance-front' | 'insurance-back') => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
@@ -161,93 +123,123 @@ export default function PatientIntake() {
     }
 
     const reader = new FileReader();
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
       const base64 = e.target?.result as string;
-      const base64Data = base64.split(',')[1];
 
-      // Store the image preview
+      // Store the image preview only, don't process yet
       if (type === 'id') {
         setIdCardImage(base64);
+        toast({
+          title: "ID Card Uploaded",
+          description: "Image saved. Take all photos then click 'Process All Cards'.",
+        });
       } else if (type === 'insurance-front') {
         setInsuranceFrontImage(base64);
+        toast({
+          title: "Insurance Front Uploaded", 
+          description: "Image saved. Take all photos then click 'Process All Cards'.",
+        });
       } else if (type === 'insurance-back') {
         setInsuranceBackImage(base64);
-      }
-
-      setIsProcessing(true);
-      setProcessingStep(`Processing ${type === 'id' ? 'ID card' : type === 'insurance-front' ? 'insurance front' : 'insurance back'}...`);
-
-      try {
-        if (type === 'id') {
-          // Extract patient data from ID card
-          const response = await fetch('/api/extract-patient-data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64Data }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`Patient data extraction failed: ${response.status}`);
-          }
-
-          const data: PatientData = await response.json();
-          setPatientData(data);
-
-          // Generate source ID
-          if (data.firstName && data.lastName && data.dateOfBirth) {
-            const generatedSourceId = generateSourceId(data.firstName, data.lastName, data.dateOfBirth);
-            setSourceId(generatedSourceId);
-          }
-
-          toast({
-            title: "ID Card Processed",
-            description: `Extracted patient data with ${Math.round(data.confidence * 100)}% confidence`,
-          });
-
-        } else {
-          // Extract insurance data
-          const response = await fetch('/api/extract-insurance-card', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64Data }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`Insurance card extraction failed: ${response.status}`);
-          }
-
-          const data: InsuranceData = await response.json();
-          
-          if (type === 'insurance-front') {
-            setInsuranceFrontData(data);
-            toast({
-              title: "Insurance Front Processed",
-              description: `Extracted data from front side with ${Math.round(data.metadata.ocr_confidence.overall * 100)}% confidence`,
-            });
-          } else {
-            setInsuranceBackData(data);
-            toast({
-              title: "Insurance Back Processed",
-              description: `Extracted data from back side with ${Math.round(data.metadata.ocr_confidence.overall * 100)}% confidence`,
-            });
-          }
-        }
-
-      } catch (error) {
-        console.error(`${type} extraction error:`, error);
         toast({
-          title: "Extraction Failed",
-          description: error instanceof Error ? error.message : `Failed to extract ${type} data`,
-          variant: "destructive",
+          title: "Insurance Back Uploaded",
+          description: "Image saved. Take all photos then click 'Process All Cards'.",
         });
-      } finally {
-        setIsProcessing(false);
-        setProcessingStep("");
       }
     };
 
     reader.readAsDataURL(file);
-  }, [generateSourceId, toast]);
+  }, [toast]);
+
+  const processAllCards = useCallback(async () => {
+    if (!idCardImage || !insuranceFrontImage) {
+      toast({
+        title: "Missing Images",
+        description: "Please upload at least ID card and insurance front images.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    try {
+      // Process ID card first
+      setProcessingStep("Processing ID card...");
+      const idBase64Data = idCardImage.split(',')[1];
+      
+      const idResponse = await fetch('/api/extract-patient-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: idBase64Data }),
+      });
+
+      if (!idResponse.ok) {
+        throw new Error(`ID card extraction failed: ${idResponse.status}`);
+      }
+
+      const patientData: PatientData = await idResponse.json();
+      setPatientData(patientData);
+
+      // Generate source ID
+      if (patientData.firstName && patientData.lastName && patientData.dateOfBirth) {
+        const generatedSourceId = generateSourceId(patientData.firstName, patientData.lastName, patientData.dateOfBirth);
+        setSourceId(generatedSourceId);
+      }
+
+      // Process insurance front
+      setProcessingStep("Processing insurance front...");
+      const frontBase64Data = insuranceFrontImage.split(',')[1];
+      
+      const frontResponse = await fetch('/api/extract-insurance-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: frontBase64Data }),
+      });
+
+      if (!frontResponse.ok) {
+        throw new Error(`Insurance front extraction failed: ${frontResponse.status}`);
+      }
+
+      const frontData: InsuranceData = await frontResponse.json();
+      setInsuranceFrontData(frontData);
+
+      // Process insurance back if available
+      if (insuranceBackImage) {
+        setProcessingStep("Processing insurance back...");
+        const backBase64Data = insuranceBackImage.split(',')[1];
+        
+        const backResponse = await fetch('/api/extract-insurance-card', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: backBase64Data }),
+        });
+
+        if (!backResponse.ok) {
+          throw new Error(`Insurance back extraction failed: ${backResponse.status}`);
+        }
+
+        const backData: InsuranceData = await backResponse.json();
+        setInsuranceBackData(backData);
+      }
+
+      toast({
+        title: "All Cards Processed Successfully",
+        description: `Extracted data from ${insuranceBackImage ? '3' : '2'} cards with high confidence`,
+      });
+
+    } catch (error) {
+      console.error('Card processing error:', error);
+      toast({
+        title: "Processing Failed",
+        description: error instanceof Error ? error.message : "Failed to process cards",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+      setProcessingStep("");
+    }
+  }, [idCardImage, insuranceFrontImage, insuranceBackImage, generateSourceId, toast]);
 
   const FileUploadArea = ({ type, title, subtitle, image }: {
     type: 'id' | 'insurance-front' | 'insurance-back';
@@ -261,14 +253,14 @@ export default function PatientIntake() {
       if (files.length > 0) {
         handleFileUpload(files[0], type);
       }
-    }, [type, handleFileUpload]);
+    }, [type]);
 
     const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (files && files.length > 0) {
         handleFileUpload(files[0], type);
       }
-    }, [type, handleFileUpload]);
+    }, [type]);
 
     return (
       <div
@@ -342,7 +334,7 @@ export default function PatientIntake() {
     if (!patientData || !insuranceFrontData) {
       toast({
         title: "Missing Data",
-        description: "Please complete ID card and insurance card front scanning first",
+        description: "Please process all cards first",
         variant: "destructive",
       });
       return;
@@ -352,18 +344,11 @@ export default function PatientIntake() {
     setProcessingStep("Submitting patient intake...");
 
     try {
-      // Here you would typically submit all the data to your backend
-      // For now, we'll just show a success message
-      
       toast({
         title: "Patient Intake Complete",
-        description: `Source ID: ${sourceId} - All data extracted and ready for processing`,
+        description: `Source ID: ${sourceId}`,
       });
-
-      // Navigate to next step or reset form
-      
     } catch (error) {
-      console.error('Submission error:', error);
       toast({
         title: "Submission Failed",
         description: error instanceof Error ? error.message : "Failed to submit patient intake",
@@ -376,45 +361,40 @@ export default function PatientIntake() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Patient Intake System</h1>
-        <p className="text-gray-600">Complete patient registration with ID and insurance card scanning</p>
-      </div>
-
-      {/* Progress Steps */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          {steps.map((step, index) => (
-            <div key={step.id} className="flex items-center">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
-                step.status === 'completed' ? 'bg-green-600 text-white' :
-                step.status === 'processing' ? 'bg-blue-600 text-white' :
-                step.status === 'error' ? 'bg-red-600 text-white' :
-                'bg-gray-200 text-gray-600'
-              }`}>
-                {step.status === 'completed' ? <Check className="h-5 w-5" /> : index + 1}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Link href="/">
+                <Button variant="outline" size="sm">
+                  ← Back
+                </Button>
+              </Link>
+              <div className="bg-white rounded-lg p-2 shadow-sm">
+                <img src={providerloopLogo} alt="Providerloop" className="h-8 w-8" />
               </div>
-              <div className="ml-3 text-sm">
-                <p className="font-medium text-gray-900">{step.title}</p>
-                <p className="text-gray-600">{step.description}</p>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Patient Intake System</h1>
+                <p className="text-sm text-gray-600">Complete patient registration workflow</p>
               </div>
-              {index < steps.length - 1 && (
-                <ChevronRight className="h-5 w-5 text-gray-400 mx-4" />
-              )}
             </div>
-          ))}
-        </div>
-        
-        {isProcessing && (
-          <div className="space-y-2">
-            <Progress value={33} className="w-full" />
-            <p className="text-sm text-gray-600">{processingStep}</p>
           </div>
-        )}
-      </div>
+        </div>
+      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Processing Status */}
+        {isProcessing && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {processingStep || "Processing..."}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* ID Card Upload */}
         <Card>
           <CardHeader>
@@ -645,52 +625,86 @@ export default function PatientIntake() {
             )}
           </CardContent>
         </Card>
-      </div>
 
-      {/* Submit Section */}
-      {patientData && insuranceFrontData && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Step 4: Review & Submit
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
-              <Check className="h-4 w-4" />
-              <AlertDescription>
-                All required data has been extracted successfully. Review the information above and click submit to complete patient intake.
-              </AlertDescription>
-            </Alert>
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Ready to submit patient intake</p>
-                <p className="text-sm text-gray-600">Source ID: <code className="bg-gray-100 px-2 py-1 rounded">{sourceId}</code></p>
+        {/* Process All Cards Button */}
+        {(idCardImage || insuranceFrontImage || insuranceBackImage) && !patientData && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center">
+                <Button 
+                  onClick={processAllCards}
+                  disabled={isProcessing || (!idCardImage || !insuranceFrontImage)}
+                  size="lg"
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2" />
+                      Processing Cards...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="h-4 w-4 mr-2" />
+                      Process All Cards
+                    </>
+                  )}
+                </Button>
+                <p className="text-sm text-gray-600 mt-2">
+                  {!idCardImage || !insuranceFrontImage 
+                    ? "Please upload at least ID card and insurance front images"
+                    : "Click to extract data from all uploaded cards"
+                  }
+                </p>
               </div>
-              <Button 
-                onClick={handleSubmit}
-                disabled={isProcessing}
-                size="lg"
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {isProcessing ? (
-                  <>
-                    <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    Complete Intake
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Submit Section */}
+        {patientData && insuranceFrontData && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Step 4: Review & Submit
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
+                <Check className="h-4 w-4" />
+                <AlertDescription>
+                  All required data has been extracted successfully. Review the information above and click submit to complete patient intake.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Ready to submit patient intake</p>
+                  <p className="text-sm text-gray-600">Source ID: <code className="bg-gray-100 px-2 py-1 rounded">{sourceId}</code></p>
+                </div>
+                <Button 
+                  onClick={handleSubmit}
+                  disabled={isProcessing}
+                  size="lg"
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Complete Intake
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
