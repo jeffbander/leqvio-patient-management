@@ -292,18 +292,44 @@ export default function PatientIntake() {
             <div className="space-y-2">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,capture=camera"
                 onChange={handleFileSelect}
                 className="hidden"
                 id={`file-${type}`}
                 disabled={isProcessing}
+                capture="environment"
               />
-              <label htmlFor={`file-${type}`}>
-                <Button variant="outline" className="cursor-pointer" disabled={isProcessing}>
+              <div className="flex gap-2 justify-center">
+                <Button 
+                  variant="outline" 
+                  className="cursor-pointer" 
+                  disabled={isProcessing}
+                  onClick={() => document.getElementById(`file-${type}`)?.click()}
+                  type="button"
+                >
                   <Upload className="h-4 w-4 mr-2" />
                   Select Image
                 </Button>
-              </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id={`camera-${type}`}
+                  disabled={isProcessing}
+                  capture="environment"
+                />
+                <Button 
+                  variant="outline" 
+                  className="cursor-pointer" 
+                  disabled={isProcessing}
+                  onClick={() => document.getElementById(`camera-${type}`)?.click()}
+                  type="button"
+                >
+                  <Camera className="h-4 w-4 mr-2" />
+                  Take Photo
+                </Button>
+              </div>
               <p className="text-xs text-gray-500">Or drag and drop an image here</p>
             </div>
           </>
