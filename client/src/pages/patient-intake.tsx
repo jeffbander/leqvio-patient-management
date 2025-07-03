@@ -11,6 +11,17 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import providerloopLogo from "/generated-icon.png";
 
+// Utility function to convert base64 to Blob
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: mimeType });
+}
+
 interface PatientData {
   firstName: string;
   lastName: string;
@@ -166,16 +177,22 @@ export default function PatientIntake() {
     try {
       // Process ID card first
       setProcessingStep("Processing ID card...");
+      
+      // Convert base64 image to Blob for form data
       const idBase64Data = idCardImage.split(',')[1];
+      const idBlob = base64ToBlob(idBase64Data, 'image/jpeg');
+      
+      const idFormData = new FormData();
+      idFormData.append('photo', idBlob, 'id-card.jpg');
       
       const idResponse = await fetch('/api/extract-patient-data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: idBase64Data }),
+        body: idFormData,
       });
 
       if (!idResponse.ok) {
-        throw new Error(`ID card extraction failed: ${idResponse.status}`);
+        const errorData = await idResponse.json();
+        throw new Error(`ID card extraction failed: ${errorData.error || idResponse.status}`);
       }
 
       const patientData: PatientData = await idResponse.json();
@@ -189,16 +206,21 @@ export default function PatientIntake() {
 
       // Process insurance front
       setProcessingStep("Processing insurance front...");
+      
       const frontBase64Data = insuranceFrontImage.split(',')[1];
+      const frontBlob = base64ToBlob(frontBase64Data, 'image/jpeg');
+      
+      const frontFormData = new FormData();
+      frontFormData.append('photo', frontBlob, 'insurance-front.jpg');
       
       const frontResponse = await fetch('/api/extract-insurance-card', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: frontBase64Data }),
+        body: frontFormData,
       });
 
       if (!frontResponse.ok) {
-        throw new Error(`Insurance front extraction failed: ${frontResponse.status}`);
+        const errorData = await frontResponse.json();
+        throw new Error(`Insurance front extraction failed: ${errorData.error || frontResponse.status}`);
       }
 
       const frontData: InsuranceData = await frontResponse.json();
@@ -207,16 +229,21 @@ export default function PatientIntake() {
       // Process insurance back if available
       if (insuranceBackImage) {
         setProcessingStep("Processing insurance back...");
+        
         const backBase64Data = insuranceBackImage.split(',')[1];
+        const backBlob = base64ToBlob(backBase64Data, 'image/jpeg');
+        
+        const backFormData = new FormData();
+        backFormData.append('photo', backBlob, 'insurance-back.jpg');
         
         const backResponse = await fetch('/api/extract-insurance-card', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: backBase64Data }),
+          body: backFormData,
         });
 
         if (!backResponse.ok) {
-          throw new Error(`Insurance back extraction failed: ${backResponse.status}`);
+          const errorData = await backResponse.json();
+          throw new Error(`Insurance back extraction failed: ${errorData.error || backResponse.status}`);
         }
 
         const backData: InsuranceData = await backResponse.json();
