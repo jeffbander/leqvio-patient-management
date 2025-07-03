@@ -368,17 +368,79 @@ export default function PatientIntake() {
     }
 
     setIsProcessing(true);
-    setProcessingStep("Submitting patient intake...");
+    setProcessingStep("Submitting patient intake to automation system...");
 
     try {
-      toast({
-        title: "Patient Intake Complete",
-        description: `Source ID: ${sourceId}`,
+      // Prepare comprehensive patient data for automation chain
+      const automationData = {
+        chain_to_run: "Patient Registration Chain", // Default chain
+        source_id: sourceId,
+        run_email: "jeffrey.Bander@providerloop.com", // As specified in requirements
+        first_step_input: "Patient intake processed via external app",
+        human_readable_record: `Patient intake processed via external app - ${patientData.firstName} ${patientData.lastName}`,
+        starting_variables: {
+          // Patient Identity
+          first_name: patientData.firstName,
+          last_name: patientData.lastName,
+          date_of_birth: patientData.dateOfBirth,
+          source_id: sourceId,
+          
+          // Insurance Information
+          insurance_company: insuranceFrontData.insurer.name,
+          member_id: insuranceFrontData.member.member_id,
+          group_number: insuranceFrontData.insurer.group_number,
+          subscriber_name: insuranceFrontData.member.subscriber_name,
+          plan_name: insuranceFrontData.insurer.plan_name,
+          
+          // Contact Information
+          customer_service_phone: insuranceFrontData.contact.customer_service_phone,
+          
+          // Cost Share Information
+          pcp_copay: insuranceFrontData.cost_share.pcp_copay,
+          specialist_copay: insuranceFrontData.cost_share.specialist_copay,
+          er_copay: insuranceFrontData.cost_share.er_copay,
+          deductible: insuranceFrontData.cost_share.deductible,
+          
+          // Pharmacy Information
+          rx_bin: insuranceFrontData.pharmacy.bin,
+          rx_pcn: insuranceFrontData.pharmacy.pcn,
+          rx_group: insuranceFrontData.pharmacy.rx_group,
+          
+          // Metadata
+          extraction_confidence: Math.round(patientData.confidence * 100),
+          insurance_confidence: Math.round(insuranceFrontData.metadata.ocr_confidence.overall * 100),
+          has_insurance_back: !!insuranceBackData,
+          processed_via: "external_app",
+          intake_timestamp: new Date().toISOString()
+        }
+      };
+
+      // Submit to automation system
+      const response = await fetch('/api/trigger-automation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(automationData),
       });
+
+      if (!response.ok) {
+        throw new Error(`Automation trigger failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      toast({
+        title: "Patient Intake Complete ✓",
+        description: `Submitted to automation system. Chain Run ID: ${result.chainRunId || 'Generated'}`,
+      });
+
+      // Optionally redirect to logs or automation page
+      // navigate('/automation-trigger');
+      
     } catch (error) {
+      console.error('Patient intake submission error:', error);
       toast({
         title: "Submission Failed",
-        description: error instanceof Error ? error.message : "Failed to submit patient intake",
+        description: error instanceof Error ? error.message : "Failed to submit patient intake to automation system",
         variant: "destructive",
       });
     } finally {
