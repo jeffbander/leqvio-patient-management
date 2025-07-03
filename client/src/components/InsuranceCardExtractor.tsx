@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { Upload, Camera, FileImage, Loader2, Check, AlertCircle, CreditCard, Phone, Building, User, Calendar, DollarSign } from "lucide-react";
+import { Upload, Camera, FileImage, Loader2, Check, AlertCircle, CreditCard, Phone, Building, User, Calendar, DollarSign, Shield, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -406,6 +406,86 @@ export default function InsuranceCardExtractor({ onDataExtracted, isDisabled = f
                   <p className="text-sm text-gray-600">{extractedData.insurer.plan_name}</p>
                 </div>
               )}
+            </div>
+
+            {/* Quick Preview - Key Extracted Fields */}
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border-2 border-green-200">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="h-5 w-5 text-green-600" />
+                <h3 className="font-bold text-gray-900">KEY EXTRACTED FIELDS - PREVIEW TEST</h3>
+                <Badge variant="outline" className="ml-auto bg-green-100 text-green-800">
+                  PREVIEW MODE
+                </Badge>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div className="bg-white p-3 rounded-lg border-2 border-green-200 shadow-sm">
+                  <label className="text-xs font-bold text-green-700 uppercase tracking-wide block mb-1">MEMBER ID</label>
+                  <p className="font-mono text-lg font-bold text-gray-900">{extractedData.member.member_id || "❌ NOT FOUND"}</p>
+                </div>
+                <div className="bg-white p-3 rounded-lg border-2 border-blue-200 shadow-sm">
+                  <label className="text-xs font-bold text-blue-700 uppercase tracking-wide block mb-1">SUBSCRIBER NAME</label>
+                  <p className="text-lg font-bold text-gray-900">{extractedData.member.subscriber_name || "❌ NOT FOUND"}</p>
+                </div>
+                <div className="bg-white p-3 rounded-lg border-2 border-purple-200 shadow-sm">
+                  <label className="text-xs font-bold text-purple-700 uppercase tracking-wide block mb-1">GROUP NUMBER</label>
+                  <p className="font-mono text-lg font-bold text-gray-900">{extractedData.insurer.group_number || "❌ NOT FOUND"}</p>
+                </div>
+                <div className="bg-white p-3 rounded-lg border-2 border-orange-200 shadow-sm">
+                  <label className="text-xs font-bold text-orange-700 uppercase tracking-wide block mb-1">INSURANCE COMPANY</label>
+                  <p className="text-lg font-bold text-gray-900">{extractedData.insurer.name || "❌ NOT FOUND"}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-3">
+                <div className="bg-white p-3 rounded-lg border-2 border-yellow-200 shadow-sm">
+                  <label className="text-xs font-bold text-yellow-700 uppercase tracking-wide block mb-1">PHARMACY BIN</label>
+                  <p className="font-mono text-lg font-bold text-gray-900">{extractedData.pharmacy.bin || "❌ NOT FOUND"}</p>
+                </div>
+                <div className="bg-white p-3 rounded-lg border-2 border-red-200 shadow-sm">
+                  <label className="text-xs font-bold text-red-700 uppercase tracking-wide block mb-1">PHARMACY PCN</label>
+                  <p className="font-mono text-lg font-bold text-gray-900">{extractedData.pharmacy.pcn || "❌ NOT FOUND"}</p>
+                </div>
+                <div className="bg-white p-3 rounded-lg border-2 border-indigo-200 shadow-sm">
+                  <label className="text-xs font-bold text-indigo-700 uppercase tracking-wide block mb-1">DATE OF BIRTH</label>
+                  <p className="text-lg font-bold text-gray-900">{extractedData.member.dob || "❌ NOT FOUND"}</p>
+                </div>
+                <div className="bg-white p-3 rounded-lg border-2 border-pink-200 shadow-sm">
+                  <label className="text-xs font-bold text-pink-700 uppercase tracking-wide block mb-1">PLAN NAME</label>
+                  <p className="text-lg font-bold text-gray-900">{extractedData.insurer.plan_name || "❌ NOT FOUND"}</p>
+                </div>
+              </div>
+
+              {/* Verify Eligibility Button */}
+              <div className="mt-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant={extractedData.cardscan_feedback?.validation_status === 'valid' ? 'default' : 
+                               extractedData.cardscan_feedback?.validation_status === 'warning' ? 'secondary' : 'destructive'}>
+                    {extractedData.cardscan_feedback ? 
+                      `CardScan.ai: ${extractedData.cardscan_feedback.field_comparison.accuracy_percentage}% Match` : 
+                      'OpenAI Vision Only'
+                    }
+                  </Badge>
+                </div>
+                <Button 
+                  onClick={handleEligibilityCheck}
+                  disabled={isVerifyingEligibility || !extractedData.member.member_id}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                  size="lg"
+                >
+                  {isVerifyingEligibility ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                      Verifying Eligibility...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="h-4 w-4" />
+                      VERIFY ELIGIBILITY
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
 
             <Tabs defaultValue="member" className="w-full">
