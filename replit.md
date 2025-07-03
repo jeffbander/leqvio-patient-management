@@ -4,6 +4,10 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-03**: Created comprehensive Patient Intake System (/intake) with ID card and insurance card scanning workflow
+- **2025-07-03**: Added multi-step intake process: ID card scan → insurance front → insurance back → review & submit
+- **2025-07-03**: Integrated automatic source ID generation from extracted ID card data
+- **2025-07-03**: Enhanced insurance card extraction with prominent preview display showing key extracted fields
 - **2025-07-03**: Implemented CardScan.ai eligibility verification endpoint for real-time coverage and benefits validation
 - **2025-07-03**: Added comprehensive eligibility verification interface with coverage status, copays, deductibles, and benefits display
 - **2025-07-03**: Enhanced InsuranceCardExtractor with "Verify Eligibility" button and detailed results visualization
@@ -71,6 +75,11 @@ Patient data processing application for Providerloop Chains, designed to streaml
 - Direct access (no authentication required)
 - Photo upload and text extraction with OpenAI Vision
 - Comprehensive insurance card data extraction interface
+- **Patient Intake System (/intake)**: Multi-step workflow for complete patient registration
+  - Step 1: ID card scanning (driver's license, state ID, passport)
+  - Step 2: Insurance card front scanning
+  - Step 3: Insurance card back scanning (optional)
+  - Step 4: Review and submit with auto-generated source ID
 
 ### Backend
 - Express.js server
