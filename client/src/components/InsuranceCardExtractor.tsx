@@ -86,12 +86,63 @@ interface InsuranceCardExtractorProps {
   isDisabled?: boolean;
 }
 
+interface EligibilityVerificationResponse {
+  eligibility_id: string;
+  status: 'active' | 'inactive' | 'pending' | 'error';
+  member: {
+    member_id: string;
+    member_name: string;
+    date_of_birth?: string;
+    relationship: string;
+  };
+  coverage: {
+    effective_date: string;
+    termination_date?: string;
+    copays: {
+      primary_care?: string;
+      specialist?: string;
+      emergency_room?: string;
+    };
+    deductible?: {
+      individual: string;
+      family?: string;
+      remaining?: string;
+    };
+    out_of_pocket_max?: {
+      individual: string;
+      family?: string;
+      remaining?: string;
+    };
+  };
+  benefits: {
+    medical_benefits: boolean;
+    prescription_benefits: boolean;
+    dental_benefits?: boolean;
+    vision_benefits?: boolean;
+  };
+  payer_info: {
+    payer_name: string;
+    payer_id: string;
+    group_number?: string;
+    plan_name?: string;
+  };
+  verification_details: {
+    verified_at: string;
+    verification_source: string;
+    confidence_score: number;
+    warnings?: string[];
+    errors?: string[];
+  };
+}
+
 export default function InsuranceCardExtractor({ onDataExtracted, isDisabled = false }: InsuranceCardExtractorProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [extractedData, setExtractedData] = useState<ExtractedInsuranceData | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isVerifyingEligibility, setIsVerifyingEligibility] = useState(false);
+  const [eligibilityResult, setEligibilityResult] = useState<EligibilityVerificationResponse | null>(null);
   const { toast } = useToast();
 
   const handleFileUpload = useCallback(async (file: File) => {
@@ -182,6 +233,61 @@ export default function InsuranceCardExtractor({ onDataExtracted, isDisabled = f
       setTimeout(() => setUploadProgress(0), 1000);
     }
   }, [onDataExtracted, toast]);
+
+  const handleEligibilityCheck = useCallback(async () => {
+    if (!extractedData) {
+      toast({
+        title: "No Card Data",
+        description: "Please extract insurance card data first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsVerifyingEligibility(true);
+    setEligibilityResult(null);
+
+    try {
+      const response = await fetch('/api/cardscan/eligibility', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          member_id: extractedData.member.member_id,
+          member_name: extractedData.member.subscriber_name,
+          dob: extractedData.member.dob,
+          group_number: extractedData.insurer.group_number,
+          bin: extractedData.pharmacy.bin,
+          pcn: extractedData.pharmacy.pcn,
+          payer_name: extractedData.insurer.name,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Eligibility verification failed: ${response.status}`);
+      }
+
+      const result: EligibilityVerificationResponse = await response.json();
+      setEligibilityResult(result);
+
+      toast({
+        title: "Eligibility Verified",
+        description: `Coverage status: ${result.status} • Confidence: ${Math.round(result.verification_details.confidence_score * 100)}%`,
+        variant: result.status === 'active' ? 'default' : 'destructive',
+      });
+
+    } catch (error) {
+      console.error('Eligibility verification error:', error);
+      toast({
+        title: "Verification Failed",
+        description: error instanceof Error ? error.message : "Unable to verify insurance eligibility",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVerifyingEligibility(false);
+    }
+  }, [extractedData, toast]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -498,6 +604,110 @@ export default function InsuranceCardExtractor({ onDataExtracted, isDisabled = f
                           </li>
                         ))}
                       </ul>
+                    </div>
+                  )}
+
+                  {/* Eligibility Verification Button */}
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-gray-900">Insurance Eligibility Verification</h4>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Verify current coverage and benefits using CardScan.ai
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={handleEligibilityCheck}
+                        disabled={isVerifyingEligibility}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isVerifyingEligibility ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Verifying...
+                          </>
+                        ) : (
+                          'Verify Eligibility'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Eligibility Results */}
+                  {eligibilityResult && (
+                    <div className="p-4 bg-white rounded-lg border">
+                      <h4 className="font-medium text-gray-900 mb-3">Eligibility Verification Results</h4>
+                      
+                      <div className={`p-3 rounded-lg mb-4 ${
+                        eligibilityResult.status === 'active' ? 'bg-green-50 border border-green-200' :
+                        eligibilityResult.status === 'inactive' ? 'bg-red-50 border border-red-200' :
+                        'bg-yellow-50 border border-yellow-200'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">Coverage Status</span>
+                          <Badge variant={
+                            eligibilityResult.status === 'active' ? 'default' :
+                            eligibilityResult.status === 'inactive' ? 'destructive' :
+                            'secondary'
+                          }>
+                            {eligibilityResult.status.toUpperCase()}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Member Information</label>
+                          <div className="mt-1 space-y-1">
+                            <p><span className="font-medium">ID:</span> {eligibilityResult.member.member_id}</p>
+                            <p><span className="font-medium">Name:</span> {eligibilityResult.member.member_name}</p>
+                            <p><span className="font-medium">Relationship:</span> {eligibilityResult.member.relationship}</p>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Coverage Dates</label>
+                          <div className="mt-1 space-y-1">
+                            <p><span className="font-medium">Effective:</span> {eligibilityResult.coverage.effective_date}</p>
+                            {eligibilityResult.coverage.termination_date && (
+                              <p><span className="font-medium">Termination:</span> {eligibilityResult.coverage.termination_date}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Copays</label>
+                          <div className="mt-1 space-y-1">
+                            {eligibilityResult.coverage.copays.primary_care && (
+                              <p><span className="font-medium">Primary:</span> {eligibilityResult.coverage.copays.primary_care}</p>
+                            )}
+                            {eligibilityResult.coverage.copays.specialist && (
+                              <p><span className="font-medium">Specialist:</span> {eligibilityResult.coverage.copays.specialist}</p>
+                            )}
+                            {eligibilityResult.coverage.copays.emergency_room && (
+                              <p><span className="font-medium">ER:</span> {eligibilityResult.coverage.copays.emergency_room}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Benefits</label>
+                          <div className="mt-1 space-y-1">
+                            <p><span className="font-medium">Medical:</span> {eligibilityResult.benefits.medical_benefits ? 'Yes' : 'No'}</p>
+                            <p><span className="font-medium">Prescription:</span> {eligibilityResult.benefits.prescription_benefits ? 'Yes' : 'No'}</p>
+                            {eligibilityResult.benefits.dental_benefits !== undefined && (
+                              <p><span className="font-medium">Dental:</span> {eligibilityResult.benefits.dental_benefits ? 'Yes' : 'No'}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t">
+                        <p className="text-xs text-gray-500">
+                          Verified at {new Date(eligibilityResult.verification_details.verified_at).toLocaleString()} • 
+                          Confidence: {Math.round(eligibilityResult.verification_details.confidence_score * 100)}%
+                        </p>
+                      </div>
                     </div>
                   )}
                 </TabsContent>

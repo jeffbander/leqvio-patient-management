@@ -788,6 +788,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CardScan.ai eligibility verification endpoint
+  app.post('/api/cardscan/eligibility', async (req: Request, res: Response) => {
+    try {
+      const { member_id, member_name, dob, group_number, bin, pcn, payer_name } = req.body;
+
+      if (!member_id || !member_name) {
+        return res.status(400).json({
+          error: 'Missing required fields: member_id and member_name are required'
+        });
+      }
+
+      const eligibilityResult = await cardScanService.verifyEligibility({
+        member_id,
+        member_name,
+        dob,
+        group_number,
+        bin,
+        pcn,
+        payer_name
+      });
+
+      res.json(eligibilityResult);
+    } catch (error) {
+      console.error('Eligibility verification error:', error);
+      res.status(500).json({
+        error: 'Failed to verify insurance eligibility',
+        message: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

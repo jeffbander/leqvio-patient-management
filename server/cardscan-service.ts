@@ -56,6 +56,55 @@ interface CardScanFeedback {
   };
 }
 
+interface EligibilityVerificationResponse {
+  eligibility_id: string;
+  status: 'active' | 'inactive' | 'pending' | 'error';
+  member: {
+    member_id: string;
+    member_name: string;
+    date_of_birth?: string;
+    relationship: string;
+  };
+  coverage: {
+    effective_date: string;
+    termination_date?: string;
+    copays: {
+      primary_care?: string;
+      specialist?: string;
+      emergency_room?: string;
+    };
+    deductible?: {
+      individual: string;
+      family?: string;
+      remaining?: string;
+    };
+    out_of_pocket_max?: {
+      individual: string;
+      family?: string;
+      remaining?: string;
+    };
+  };
+  benefits: {
+    medical_benefits: boolean;
+    prescription_benefits: boolean;
+    dental_benefits?: boolean;
+    vision_benefits?: boolean;
+  };
+  payer_info: {
+    payer_name: string;
+    payer_id: string;
+    group_number?: string;
+    plan_name?: string;
+  };
+  verification_details: {
+    verified_at: string;
+    verification_source: string;
+    confidence_score: number;
+    warnings?: string[];
+    errors?: string[];
+  };
+}
+
 class CardScanService {
   private config: CardScanConfig;
 
@@ -215,6 +264,50 @@ class CardScanService {
     }
 
     return feedback;
+  }
+
+  async verifyEligibility(cardData: {
+    member_id: string;
+    member_name: string;
+    dob?: string;
+    group_number?: string;
+    bin?: string;
+    pcn?: string;
+    payer_name?: string;
+  }): Promise<EligibilityVerificationResponse> {
+    if (!this.config.apiKey) {
+      throw new Error('CardScan.ai API key not configured');
+    }
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/v1/eligibility/verify`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.config.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          member_id: cardData.member_id,
+          member_name: cardData.member_name,
+          date_of_birth: cardData.dob,
+          group_number: cardData.group_number,
+          bin: cardData.bin,
+          pcn: cardData.pcn,
+          payer_name: cardData.payer_name,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`CardScan.ai eligibility verification failed: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('CardScan.ai eligibility verification error:', error);
+      throw error;
+    }
   }
 
   async healthCheck(): Promise<boolean> {

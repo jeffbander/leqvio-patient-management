@@ -4,6 +4,9 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-03**: Implemented CardScan.ai eligibility verification endpoint for real-time coverage and benefits validation
+- **2025-07-03**: Added comprehensive eligibility verification interface with coverage status, copays, deductibles, and benefits display
+- **2025-07-03**: Enhanced InsuranceCardExtractor with "Verify Eligibility" button and detailed results visualization
 - **2025-07-02**: Integrated CardScan.ai service for real-time insurance card validation and feedback
 - **2025-07-02**: Added CardScan.ai comparison tab showing field accuracy, confidence scores, and processing time analysis
 - **2025-07-02**: Enhanced insurance extraction with dual-service validation (OpenAI Vision + CardScan.ai)
@@ -79,11 +82,14 @@ Patient data processing application for Providerloop Chains, designed to streaml
 
 ### CardScan.ai Integration
 - **Service**: Industry-standard insurance card processing and validation
-- **Features**: Real-time field comparison, confidence scoring, processing time analysis
+- **Features**: Real-time field comparison, confidence scoring, processing time analysis, eligibility verification
 - **Validation**: Member ID format validation, BIN/PCN verification, overall quality assessment
 - **Comparison**: Side-by-side analysis of OpenAI Vision vs CardScan.ai extraction results
 - **Feedback**: Automated recommendations for image quality and data accuracy
-- **Endpoint**: `/api/cardscan/health` for service status monitoring
+- **Eligibility Verification**: Real-time coverage validation, benefits verification, copay information, deductible tracking
+- **Endpoints**: 
+  - `/api/cardscan/health` for service status monitoring
+  - `/api/cardscan/eligibility` for insurance eligibility verification
 
 ### Webhook System
 - **Email Webhook**: `/api/email-webhook` - Receives AppSheet automation responses via email
