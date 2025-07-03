@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from "react";
-import { Upload, Camera, FileImage, User, CreditCard, Shield, Check, AlertCircle, ChevronRight } from "lucide-react";
+import { Upload, Camera, FileImage, User, CreditCard, Shield, Check, AlertCircle, ChevronRight, Eye, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
 interface PatientData {
@@ -70,6 +71,21 @@ interface InsuranceData {
     };
     raw_text: string;
     unmapped_lines: string[];
+  };
+  cardscan_feedback?: {
+    cardscan_confidence: number;
+    openai_confidence: number;
+    field_comparison: {
+      matches: number;
+      total_fields: number;
+      accuracy_percentage: number;
+    };
+    validation_status: 'valid' | 'warning' | 'error';
+    recommendations: string[];
+    processing_time_comparison: {
+      cardscan_ms: number;
+      openai_ms: number;
+    };
   };
 }
 
@@ -245,14 +261,14 @@ export default function PatientIntake() {
       if (files.length > 0) {
         handleFileUpload(files[0], type);
       }
-    }, [type]);
+    }, [type, handleFileUpload]);
 
     const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (files && files.length > 0) {
         handleFileUpload(files[0], type);
       }
-    }, [type]);
+    }, [type, handleFileUpload]);
 
     return (
       <div
@@ -390,16 +406,50 @@ export default function PatientIntake() {
             />
             
             {patientData && (
-              <div className="mt-4 p-4 bg-green-50 rounded-lg">
-                <h4 className="font-medium text-green-800 mb-2">Extracted Patient Data:</h4>
-                <div className="space-y-1 text-sm">
-                  <p><span className="font-medium">Name:</span> {patientData.firstName} {patientData.lastName}</p>
-                  <p><span className="font-medium">DOB:</span> {patientData.dateOfBirth}</p>
-                  <p><span className="font-medium">Confidence:</span> {Math.round(patientData.confidence * 100)}%</p>
-                  {sourceId && (
-                    <p><span className="font-medium">Source ID:</span> <code className="bg-white px-1 py-0.5 rounded">{sourceId}</code></p>
-                  )}
-                </div>
+              <div className="mt-4">
+                <Tabs defaultValue="preview" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="preview" className="flex items-center gap-2">
+                      <Eye className="h-4 w-4" />
+                      Preview
+                    </TabsTrigger>
+                    <TabsTrigger value="api" className="flex items-center gap-2">
+                      <Code className="h-4 w-4" />
+                      API Response
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="preview" className="mt-4">
+                    <div className="p-4 bg-green-50 rounded-lg">
+                      <h4 className="font-medium text-green-800 mb-2">Extracted Patient Data:</h4>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="font-medium">Name:</span> {patientData.firstName} {patientData.lastName}</p>
+                        <p><span className="font-medium">DOB:</span> {patientData.dateOfBirth}</p>
+                        <p><span className="font-medium">Confidence:</span> {Math.round(patientData.confidence * 100)}%</p>
+                        {sourceId && (
+                          <p><span className="font-medium">Source ID:</span> <code className="bg-white px-1 py-0.5 rounded">{sourceId}</code></p>
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="api" className="mt-4">
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <h4 className="font-medium text-gray-800 mb-2">OpenAI Vision API Response</h4>
+                      <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-64">
+                        {JSON.stringify(patientData, null, 2)}
+                      </pre>
+                      {patientData.rawText && (
+                        <div className="mt-3">
+                          <h5 className="font-medium text-gray-700 mb-1">Raw OCR Text:</h5>
+                          <div className="text-xs bg-white p-3 rounded border max-h-32 overflow-auto">
+                            {patientData.rawText}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
           </CardContent>
@@ -422,14 +472,84 @@ export default function PatientIntake() {
             />
             
             {insuranceFrontData && (
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-medium text-blue-800 mb-2">Extracted Insurance Data:</h4>
-                <div className="space-y-1 text-sm">
-                  <p><span className="font-medium">Insurer:</span> {insuranceFrontData.insurer.name}</p>
-                  <p><span className="font-medium">Member ID:</span> {insuranceFrontData.member.member_id}</p>
-                  <p><span className="font-medium">Group:</span> {insuranceFrontData.insurer.group_number}</p>
-                  <p><span className="font-medium">Confidence:</span> {Math.round(insuranceFrontData.metadata.ocr_confidence.overall * 100)}%</p>
-                </div>
+              <div className="mt-4">
+                <Tabs defaultValue="preview" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="preview" className="flex items-center gap-2">
+                      <Eye className="h-4 w-4" />
+                      Preview
+                    </TabsTrigger>
+                    <TabsTrigger value="openai" className="flex items-center gap-2">
+                      <Code className="h-4 w-4" />
+                      OpenAI API
+                    </TabsTrigger>
+                    <TabsTrigger value="cardscan" className="flex items-center gap-2">
+                      <Shield className="h-4 w-4" />
+                      CardScan API
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="preview" className="mt-4">
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <h4 className="font-medium text-blue-800 mb-2">KEY EXTRACTED FIELDS - PREVIEW</h4>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="font-medium">Insurer:</span> {insuranceFrontData.insurer.name}</p>
+                        <p><span className="font-medium">Member ID:</span> {insuranceFrontData.member.member_id}</p>
+                        <p><span className="font-medium">Group Number:</span> {insuranceFrontData.insurer.group_number}</p>
+                        <p><span className="font-medium">Plan Name:</span> {insuranceFrontData.insurer.plan_name}</p>
+                        <p><span className="font-medium">Subscriber:</span> {insuranceFrontData.member.subscriber_name}</p>
+                        <p><span className="font-medium">OCR Confidence:</span> {Math.round(insuranceFrontData.metadata.ocr_confidence.overall * 100)}%</p>
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="openai" className="mt-4">
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <h4 className="font-medium text-gray-800 mb-2">OpenAI Vision API Response</h4>
+                      <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-64">
+                        {JSON.stringify(insuranceFrontData, null, 2)}
+                      </pre>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="cardscan" className="mt-4">
+                    <div className="p-4 bg-purple-50 rounded-lg">
+                      <h4 className="font-medium text-purple-800 mb-2">CardScan.ai API Response</h4>
+                      {insuranceFrontData.cardscan_feedback ? (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p><span className="font-medium">CardScan Confidence:</span> {Math.round(insuranceFrontData.cardscan_feedback.cardscan_confidence * 100)}%</p>
+                              <p><span className="font-medium">OpenAI Confidence:</span> {Math.round(insuranceFrontData.cardscan_feedback.openai_confidence * 100)}%</p>
+                            </div>
+                            <div>
+                              <p><span className="font-medium">Field Matches:</span> {insuranceFrontData.cardscan_feedback.field_comparison.matches}/{insuranceFrontData.cardscan_feedback.field_comparison.total_fields}</p>
+                              <p><span className="font-medium">Accuracy:</span> {Math.round(insuranceFrontData.cardscan_feedback.field_comparison.accuracy_percentage)}%</p>
+                            </div>
+                          </div>
+                          <Badge variant={insuranceFrontData.cardscan_feedback.validation_status === 'valid' ? 'default' : 'destructive'}>
+                            {insuranceFrontData.cardscan_feedback.validation_status.toUpperCase()}
+                          </Badge>
+                          {insuranceFrontData.cardscan_feedback.recommendations.length > 0 && (
+                            <div>
+                              <p className="font-medium text-sm mb-1">Recommendations:</p>
+                              <ul className="text-xs space-y-1">
+                                {insuranceFrontData.cardscan_feedback.recommendations.map((rec, idx) => (
+                                  <li key={idx} className="flex items-start gap-2">
+                                    <span className="w-1 h-1 bg-purple-400 rounded-full mt-2 flex-shrink-0"></span>
+                                    {rec}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-600">CardScan.ai comparison not available for this extraction.</p>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
           </CardContent>
@@ -452,13 +572,49 @@ export default function PatientIntake() {
             />
             
             {insuranceBackData && (
-              <div className="mt-4 p-4 bg-purple-50 rounded-lg">
-                <h4 className="font-medium text-purple-800 mb-2">Additional Insurance Data:</h4>
-                <div className="space-y-1 text-sm">
-                  <p><span className="font-medium">Pharmacy BIN:</span> {insuranceBackData.pharmacy.bin || 'Not found'}</p>
-                  <p><span className="font-medium">Pharmacy PCN:</span> {insuranceBackData.pharmacy.pcn || 'Not found'}</p>
-                  <p><span className="font-medium">Customer Service:</span> {insuranceBackData.contact.customer_service_phone || 'Not found'}</p>
-                </div>
+              <div className="mt-4">
+                <Tabs defaultValue="preview" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="preview" className="flex items-center gap-2">
+                      <Eye className="h-4 w-4" />
+                      Preview
+                    </TabsTrigger>
+                    <TabsTrigger value="api" className="flex items-center gap-2">
+                      <Code className="h-4 w-4" />
+                      API Response
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="preview" className="mt-4">
+                    <div className="p-4 bg-purple-50 rounded-lg">
+                      <h4 className="font-medium text-purple-800 mb-2">Additional Insurance Data:</h4>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="font-medium">Pharmacy BIN:</span> {insuranceBackData.pharmacy.bin || 'Not found'}</p>
+                        <p><span className="font-medium">Pharmacy PCN:</span> {insuranceBackData.pharmacy.pcn || 'Not found'}</p>
+                        <p><span className="font-medium">RX Group:</span> {insuranceBackData.pharmacy.rx_group || 'Not found'}</p>
+                        <p><span className="font-medium">Customer Service:</span> {insuranceBackData.contact.customer_service_phone || 'Not found'}</p>
+                        <p><span className="font-medium">OCR Confidence:</span> {Math.round(insuranceBackData.metadata.ocr_confidence.overall * 100)}%</p>
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="api" className="mt-4">
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <h4 className="font-medium text-gray-800 mb-2">OpenAI Vision API Response</h4>
+                      <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-64">
+                        {JSON.stringify(insuranceBackData, null, 2)}
+                      </pre>
+                      {insuranceBackData.metadata.raw_text && (
+                        <div className="mt-3">
+                          <h5 className="font-medium text-gray-700 mb-1">Raw OCR Text:</h5>
+                          <div className="text-xs bg-white p-3 rounded border max-h-32 overflow-auto">
+                            {insuranceBackData.metadata.raw_text}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
           </CardContent>
