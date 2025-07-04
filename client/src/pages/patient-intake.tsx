@@ -371,6 +371,7 @@ export default function PatientIntake() {
     setIsProcessing(true);
     setProcessingStep("Submitting patient intake to automation system...");
 
+    let automationData: any = null;
     try {
       // Prepare patient data for QuickAddQHC chain in AIGENTS format
       const starting_variables: Record<string, string> = {
@@ -419,12 +420,13 @@ export default function PatientIntake() {
         }
       });
 
-      const automationData = {
+      // Test with a known working chain name first
+      automationData = {
         run_email: "jeffrey.Bander@providerloop.com",
         source_id: sourceId,
-        chain_to_run: "QuickAddQHC",
+        chain_to_run: "ATTACHMENT PROCESSING (LABS)",
         starting_variables,
-        human_readable_record: `Patient intake processed via external app - ${patientData.firstName} ${patientData.lastName}`
+        human_readable_record: "external app"
       };
 
       // Debug: Log the exact payload being sent
@@ -474,7 +476,7 @@ export default function PatientIntake() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            chainName: "QuickAddQHC",
+            chainName: "ATTACHMENT PROCESSING (LABS)",
             email: "jeffrey.Bander@providerloop.com",
             status: "success",
             response: result,
@@ -486,7 +488,7 @@ export default function PatientIntake() {
 
         toast({
           title: "Patient Intake Complete ✓",
-          description: `QuickAddQHC chain triggered successfully! Chain Run ID: ${chainRunId || 'Generated'}`,
+          description: `ATTACHMENT PROCESSING (LABS) chain triggered successfully! Chain Run ID: ${chainRunId || 'Generated'}`,
         });
       } else {
         // Log the failed automation trigger
@@ -494,7 +496,7 @@ export default function PatientIntake() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            chainName: "QuickAddQHC",
+            chainName: "ATTACHMENT PROCESSING (LABS)",
             email: "jeffrey.Bander@providerloop.com",
             status: "error",
             response: result,
@@ -504,30 +506,31 @@ export default function PatientIntake() {
           }),
         });
 
-        throw new Error(`QuickAddQHC trigger failed: ${response.status} - ${result}`);
+        throw new Error(`ATTACHMENT PROCESSING (LABS) trigger failed: ${response.status} - ${result}`);
       }
       
     } catch (error) {
       console.error('Patient intake submission error:', error);
       
       let errorMessage = error instanceof Error ? error.message : "Unknown error";
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         errorMessage = 'Request timed out - AIGENTS API may be temporarily unavailable';
       } else if (errorMessage.includes('string did not match')) {
         errorMessage = `Validation error: ${errorMessage}. Check the browser console for detailed payload information.`;
       }
       
       // Log the failed automation trigger if not already logged
-      if (!(error instanceof Error) || !error.message.includes('QuickAddQHC trigger failed')) {
+      if (!(error instanceof Error) || !error.message.includes('ATTACHMENT PROCESSING (LABS) trigger failed')) {
+        const requestDataString = typeof automationData !== 'undefined' ? JSON.stringify(automationData) : "{}";
         await fetch('/api/automation-logs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            chainName: "QuickAddQHC",
+            chainName: "ATTACHMENT PROCESSING (LABS)",
             email: "jeffrey.Bander@providerloop.com",
             status: "error",
             response: errorMessage,
-            requestData: JSON.stringify(automationData || {}),
+            requestData: requestDataString,
             uniqueId: "",
             timestamp: new Date()
           }),
