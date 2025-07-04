@@ -4,6 +4,8 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-03**: Fixed QuickAddQHC chain submission to use correct AIGENTS API endpoint and format
+- **2025-07-03**: Corrected string format issues by properly structuring starting_variables as string key-value pairs
 - **2025-07-03**: Added Patient_ID variable to QuickAddQHC chain submission (same value as source_id, e.g., Bander_Jeff__11_29_1976)
 - **2025-07-03**: Added confirmation dialog before triggering QuickAddQHC chain for user review and approval
 - **2025-07-03**: Configured patient intake completion to trigger "QuickAddQHC" chain specifically for patient registration
