@@ -421,21 +421,41 @@ export default function PatientIntake() {
 
       const automationData = {
         run_email: "jeffrey.Bander@providerloop.com",
-        chain_to_run: "QuickAddQHC",
-        human_readable_record: `Patient intake processed via external app - ${patientData.firstName} ${patientData.lastName}`,
         source_id: sourceId,
-        first_step_user_input: "Patient intake processed via external app",
-        starting_variables
+        chain_to_run: "QuickAddQHC",
+        starting_variables,
+        human_readable_record: `Patient intake processed via external app - ${patientData.firstName} ${patientData.lastName}`
       };
 
-      // Submit to AIGENTS automation system
+      // Debug: Log the exact payload being sent
+      console.log('=== QUICKADDQHC SUBMISSION DEBUG ===');
+      console.log('Payload:', JSON.stringify(automationData, null, 2));
+      console.log('Starting variables:');
+      Object.keys(starting_variables).forEach(key => {
+        console.log(`  ${key}: "${starting_variables[key]}" (type: ${typeof starting_variables[key]})`);
+      });
+      console.log('=== END DEBUG ===');
+
+      // Submit to AIGENTS automation system with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const response = await fetch('https://start-chain-run-943506065004.us-central1.run.app', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(automationData),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
 
       const result = await response.text();
+      
+      // Debug: Log the response
+      console.log('=== AIGENTS API RESPONSE ===');
+      console.log('Status:', response.status);
+      console.log('Response:', result);
+      console.log('=== END RESPONSE ===');
       
       if (response.ok) {
         // Extract ChainRun_ID from the API response
@@ -489,9 +509,34 @@ export default function PatientIntake() {
       
     } catch (error) {
       console.error('Patient intake submission error:', error);
+      
+      let errorMessage = error instanceof Error ? error.message : "Unknown error";
+      if (error.name === 'AbortError') {
+        errorMessage = 'Request timed out - AIGENTS API may be temporarily unavailable';
+      } else if (errorMessage.includes('string did not match')) {
+        errorMessage = `Validation error: ${errorMessage}. Check the browser console for detailed payload information.`;
+      }
+      
+      // Log the failed automation trigger if not already logged
+      if (!(error instanceof Error) || !error.message.includes('QuickAddQHC trigger failed')) {
+        await fetch('/api/automation-logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chainName: "QuickAddQHC",
+            email: "jeffrey.Bander@providerloop.com",
+            status: "error",
+            response: errorMessage,
+            requestData: JSON.stringify(automationData || {}),
+            uniqueId: "",
+            timestamp: new Date()
+          }),
+        }).catch(logError => console.error('Failed to log error:', logError));
+      }
+      
       toast({
         title: "Submission Failed",
-        description: error instanceof Error ? error.message : "Failed to submit patient intake to automation system",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
