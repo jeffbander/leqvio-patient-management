@@ -420,11 +420,11 @@ export default function PatientIntake() {
         }
       });
 
-      // Test with a known working chain name first
+      // Use QuickAddQHC chain through our internal API
       automationData = {
         run_email: "jeffrey.Bander@providerloop.com",
         source_id: sourceId,
-        chain_to_run: "ATTACHMENT PROCESSING (LABS)",
+        chain_to_run: "QuickAddQHC",
         starting_variables,
         human_readable_record: "external app"
       };
@@ -438,18 +438,12 @@ export default function PatientIntake() {
       });
       console.log('=== END DEBUG ===');
 
-      // Submit to AIGENTS automation system with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      const response = await fetch('https://start-chain-run-943506065004.us-central1.run.app', {
+      // Submit to our internal automation trigger endpoint (not direct to AIGENTS)
+      const response = await fetch('/api/trigger-automation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(automationData),
-        signal: controller.signal
+        body: JSON.stringify(automationData)
       });
-      
-      clearTimeout(timeoutId);
 
       const result = await response.text();
       
@@ -476,7 +470,7 @@ export default function PatientIntake() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            chainName: "ATTACHMENT PROCESSING (LABS)",
+            chainName: "QuickAddQHC",
             email: "jeffrey.Bander@providerloop.com",
             status: "success",
             response: result,
@@ -488,7 +482,7 @@ export default function PatientIntake() {
 
         toast({
           title: "Patient Intake Complete ✓",
-          description: `ATTACHMENT PROCESSING (LABS) chain triggered successfully! Chain Run ID: ${chainRunId || 'Generated'}`,
+          description: `QuickAddQHC chain triggered successfully! Chain Run ID: ${chainRunId || 'Generated'}`,
         });
       } else {
         // Log the failed automation trigger
@@ -496,7 +490,7 @@ export default function PatientIntake() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            chainName: "ATTACHMENT PROCESSING (LABS)",
+            chainName: "QuickAddQHC",
             email: "jeffrey.Bander@providerloop.com",
             status: "error",
             response: result,
@@ -506,7 +500,7 @@ export default function PatientIntake() {
           }),
         });
 
-        throw new Error(`ATTACHMENT PROCESSING (LABS) trigger failed: ${response.status} - ${result}`);
+        throw new Error(`QuickAddQHC trigger failed: ${response.status} - ${result}`);
       }
       
     } catch (error) {
@@ -520,13 +514,13 @@ export default function PatientIntake() {
       }
       
       // Log the failed automation trigger if not already logged
-      if (!(error instanceof Error) || !error.message.includes('ATTACHMENT PROCESSING (LABS) trigger failed')) {
+      if (!(error instanceof Error) || !error.message.includes('QuickAddQHC trigger failed')) {
         const requestDataString = typeof automationData !== 'undefined' ? JSON.stringify(automationData) : "{}";
         await fetch('/api/automation-logs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            chainName: "ATTACHMENT PROCESSING (LABS)",
+            chainName: "QuickAddQHC",
             email: "jeffrey.Bander@providerloop.com",
             status: "error",
             response: errorMessage,
