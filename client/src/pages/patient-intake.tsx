@@ -385,6 +385,7 @@ export default function PatientIntake() {
           last_name: patientData.lastName,
           date_of_birth: patientData.dateOfBirth,
           source_id: sourceId,
+          Patient_ID: sourceId, // Required: Same value as source_id (e.g., Bander_Jeff__11_29_1976)
           
           // Insurance Information
           insurance_company: insuranceFrontData.insurer.name,
