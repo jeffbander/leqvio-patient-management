@@ -372,77 +372,125 @@ export default function PatientIntake() {
     setProcessingStep("Submitting patient intake to automation system...");
 
     try {
-      // Prepare comprehensive patient data for automation chain
-      const automationData = {
-        chain_to_run: "QuickAddQHC", // Specified chain for patient intake
-        source_id: sourceId,
-        run_email: "jeffrey.Bander@providerloop.com", // As specified in requirements
-        first_step_input: "Patient intake processed via external app",
-        human_readable_record: `Patient intake processed via external app - ${patientData.firstName} ${patientData.lastName}`,
-        starting_variables: {
-          // Patient Identity
-          first_name: patientData.firstName,
-          last_name: patientData.lastName,
-          date_of_birth: patientData.dateOfBirth,
-          source_id: sourceId,
-          Patient_ID: sourceId, // Required: Same value as source_id (e.g., Bander_Jeff__11_29_1976)
-          
-          // Insurance Information
-          insurance_company: insuranceFrontData.insurer.name,
-          member_id: insuranceFrontData.member.member_id,
-          group_number: insuranceFrontData.insurer.group_number,
-          subscriber_name: insuranceFrontData.member.subscriber_name,
-          plan_name: insuranceFrontData.insurer.plan_name,
-          
-          // Contact Information
-          customer_service_phone: insuranceFrontData.contact.customer_service_phone,
-          
-          // Cost Share Information
-          pcp_copay: insuranceFrontData.cost_share.pcp_copay,
-          specialist_copay: insuranceFrontData.cost_share.specialist_copay,
-          er_copay: insuranceFrontData.cost_share.er_copay,
-          deductible: insuranceFrontData.cost_share.deductible,
-          
-          // Pharmacy Information
-          rx_bin: insuranceFrontData.pharmacy.bin,
-          rx_pcn: insuranceFrontData.pharmacy.pcn,
-          rx_group: insuranceFrontData.pharmacy.rx_group,
-          
-          // Metadata
-          extraction_confidence: Math.round(patientData.confidence * 100),
-          insurance_confidence: Math.round(insuranceFrontData.metadata.ocr_confidence.overall * 100),
-          has_insurance_back: !!insuranceBackData,
-          processed_via: "external_app",
-          intake_timestamp: new Date().toISOString()
-        }
+      // Prepare starting variables from extracted data
+      const starting_variables: Record<string, string> = {
+        first_name: patientData.firstName,
+        last_name: patientData.lastName,
+        date_of_birth: patientData.dateOfBirth,
+        Patient_ID: sourceId, // Required: Same value as source_id
       };
 
-      // Submit to automation system
-      const response = await fetch('/api/trigger-automation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(automationData),
+      // Prepare the request body in exact same format as main automation trigger page
+      const requestBody = {
+        run_email: "jeffrey.Bander@providerloop.com", // Fixed email as specified
+        chain_to_run: "QuickAddQHC", // Specified chain for patient intake
+        human_readable_record: "external app",
+        source_id: sourceId,
+        first_step_user_input: "Patient intake processed via external app",
+        starting_variables,
+      };
+
+      // Submit directly to AIGENTS API (same as main automation trigger page)
+      const response = await fetch("https://start-chain-run-943506065004.us-central1.run.app", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
       });
 
-      if (!response.ok) {
-        throw new Error(`Automation trigger failed: ${response.status}`);
+      const result = await response.text();
+
+      if (response.ok) {
+        // Extract ChainRun_ID from the API response (same logic as main page)
+        let chainRunId = '';
+        try {
+          const chainRunMatch = result.match(/"ChainRun_ID"\s*:\s*"([^"]+)"/);
+          if (chainRunMatch) {
+            chainRunId = chainRunMatch[1];
+          }
+        } catch (e) {
+          console.log('Could not extract ChainRun_ID from response');
+        }
+
+        // Add log entry to database (same as main page)
+        try {
+          await fetch('/api/automation-logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chainName: "QuickAddQHC",
+              email: "jeffrey.Bander@providerloop.com",
+              status: 'success',
+              response: result,
+              requestData: requestBody,
+              uniqueId: chainRunId,
+              timestamp: new Date()
+            }),
+          });
+        } catch (logError) {
+          console.error('Failed to save log entry:', logError);
+        }
+
+        toast({
+          title: "Patient Intake Complete ✓",
+          description: `QuickAddQHC chain triggered successfully! Chain Run ID: ${chainRunId || 'Generated'}`,
+        });
+      } else {
+        // Add log entry for error (same as main page)
+        try {
+          await fetch('/api/automation-logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chainName: "QuickAddQHC",
+              email: "jeffrey.Bander@providerloop.com",
+              status: 'error',
+              response: result,
+              requestData: requestBody,
+              uniqueId: '',
+              timestamp: new Date()
+            }),
+          });
+        } catch (logError) {
+          console.error('Failed to save error log entry:', logError);
+        }
+
+        throw new Error(`AIGENTS API failed: ${response.status} - ${result}`);
       }
-
-      const result = await response.json();
-      
-      toast({
-        title: "Patient Intake Complete ✓",
-        description: `Submitted to automation system. Chain Run ID: ${result.chainRunId || 'Generated'}`,
-      });
-
-      // Optionally redirect to logs or automation page
-      // navigate('/automation-trigger');
       
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       console.error('Patient intake submission error:', error);
+      
+      // Add error log entry if requestBody exists
+      try {
+        const requestBody = {
+          run_email: "jeffrey.Bander@providerloop.com",
+          chain_to_run: "QuickAddQHC",
+          source_id: sourceId,
+        };
+        
+        await fetch('/api/automation-logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chainName: "QuickAddQHC",
+            email: "jeffrey.Bander@providerloop.com",
+            status: 'error',
+            response: `Error: ${errorMessage}`,
+            requestData: requestBody,
+            uniqueId: '',
+            timestamp: new Date()
+          }),
+        });
+      } catch (logError) {
+        console.error('Failed to save error log entry:', logError);
+      }
+      
       toast({
         title: "Submission Failed",
-        description: error instanceof Error ? error.message : "Failed to submit patient intake to automation system",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
