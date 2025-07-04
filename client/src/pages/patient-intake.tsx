@@ -371,169 +371,78 @@ export default function PatientIntake() {
     setIsProcessing(true);
     setProcessingStep("Submitting patient intake to automation system...");
 
-    let automationData: any = null;
     try {
-      // Prepare patient data for QuickAddQHC chain in AIGENTS format
-      const starting_variables: Record<string, string> = {
-        // Required Patient_ID field (same as source_id)
-        Patient_ID: sourceId,
-        
-        // Patient Identity
-        first_name: patientData.firstName,
-        last_name: patientData.lastName,
-        date_of_birth: patientData.dateOfBirth,
+      // Prepare comprehensive patient data for automation chain
+      const automationData = {
+        chain_to_run: "QuickAddQHC", // Specified chain for patient intake
         source_id: sourceId,
-        
-        // Insurance Information
-        insurance_company: insuranceFrontData.insurer.name,
-        member_id: insuranceFrontData.member.member_id,
-        group_number: insuranceFrontData.insurer.group_number,
-        subscriber_name: insuranceFrontData.member.subscriber_name,
-        plan_name: insuranceFrontData.insurer.plan_name,
-        
-        // Contact Information
-        customer_service_phone: insuranceFrontData.contact.customer_service_phone,
-        
-        // Cost Share Information
-        pcp_copay: insuranceFrontData.cost_share.pcp_copay,
-        specialist_copay: insuranceFrontData.cost_share.specialist_copay,
-        er_copay: insuranceFrontData.cost_share.er_copay,
-        deductible: insuranceFrontData.cost_share.deductible,
-        
-        // Pharmacy Information
-        rx_bin: insuranceFrontData.pharmacy.bin,
-        rx_pcn: insuranceFrontData.pharmacy.pcn,
-        rx_group: insuranceFrontData.pharmacy.rx_group,
-        
-        // Metadata
-        extraction_confidence: Math.round(patientData.confidence * 100).toString(),
-        insurance_confidence: Math.round(insuranceFrontData.metadata.ocr_confidence.overall * 100).toString(),
-        has_insurance_back: insuranceBackData ? "true" : "false",
-        processed_via: "external_app",
-        intake_timestamp: new Date().toISOString()
-      };
-
-      // Remove empty values
-      Object.keys(starting_variables).forEach(key => {
-        if (!starting_variables[key] || starting_variables[key].trim() === "") {
-          delete starting_variables[key];
+        run_email: "jeffrey.Bander@providerloop.com", // As specified in requirements
+        first_step_input: "Patient intake processed via external app",
+        human_readable_record: `Patient intake processed via external app - ${patientData.firstName} ${patientData.lastName}`,
+        starting_variables: {
+          // Patient Identity
+          first_name: patientData.firstName,
+          last_name: patientData.lastName,
+          date_of_birth: patientData.dateOfBirth,
+          source_id: sourceId,
+          Patient_ID: sourceId, // Required: Same value as source_id (e.g., Bander_Jeff__11_29_1976)
+          
+          // Insurance Information
+          insurance_company: insuranceFrontData.insurer.name,
+          member_id: insuranceFrontData.member.member_id,
+          group_number: insuranceFrontData.insurer.group_number,
+          subscriber_name: insuranceFrontData.member.subscriber_name,
+          plan_name: insuranceFrontData.insurer.plan_name,
+          
+          // Contact Information
+          customer_service_phone: insuranceFrontData.contact.customer_service_phone,
+          
+          // Cost Share Information
+          pcp_copay: insuranceFrontData.cost_share.pcp_copay,
+          specialist_copay: insuranceFrontData.cost_share.specialist_copay,
+          er_copay: insuranceFrontData.cost_share.er_copay,
+          deductible: insuranceFrontData.cost_share.deductible,
+          
+          // Pharmacy Information
+          rx_bin: insuranceFrontData.pharmacy.bin,
+          rx_pcn: insuranceFrontData.pharmacy.pcn,
+          rx_group: insuranceFrontData.pharmacy.rx_group,
+          
+          // Metadata
+          extraction_confidence: Math.round(patientData.confidence * 100),
+          insurance_confidence: Math.round(insuranceFrontData.metadata.ocr_confidence.overall * 100),
+          has_insurance_back: !!insuranceBackData,
+          processed_via: "external_app",
+          intake_timestamp: new Date().toISOString()
         }
-      });
-
-      // Use QuickAddQHC chain through our internal API
-      automationData = {
-        run_email: "jeffrey.Bander@providerloop.com",
-        source_id: sourceId,
-        chain_to_run: "QuickAddQHC",
-        starting_variables,
-        human_readable_record: "external app"
       };
 
-      // Debug: Log the exact payload being sent
-      console.log('=== QUICKADDQHC SUBMISSION DEBUG ===');
-      console.log('Payload:', JSON.stringify(automationData, null, 2));
-      console.log('Starting variables:');
-      Object.keys(starting_variables).forEach(key => {
-        console.log(`  ${key}: "${starting_variables[key]}" (type: ${typeof starting_variables[key]})`);
-      });
-      console.log('=== END DEBUG ===');
-
-      // Submit to our internal automation trigger endpoint (not direct to AIGENTS)
+      // Submit to automation system
       const response = await fetch('/api/trigger-automation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(automationData)
+        body: JSON.stringify(automationData),
       });
 
-      const result = await response.text();
-      
-      // Debug: Log the response
-      console.log('=== AIGENTS API RESPONSE ===');
-      console.log('Status:', response.status);
-      console.log('Response:', result);
-      console.log('=== END RESPONSE ===');
-      
-      if (response.ok) {
-        // Extract ChainRun_ID from the API response
-        let chainRunId = '';
-        try {
-          const chainRunMatch = result.match(/"ChainRun_ID"\s*:\s*"([^"]+)"/);
-          if (chainRunMatch) {
-            chainRunId = chainRunMatch[1];
-          }
-        } catch (e) {
-          console.log('Could not extract ChainRun_ID from response');
-        }
-        
-        // Log the successful automation trigger
-        await fetch('/api/automation-logs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chainName: "QuickAddQHC",
-            email: "jeffrey.Bander@providerloop.com",
-            status: "success",
-            response: result,
-            requestData: automationData,
-            uniqueId: chainRunId,
-            timestamp: new Date()
-          }),
-        });
-
-        toast({
-          title: "Patient Intake Complete ✓",
-          description: `QuickAddQHC chain triggered successfully! Chain Run ID: ${chainRunId || 'Generated'}`,
-        });
-      } else {
-        // Log the failed automation trigger
-        await fetch('/api/automation-logs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chainName: "QuickAddQHC",
-            email: "jeffrey.Bander@providerloop.com",
-            status: "error",
-            response: result,
-            requestData: automationData,
-            uniqueId: "",
-            timestamp: new Date()
-          }),
-        });
-
-        throw new Error(`QuickAddQHC trigger failed: ${response.status} - ${result}`);
+      if (!response.ok) {
+        throw new Error(`Automation trigger failed: ${response.status}`);
       }
+
+      const result = await response.json();
+      
+      toast({
+        title: "Patient Intake Complete ✓",
+        description: `Submitted to automation system. Chain Run ID: ${result.chainRunId || 'Generated'}`,
+      });
+
+      // Optionally redirect to logs or automation page
+      // navigate('/automation-trigger');
       
     } catch (error) {
       console.error('Patient intake submission error:', error);
-      
-      let errorMessage = error instanceof Error ? error.message : "Unknown error";
-      if (error instanceof Error && error.name === 'AbortError') {
-        errorMessage = 'Request timed out - AIGENTS API may be temporarily unavailable';
-      } else if (errorMessage.includes('string did not match')) {
-        errorMessage = `Validation error: ${errorMessage}. Check the browser console for detailed payload information.`;
-      }
-      
-      // Log the failed automation trigger if not already logged
-      if (!(error instanceof Error) || !error.message.includes('QuickAddQHC trigger failed')) {
-        const requestDataString = typeof automationData !== 'undefined' ? JSON.stringify(automationData) : "{}";
-        await fetch('/api/automation-logs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chainName: "QuickAddQHC",
-            email: "jeffrey.Bander@providerloop.com",
-            status: "error",
-            response: errorMessage,
-            requestData: requestDataString,
-            uniqueId: "",
-            timestamp: new Date()
-          }),
-        }).catch(logError => console.error('Failed to log error:', logError));
-      }
-      
       toast({
         title: "Submission Failed",
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "Failed to submit patient intake to automation system",
         variant: "destructive",
       });
     } finally {
