@@ -112,6 +112,7 @@ export default function PatientIntake() {
   const [sourceId, setSourceId] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState<string>("");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { toast } = useToast();
 
   const generateSourceId = useCallback((firstName: string, lastName: string, dob: string) => {
@@ -373,7 +374,7 @@ export default function PatientIntake() {
     try {
       // Prepare comprehensive patient data for automation chain
       const automationData = {
-        chain_to_run: "Patient Registration Chain", // Default chain
+        chain_to_run: "QuickAddQHC", // Specified chain for patient intake
         source_id: sourceId,
         run_email: "jeffrey.Bander@providerloop.com", // As specified in requirements
         first_step_input: "Patient intake processed via external app",
@@ -772,7 +773,7 @@ export default function PatientIntake() {
                   <p className="text-sm text-gray-600">Source ID: <code className="bg-gray-100 px-2 py-1 rounded">{sourceId}</code></p>
                 </div>
                 <Button 
-                  onClick={handleSubmit}
+                  onClick={() => setShowConfirmDialog(true)}
                   disabled={isProcessing}
                   size="lg"
                   className="bg-green-600 hover:bg-green-700"
@@ -792,6 +793,80 @@ export default function PatientIntake() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Confirmation Dialog */}
+        {showConfirmDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4">Confirm Patient Intake Submission</h3>
+              
+              <div className="space-y-3 mb-6">
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <h4 className="font-medium text-blue-800 mb-2">Patient Information:</h4>
+                  <p className="text-sm text-blue-700">
+                    <strong>Name:</strong> {patientData?.firstName} {patientData?.lastName}
+                  </p>
+                  <p className="text-sm text-blue-700">
+                    <strong>DOB:</strong> {patientData?.dateOfBirth}
+                  </p>
+                  <p className="text-sm text-blue-700">
+                    <strong>Source ID:</strong> {sourceId}
+                  </p>
+                </div>
+                
+                <div className="bg-green-50 p-3 rounded-lg">
+                  <h4 className="font-medium text-green-800 mb-2">Insurance Information:</h4>
+                  <p className="text-sm text-green-700">
+                    <strong>Insurer:</strong> {insuranceFrontData?.insurer.name}
+                  </p>
+                  <p className="text-sm text-green-700">
+                    <strong>Member ID:</strong> {insuranceFrontData?.member.member_id}
+                  </p>
+                  <p className="text-sm text-green-700">
+                    <strong>Group Number:</strong> {insuranceFrontData?.insurer.group_number}
+                  </p>
+                </div>
+                
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    This will trigger the <strong>QuickAddQHC</strong> automation chain with all extracted patient and insurance data.
+                  </AlertDescription>
+                </Alert>
+              </div>
+              
+              <div className="flex gap-3 justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowConfirmDialog(false)}
+                  disabled={isProcessing}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setShowConfirmDialog(false);
+                    handleSubmit();
+                  }}
+                  disabled={isProcessing}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2" />
+                      Triggering QuickAddQHC...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Confirm & Trigger QuickAddQHC
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

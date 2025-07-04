@@ -4,6 +4,9 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-03**: Configured patient intake completion to trigger "QuickAddQHC" chain specifically for patient registration
+- **2025-07-03**: Fixed 400 "No photo file uploaded" errors by correcting image upload format to use FormData instead of JSON
+- **2025-07-03**: Enhanced patient intake completion to submit comprehensive patient and insurance data to AIGENTS automation system
 - **2025-07-03**: Created comprehensive Patient Intake System (/intake) with ID card and insurance card scanning workflow
 - **2025-07-03**: Added multi-step intake process: ID card scan → insurance front → insurance back → review & submit
 - **2025-07-03**: Integrated automatic source ID generation from extracted ID card data
