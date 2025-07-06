@@ -6,8 +6,7 @@ import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
 import { extractPatientDataFromImage, extractInsuranceCardData } from "./openai-service";
-import { cardScanService } from "./cardscan-service";
-import type { CardScanResponse, CardScanFeedback } from "./cardscan-service";
+
 
 // Analytics middleware to track API requests
 const analyticsMiddleware = (req: any, res: any, next: any) => {
@@ -721,31 +720,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add OpenAI processing time to metadata
       extractedData.metadata.processing_time_ms = openAIProcessingTime;
 
-      // Try to get CardScan.ai validation and comparison
-      let cardScanFeedback: CardScanFeedback | null = null;
-      try {
-        const cardScanResult = await cardScanService.scanInsuranceCard(base64Image);
-        cardScanFeedback = await cardScanService.compareWithOpenAI(
-          cardScanResult, 
-          extractedData, 
-          openAIProcessingTime
-        );
-        
-        console.log("CardScan.ai comparison completed:", {
-          accuracy: cardScanFeedback.field_comparison.accuracy_percentage,
-          validation: cardScanFeedback.validation_status,
-          processingTime: cardScanFeedback.processing_time_comparison
-        });
-      } catch (cardScanError) {
-        console.warn('CardScan.ai processing failed:', cardScanError);
-        // Continue without CardScan feedback
-      }
+
       
       console.log("Insurance card extraction completed:", {
         fileName: req.file.originalname,
         imageSide: extractedData.metadata.image_side,
         overallConfidence: extractedData.metadata.ocr_confidence.overall,
-        cardScanEnabled: !!cardScanFeedback,
         extractedFields: {
           insurerName: extractedData.insurer.name,
           memberId: extractedData.member.member_id,
@@ -756,10 +736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      res.json({
-        ...extractedData,
-        cardscan_feedback: cardScanFeedback
-      });
+      res.json(extractedData);
     } catch (error) {
       console.error("Insurance card extraction error:", error);
       res.status(500).json({ 
@@ -769,55 +746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // CardScan.ai health check endpoint
-  app.get('/api/cardscan/health', async (req, res) => {
-    try {
-      const isHealthy = await cardScanService.healthCheck();
-      res.json({ 
-        service: 'CardScan.ai',
-        status: isHealthy ? 'healthy' : 'unavailable',
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      res.status(500).json({ 
-        service: 'CardScan.ai',
-        status: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
 
-  // CardScan.ai eligibility verification endpoint
-  app.post('/api/cardscan/eligibility', async (req: Request, res: Response) => {
-    try {
-      const { member_id, member_name, dob, group_number, bin, pcn, payer_name } = req.body;
-
-      if (!member_id || !member_name) {
-        return res.status(400).json({
-          error: 'Missing required fields: member_id and member_name are required'
-        });
-      }
-
-      const eligibilityResult = await cardScanService.verifyEligibility({
-        member_id,
-        member_name,
-        dob,
-        group_number,
-        bin,
-        pcn,
-        payer_name
-      });
-
-      res.json(eligibilityResult);
-    } catch (error) {
-      console.error('Eligibility verification error:', error);
-      res.status(500).json({
-        error: 'Failed to verify insurance eligibility',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
-    }
-  });
 
   const httpServer = createServer(app);
 

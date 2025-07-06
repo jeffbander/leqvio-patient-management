@@ -4,6 +4,10 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-06**: Removed CardScan.ai integration from patient intake system, keeping only OpenAI Vision processing
+- **2025-07-06**: Simplified InsuranceCardExtractor component to use OpenAI Vision exclusively
+- **2025-07-06**: Removed eligibility verification functionality and CardScan.ai validation tabs
+- **2025-07-06**: Cleaned up UI to focus on OpenAI Vision extracted data with simplified tabbed interface
 - **2025-07-03**: Added Patient_ID variable to QuickAddQHC chain submission (same value as source_id, e.g., Bander_Jeff__11_29_1976)
 - **2025-07-03**: Added confirmation dialog before triggering QuickAddQHC chain for user review and approval
 - **2025-07-03**: Configured patient intake completion to trigger "QuickAddQHC" chain specifically for patient registration
@@ -13,9 +17,6 @@ Patient data processing application for Providerloop Chains, designed to streaml
 - **2025-07-03**: Added multi-step intake process: ID card scan → insurance front → insurance back → review & submit
 - **2025-07-03**: Integrated automatic source ID generation from extracted ID card data
 - **2025-07-03**: Enhanced insurance card extraction with prominent preview display showing key extracted fields
-- **2025-07-03**: Implemented CardScan.ai eligibility verification endpoint for real-time coverage and benefits validation
-- **2025-07-03**: Added comprehensive eligibility verification interface with coverage status, copays, deductibles, and benefits display
-- **2025-07-03**: Enhanced InsuranceCardExtractor with "Verify Eligibility" button and detailed results visualization
 - **2025-07-02**: Integrated CardScan.ai service for real-time insurance card validation and feedback
 - **2025-07-02**: Added CardScan.ai comparison tab showing field accuracy, confidence scores, and processing time analysis
 - **2025-07-02**: Enhanced insurance extraction with dual-service validation (OpenAI Vision + CardScan.ai)
@@ -91,19 +92,14 @@ Patient data processing application for Providerloop Chains, designed to streaml
 - PostgreSQL database with Drizzle ORM
 - Webhook endpoints for bidirectional communication
 - OpenAI Vision API integration for OCR and data extraction
-- CardScan.ai integration for real-time insurance card validation
 - Real-time API analytics tracking
 
-### CardScan.ai Integration
-- **Service**: Industry-standard insurance card processing and validation
-- **Features**: Real-time field comparison, confidence scoring, processing time analysis, eligibility verification
-- **Validation**: Member ID format validation, BIN/PCN verification, overall quality assessment
-- **Comparison**: Side-by-side analysis of OpenAI Vision vs CardScan.ai extraction results
-- **Feedback**: Automated recommendations for image quality and data accuracy
-- **Eligibility Verification**: Real-time coverage validation, benefits verification, copay information, deductible tracking
-- **Endpoints**: 
-  - `/api/cardscan/health` for service status monitoring
-  - `/api/cardscan/eligibility` for insurance eligibility verification
+### OpenAI Vision Integration
+- **Service**: Advanced AI-powered optical character recognition and data extraction
+- **Features**: Comprehensive insurance card data extraction, patient ID card processing
+- **Extraction**: Member information, pharmacy details, copays, contact information, plan details
+- **Processing**: Real-time confidence scoring, metadata capture, raw text preservation
+- **Interface**: Clean tabbed display of all extracted fields with visual preview cards
 
 ### Webhook System
 - **Email Webhook**: `/api/email-webhook` - Receives AppSheet automation responses via email
