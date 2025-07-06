@@ -386,7 +386,7 @@ export default function PatientIntake() {
         chain_to_run: "QuickAddQHC", // Specified chain for patient intake
         human_readable_record: "external app",
         source_id: sourceId,
-        first_step_user_input: "Patient intake processed via external app",
+        first_step_user_input: "",
         starting_variables,
       };
 
