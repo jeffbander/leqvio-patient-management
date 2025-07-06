@@ -378,6 +378,8 @@ export default function PatientIntake() {
         last_name: patientData.lastName,
         date_of_birth: patientData.dateOfBirth,
         Patient_ID: sourceId, // Required: Same value as source_id
+        Insurance_Front: insuranceFrontData ? JSON.stringify(insuranceFrontData) : "",
+        Insurance_Back: insuranceBackData ? JSON.stringify(insuranceBackData) : "",
       };
 
       // Prepare the request body in exact same format as main automation trigger page
