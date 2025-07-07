@@ -26,6 +26,7 @@ interface PatientData {
   firstName: string;
   lastName: string;
   dateOfBirth: string; // MM/DD/YYYY format
+  address: string;
   confidence: number;
   rawText?: string;
 }
@@ -368,6 +369,7 @@ export default function PatientIntake() {
         first_name: patientData.firstName,
         last_name: patientData.lastName,
         date_of_birth: patientData.dateOfBirth,
+        Patient_Address: patientData.address,
         Patient_ID: sourceId, // Required: Same value as source_id
         Insurance_Front: insuranceFrontData ? JSON.stringify(insuranceFrontData) : "",
         Insurance_Back: insuranceBackData ? JSON.stringify(insuranceBackData) : "",

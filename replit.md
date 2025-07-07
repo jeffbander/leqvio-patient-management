@@ -4,6 +4,10 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-07**: Added address extraction from driver's license ID cards - Patient_Address field now included in automation payload
+- **2025-07-07**: Fixed photo upload bug where insurance card photos needed to be taken twice by removing duplicate input elements
+- **2025-07-07**: Added Insurance_Front and Insurance_Back JSON fields to automation payload containing complete card extraction data
+- **2025-07-07**: Removed "Patient intake processed via external app" text from first_step_user_input, now blank
 - **2025-07-06**: Removed CardScan.ai integration from patient intake system, keeping only OpenAI Vision processing
 - **2025-07-06**: Simplified InsuranceCardExtractor component to use OpenAI Vision exclusively
 - **2025-07-06**: Removed eligibility verification functionality and CardScan.ai validation tabs

@@ -7,6 +7,7 @@ export interface ExtractedPatientData {
   firstName: string;
   lastName: string;
   dateOfBirth: string; // MM/DD/YYYY format
+  address: string; // Full address as a single string
   confidence: number;
   rawText?: string;
 }
@@ -82,6 +83,7 @@ Return your response in JSON format with these exact fields:
   "firstName": "string",
   "lastName": "string", 
   "dateOfBirth": "MM/DD/YYYY",
+  "address": "string",
   "confidence": 0.0-1.0,
   "rawText": "all text found in the image"
 }
@@ -89,17 +91,19 @@ Return your response in JSON format with these exact fields:
 Rules:
 - Extract the patient's first name and last name
 - Find the date of birth in MM/DD/YYYY format
+- Extract the complete address as a single string (e.g., "702 Bedford Ave #2, Brooklyn, NY 11206")
 - Set confidence between 0.0 (not confident) and 1.0 (very confident)
 - Include all visible text in rawText field
 - If any required field cannot be found, use empty string ""
-- Be very careful with date formats - convert to MM/DD/YYYY`
+- Be very careful with date formats - convert to MM/DD/YYYY
+- For address, include street number, street name, apt/unit if present, city, state, and zip code in a single string`
         },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: "Please extract the patient's first name, last name, and date of birth from this document image."
+              text: "Please extract the patient's first name, last name, date of birth, and address from this document image."
             },
             {
               type: "image_url",
@@ -120,6 +124,7 @@ Rules:
       firstName: result.firstName || "",
       lastName: result.lastName || "",
       dateOfBirth: result.dateOfBirth || "",
+      address: result.address || "",
       confidence: Math.max(0, Math.min(1, result.confidence || 0)),
       rawText: result.rawText || ""
     };

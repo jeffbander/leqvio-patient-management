@@ -10,6 +10,7 @@ interface ExtractedPatientData {
   firstName: string;
   lastName: string;
   dateOfBirth: string;
+  address: string;
   confidence: number;
   rawText?: string;
 }
