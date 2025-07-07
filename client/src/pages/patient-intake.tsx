@@ -312,7 +312,7 @@ export default function PatientIntake() {
             <div className="space-y-2">
               <input
                 type="file"
-                accept="image/*,capture=camera"
+                accept="image/*"
                 onChange={handleFileSelect}
                 className="hidden"
                 id={`file-${type}`}
@@ -330,20 +330,11 @@ export default function PatientIntake() {
                   <Upload className="h-4 w-4 mr-2" />
                   Select Image
                 </Button>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  id={`camera-${type}`}
-                  disabled={isProcessing}
-                  capture="environment"
-                />
                 <Button 
                   variant="outline" 
                   className="cursor-pointer" 
                   disabled={isProcessing}
-                  onClick={() => document.getElementById(`camera-${type}`)?.click()}
+                  onClick={() => document.getElementById(`file-${type}`)?.click()}
                   type="button"
                 >
                   <Camera className="h-4 w-4 mr-2" />
