@@ -113,7 +113,7 @@ export default function PatientIntake() {
   const [sourceId, setSourceId] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState<string>("");
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
   const { toast } = useToast();
 
   const generateSourceId = useCallback((firstName: string, lastName: string, dob: string) => {
@@ -164,11 +164,120 @@ export default function PatientIntake() {
     reader.readAsDataURL(file);
   }, [toast]);
 
-  const processAllCards = useCallback(async () => {
-    if (!idCardImage || !insuranceFrontImage) {
+  const submitToAutomation = useCallback(async (
+    patientData: PatientData, 
+    frontData: InsuranceData | null, 
+    backData: InsuranceData | null, 
+    sourceId: string
+  ) => {
+    try {
+      // Prepare starting variables from extracted data
+      const starting_variables: Record<string, string> = {
+        first_name: patientData.firstName,
+        last_name: patientData.lastName,
+        date_of_birth: patientData.dateOfBirth,
+        Patient_Address: patientData.address,
+        Patient_ID: sourceId,
+        Insurance_Front: frontData ? JSON.stringify(frontData) : "",
+        Insurance_Back: backData ? JSON.stringify(backData) : "",
+      };
+
+      // Prepare the request body
+      const requestBody = {
+        run_email: "jeffrey.Bander@providerloop.com",
+        chain_to_run: "QuickAddQHC",
+        human_readable_record: "external app",
+        source_id: sourceId,
+        first_step_user_input: "",
+        starting_variables,
+      };
+
+      // Submit to AIGENTS API
+      const response = await fetch("https://start-chain-run-943506065004.us-central1.run.app", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const result = await response.text();
+
+      if (response.ok) {
+        // Extract ChainRun_ID from response
+        let chainRunId = '';
+        try {
+          const chainRunMatch = result.match(/"ChainRun_ID"\s*:\s*"([^"]+)"/);
+          if (chainRunMatch) {
+            chainRunId = chainRunMatch[1];
+          }
+        } catch (e) {
+          console.log('Could not extract ChainRun_ID from response');
+        }
+
+        // Log success
+        try {
+          await fetch('/api/automation-logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chainName: "QuickAddQHC",
+              email: "jeffrey.Bander@providerloop.com",
+              status: 'success',
+              response: result,
+              requestData: requestBody,
+              uniqueId: chainRunId,
+              timestamp: new Date()
+            }),
+          });
+        } catch (logError) {
+          console.error('Failed to save log entry:', logError);
+        }
+
+        toast({
+          title: "Patient Intake Complete ✓",
+          description: `QuickAddQHC chain triggered automatically! Chain Run ID: ${chainRunId || 'Generated'}`,
+        });
+      } else {
+        // Log error
+        try {
+          await fetch('/api/automation-logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chainName: "QuickAddQHC",
+              email: "jeffrey.Bander@providerloop.com",
+              status: 'error',
+              response: result,
+              requestData: requestBody,
+              uniqueId: '',
+              timestamp: new Date()
+            }),
+          });
+        } catch (logError) {
+          console.error('Failed to save error log entry:', logError);
+        }
+
+        throw new Error(`AIGENTS API failed: ${response.status} - ${result}`);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      console.error('Automation submission error:', error);
+      
       toast({
-        title: "Missing Images",
-        description: "Please upload at least ID card and insurance front images.",
+        title: "Submission Failed",
+        description: `Error: ${errorMessage}. Check logs for details.`,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }, [toast]);
+
+  const processAllCards = useCallback(async () => {
+    if (!idCardImage) {
+      toast({
+        title: "Missing ID Card",
+        description: "Please upload at least an ID card image.",
         variant: "destructive",
       });
       return;
@@ -201,32 +310,38 @@ export default function PatientIntake() {
       setPatientData(patientData);
 
       // Generate source ID
+      let generatedSourceId = '';
       if (patientData.firstName && patientData.lastName && patientData.dateOfBirth) {
-        const generatedSourceId = generateSourceId(patientData.firstName, patientData.lastName, patientData.dateOfBirth);
+        generatedSourceId = generateSourceId(patientData.firstName, patientData.lastName, patientData.dateOfBirth);
         setSourceId(generatedSourceId);
       }
 
-      // Process insurance front
-      setProcessingStep("Processing insurance front...");
-      
-      const frontBase64Data = insuranceFrontImage.split(',')[1];
-      const frontBlob = base64ToBlob(frontBase64Data, 'image/jpeg');
-      
-      const frontFormData = new FormData();
-      frontFormData.append('photo', frontBlob, 'insurance-front.jpg');
-      
-      const frontResponse = await fetch('/api/extract-insurance-card', {
-        method: 'POST',
-        body: frontFormData,
-      });
+      let frontData: InsuranceData | null = null;
+      let backData: InsuranceData | null = null;
 
-      if (!frontResponse.ok) {
-        const errorData = await frontResponse.json();
-        throw new Error(`Insurance front extraction failed: ${errorData.error || frontResponse.status}`);
+      // Process insurance front if available
+      if (insuranceFrontImage) {
+        setProcessingStep("Processing insurance front...");
+        
+        const frontBase64Data = insuranceFrontImage.split(',')[1];
+        const frontBlob = base64ToBlob(frontBase64Data, 'image/jpeg');
+        
+        const frontFormData = new FormData();
+        frontFormData.append('photo', frontBlob, 'insurance-front.jpg');
+        
+        const frontResponse = await fetch('/api/extract-insurance-card', {
+          method: 'POST',
+          body: frontFormData,
+        });
+
+        if (!frontResponse.ok) {
+          const errorData = await frontResponse.json();
+          throw new Error(`Insurance front extraction failed: ${errorData.error || frontResponse.status}`);
+        }
+
+        frontData = await frontResponse.json();
+        setInsuranceFrontData(frontData);
       }
-
-      const frontData: InsuranceData = await frontResponse.json();
-      setInsuranceFrontData(frontData);
 
       // Process insurance back if available
       if (insuranceBackImage) {
@@ -248,14 +363,13 @@ export default function PatientIntake() {
           throw new Error(`Insurance back extraction failed: ${errorData.error || backResponse.status}`);
         }
 
-        const backData: InsuranceData = await backResponse.json();
+        backData = await backResponse.json();
         setInsuranceBackData(backData);
       }
 
-      toast({
-        title: "All Cards Processed Successfully",
-        description: `Extracted data from ${insuranceBackImage ? '3' : '2'} cards with high confidence`,
-      });
+      // Auto-submit after successful processing
+      setProcessingStep("Submitting to automation system...");
+      await submitToAutomation(patientData, frontData, backData, generatedSourceId);
 
     } catch (error) {
       console.error('Card processing error:', error);
@@ -350,149 +464,7 @@ export default function PatientIntake() {
     );
   };
 
-  const handleSubmit = async () => {
-    if (!patientData || !insuranceFrontData) {
-      toast({
-        title: "Missing Data",
-        description: "Please process all cards first",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    setIsProcessing(true);
-    setProcessingStep("Submitting patient intake to automation system...");
-
-    try {
-      // Prepare starting variables from extracted data
-      const starting_variables: Record<string, string> = {
-        first_name: patientData.firstName,
-        last_name: patientData.lastName,
-        date_of_birth: patientData.dateOfBirth,
-        Patient_Address: patientData.address,
-        Patient_ID: sourceId, // Required: Same value as source_id
-        Insurance_Front: insuranceFrontData ? JSON.stringify(insuranceFrontData) : "",
-        Insurance_Back: insuranceBackData ? JSON.stringify(insuranceBackData) : "",
-      };
-
-      // Prepare the request body in exact same format as main automation trigger page
-      const requestBody = {
-        run_email: "jeffrey.Bander@providerloop.com", // Fixed email as specified
-        chain_to_run: "QuickAddQHC", // Specified chain for patient intake
-        human_readable_record: "external app",
-        source_id: sourceId,
-        first_step_user_input: "",
-        starting_variables,
-      };
-
-      // Submit directly to AIGENTS API (same as main automation trigger page)
-      const response = await fetch("https://start-chain-run-943506065004.us-central1.run.app", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const result = await response.text();
-
-      if (response.ok) {
-        // Extract ChainRun_ID from the API response (same logic as main page)
-        let chainRunId = '';
-        try {
-          const chainRunMatch = result.match(/"ChainRun_ID"\s*:\s*"([^"]+)"/);
-          if (chainRunMatch) {
-            chainRunId = chainRunMatch[1];
-          }
-        } catch (e) {
-          console.log('Could not extract ChainRun_ID from response');
-        }
-
-        // Add log entry to database (same as main page)
-        try {
-          await fetch('/api/automation-logs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chainName: "QuickAddQHC",
-              email: "jeffrey.Bander@providerloop.com",
-              status: 'success',
-              response: result,
-              requestData: requestBody,
-              uniqueId: chainRunId,
-              timestamp: new Date()
-            }),
-          });
-        } catch (logError) {
-          console.error('Failed to save log entry:', logError);
-        }
-
-        toast({
-          title: "Patient Intake Complete ✓",
-          description: `QuickAddQHC chain triggered successfully! Chain Run ID: ${chainRunId || 'Generated'}`,
-        });
-      } else {
-        // Add log entry for error (same as main page)
-        try {
-          await fetch('/api/automation-logs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chainName: "QuickAddQHC",
-              email: "jeffrey.Bander@providerloop.com",
-              status: 'error',
-              response: result,
-              requestData: requestBody,
-              uniqueId: '',
-              timestamp: new Date()
-            }),
-          });
-        } catch (logError) {
-          console.error('Failed to save error log entry:', logError);
-        }
-
-        throw new Error(`AIGENTS API failed: ${response.status} - ${result}`);
-      }
-      
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      console.error('Patient intake submission error:', error);
-      
-      // Add error log entry if requestBody exists
-      try {
-        const requestBody = {
-          run_email: "jeffrey.Bander@providerloop.com",
-          chain_to_run: "QuickAddQHC",
-          source_id: sourceId,
-        };
-        
-        await fetch('/api/automation-logs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chainName: "QuickAddQHC",
-            email: "jeffrey.Bander@providerloop.com",
-            status: 'error',
-            response: `Error: ${errorMessage}`,
-            requestData: requestBody,
-            uniqueId: '',
-            timestamp: new Date()
-          }),
-        });
-      } catch (logError) {
-        console.error('Failed to save error log entry:', logError);
-      }
-      
-      toast({
-        title: "Submission Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-      setProcessingStep("");
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -600,7 +572,7 @@ export default function PatientIntake() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Step 2: Insurance Front
+              Step 2: Insurance Front (Optional)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -767,26 +739,26 @@ export default function PatientIntake() {
               <div className="text-center">
                 <Button 
                   onClick={processAllCards}
-                  disabled={isProcessing || (!idCardImage || !insuranceFrontImage)}
+                  disabled={isProcessing || !idCardImage}
                   size="lg"
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   {isProcessing ? (
                     <>
                       <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2" />
-                      Processing Cards...
+                      Processing & Submitting...
                     </>
                   ) : (
                     <>
                       <Shield className="h-4 w-4 mr-2" />
-                      Process All Cards
+                      Process & Submit to QuickAddQHC
                     </>
                   )}
                 </Button>
                 <p className="text-sm text-gray-600 mt-2">
-                  {!idCardImage || !insuranceFrontImage 
-                    ? "Please upload at least ID card and insurance front images"
-                    : "Click to extract data from all uploaded cards"
+                  {!idCardImage 
+                    ? "Please upload at least an ID card to proceed"
+                    : "This will automatically submit to the QuickAddQHC automation"
                   }
                 </p>
               </div>
@@ -794,124 +766,9 @@ export default function PatientIntake() {
           </Card>
         )}
 
-        {/* Submit Section */}
-        {patientData && insuranceFrontData && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Step 4: Review & Submit
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Alert>
-                <Check className="h-4 w-4" />
-                <AlertDescription>
-                  All required data has been extracted successfully. Review the information above and click submit to complete patient intake.
-                </AlertDescription>
-              </Alert>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Ready to submit patient intake</p>
-                  <p className="text-sm text-gray-600">Source ID: <code className="bg-gray-100 px-2 py-1 rounded">{sourceId}</code></p>
-                </div>
-                <Button 
-                  onClick={() => setShowConfirmDialog(true)}
-                  disabled={isProcessing}
-                  size="lg"
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {isProcessing ? (
-                    <>
-                      <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2" />
-                      Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Complete Intake
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
-        {/* Confirmation Dialog */}
-        {showConfirmDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold mb-4">Confirm Patient Intake Submission</h3>
-              
-              <div className="space-y-3 mb-6">
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <h4 className="font-medium text-blue-800 mb-2">Patient Information:</h4>
-                  <p className="text-sm text-blue-700">
-                    <strong>Name:</strong> {patientData?.firstName} {patientData?.lastName}
-                  </p>
-                  <p className="text-sm text-blue-700">
-                    <strong>DOB:</strong> {patientData?.dateOfBirth}
-                  </p>
-                  <p className="text-sm text-blue-700">
-                    <strong>Source ID:</strong> {sourceId}
-                  </p>
-                </div>
-                
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <h4 className="font-medium text-green-800 mb-2">Insurance Information:</h4>
-                  <p className="text-sm text-green-700">
-                    <strong>Insurer:</strong> {insuranceFrontData?.insurer.name}
-                  </p>
-                  <p className="text-sm text-green-700">
-                    <strong>Member ID:</strong> {insuranceFrontData?.member.member_id}
-                  </p>
-                  <p className="text-sm text-green-700">
-                    <strong>Group Number:</strong> {insuranceFrontData?.insurer.group_number}
-                  </p>
-                </div>
-                
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    This will trigger the <strong>QuickAddQHC</strong> automation chain with all extracted patient and insurance data.
-                  </AlertDescription>
-                </Alert>
-              </div>
-              
-              <div className="flex gap-3 justify-end">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowConfirmDialog(false)}
-                  disabled={isProcessing}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={() => {
-                    setShowConfirmDialog(false);
-                    handleSubmit();
-                  }}
-                  disabled={isProcessing}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {isProcessing ? (
-                    <>
-                      <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2" />
-                      Triggering QuickAddQHC...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Confirm & Trigger QuickAddQHC
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+
+
       </div>
     </div>
   );
