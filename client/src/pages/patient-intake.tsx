@@ -117,8 +117,9 @@ export default function PatientIntake() {
   const { toast } = useToast();
 
   const generateSourceId = useCallback((firstName: string, lastName: string, dob: string) => {
-    const cleanLast = lastName.replace(/\s+/g, '_');
-    const cleanFirst = firstName.replace(/\s+/g, '_');
+    // Convert ALL non-alphanumeric characters to underscores (U+005F) for AppSheet compatibility
+    const cleanLast = lastName.replace(/[^a-zA-Z0-9]/g, '_').replace(/_{2,}/g, '_').replace(/^_|_$/g, '');
+    const cleanFirst = firstName.replace(/[^a-zA-Z0-9]/g, '_').replace(/_{2,}/g, '_').replace(/^_|_$/g, '');
     const [month, day, year] = dob.split('/');
     return `${cleanLast}_${cleanFirst}__${month}_${day}_${year}`;
   }, []);
