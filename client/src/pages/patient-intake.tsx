@@ -159,6 +159,14 @@ export default function PatientIntake() {
           description: "Image saved. Take all photos then click 'Process All Cards'.",
         });
       }
+
+      // Reset the file inputs to allow taking new photos
+      setTimeout(() => {
+        const selectInput = document.getElementById(`file-select-${type}`) as HTMLInputElement;
+        const cameraInput = document.getElementById(`file-camera-${type}`) as HTMLInputElement;
+        if (selectInput) selectInput.value = '';
+        if (cameraInput) cameraInput.value = '';
+      }, 100);
     };
 
     reader.readAsDataURL(file);
@@ -418,6 +426,23 @@ export default function PatientIntake() {
               <Check className="h-5 w-5 text-green-600" />
               <span className="text-sm font-medium text-green-600">Image uploaded</span>
             </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                if (type === 'id') setIdCardImage(null);
+                else if (type === 'insurance-front') setInsuranceFrontImage(null);
+                else if (type === 'insurance-back') setInsuranceBackImage(null);
+                // Reset the file inputs
+                const selectInput = document.getElementById(`file-select-${type}`) as HTMLInputElement;
+                const cameraInput = document.getElementById(`file-camera-${type}`) as HTMLInputElement;
+                if (selectInput) selectInput.value = '';
+                if (cameraInput) cameraInput.value = '';
+              }}
+              disabled={isProcessing}
+            >
+              Retake Photo
+            </Button>
           </div>
         ) : (
           <>
@@ -425,35 +450,45 @@ export default function PatientIntake() {
             <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
             <p className="text-sm text-gray-600 mb-4">{subtitle}</p>
             <div className="space-y-2">
+              {/* File selection input */}
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleFileSelect}
                 className="hidden"
-                id={`file-${type}`}
+                id={`file-select-${type}`}
+                disabled={isProcessing}
+              />
+              {/* Camera capture input */}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+                id={`file-camera-${type}`}
                 disabled={isProcessing}
                 capture="environment"
               />
-              <div className="flex gap-2 justify-center">
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
                 <Button 
                   variant="outline" 
-                  className="cursor-pointer" 
+                  className="cursor-pointer w-full sm:w-auto" 
                   disabled={isProcessing}
-                  onClick={() => document.getElementById(`file-${type}`)?.click()}
-                  type="button"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Select Image
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="cursor-pointer" 
-                  disabled={isProcessing}
-                  onClick={() => document.getElementById(`file-${type}`)?.click()}
+                  onClick={() => document.getElementById(`file-camera-${type}`)?.click()}
                   type="button"
                 >
                   <Camera className="h-4 w-4 mr-2" />
                   Take Photo
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="cursor-pointer w-full sm:w-auto" 
+                  disabled={isProcessing}
+                  onClick={() => document.getElementById(`file-select-${type}`)?.click()}
+                  type="button"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Select Image
                 </Button>
               </div>
               <p className="text-xs text-gray-500">Or drag and drop an image here</p>
