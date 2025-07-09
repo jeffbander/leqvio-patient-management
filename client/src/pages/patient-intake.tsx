@@ -117,11 +117,41 @@ export default function PatientIntake() {
   const { toast } = useToast();
 
   const generateSourceId = useCallback((firstName: string, lastName: string, dob: string) => {
-    // Convert ALL non-alphanumeric characters to underscores (U+005F) for AppSheet compatibility
-    const cleanLast = lastName.replace(/[^a-zA-Z0-9]/g, '_').replace(/_{2,}/g, '_').replace(/^_|_$/g, '');
-    const cleanFirst = firstName.replace(/[^a-zA-Z0-9]/g, '_').replace(/_{2,}/g, '_').replace(/^_|_$/g, '');
+    // Debug: Log raw input characters
+    console.log('Raw firstName chars:', Array.from(firstName).map(c => `${c}(U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')})`));
+    console.log('Raw lastName chars:', Array.from(lastName).map(c => `${c}(U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')})`));
+    
+    // Normalize Unicode and remove hidden/non-printing characters
+    const normalizeText = (text: string): string => {
+      return text
+        .normalize('NFC') // Normalize Unicode composition
+        .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width spaces, joiners, and BOM
+        .replace(/\u00A0/g, ' ') // Replace non-breaking spaces with regular spaces
+        .replace(/\uFF3F/g, '_') // Replace fullwidth underscores with regular ones
+        .replace(/\\u([0-9A-Fa-f]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16))) // Unescape JSON unicode
+        .trim() // Remove leading/trailing whitespace
+        .replace(/[^a-zA-Z0-9]/g, '_') // Convert ALL non-alphanumeric to U+005F underscore
+        .replace(/_{2,}/g, '_') // Collapse multiple underscores
+        .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
+    };
+    
+    const cleanLast = normalizeText(lastName);
+    const cleanFirst = normalizeText(firstName);
     const [month, day, year] = dob.split('/');
-    return `${cleanLast}_${cleanFirst}__${month}_${day}_${year}`;
+    const sourceId = `${cleanLast}_${cleanFirst}__${month}_${day}_${year}`;
+    
+    // Debug: Log final source ID characters
+    console.log('Final sourceId chars:', Array.from(sourceId).map(c => `${c}(U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')})`));
+    console.log('Final sourceId:', sourceId);
+    
+    // Final validation: Ensure ONLY expected characters
+    const isValid = /^[a-zA-Z0-9_]+$/.test(sourceId);
+    if (!isValid) {
+      console.error('WARNING: Invalid characters detected in sourceId!');
+      console.error('Invalid chars:', Array.from(sourceId).filter(c => !/[a-zA-Z0-9_]/.test(c)));
+    }
+    
+    return sourceId;
   }, []);
 
   const handleFileUpload = useCallback((file: File, type: 'id' | 'insurance-front' | 'insurance-back') => {
@@ -180,6 +210,12 @@ export default function PatientIntake() {
     sourceId: string
   ) => {
     try {
+      // Debug: Log character codes being sent to AppSheet
+      console.log('=== APPSHEET SUBMISSION DEBUG ===');
+      console.log('sourceId being sent:', sourceId);
+      console.log('sourceId char codes:', Array.from(sourceId).map(c => `${c}(U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')})`));
+      console.log('Patient_ID char codes:', Array.from(sourceId).map(c => `${c}(U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')})`));
+      
       // Prepare starting variables from extracted data
       const starting_variables: Record<string, string> = {
         first_name: patientData.firstName,
@@ -200,6 +236,13 @@ export default function PatientIntake() {
         first_step_user_input: "",
         starting_variables,
       };
+      
+      // Debug: Log the JSON that will be sent
+      const jsonPayload = JSON.stringify(requestBody);
+      console.log('JSON payload length:', jsonPayload.length);
+      console.log('JSON includes Patient_ID:', jsonPayload.includes('Patient_ID'));
+      console.log('JSON Patient_ID value:', starting_variables.Patient_ID);
+      console.log('===============================');
 
       // Submit to AIGENTS API
       const response = await fetch("https://start-chain-run-943506065004.us-central1.run.app", {

@@ -1,0 +1,73 @@
+1. Hidden or non-printing Unicode characters
+Byte Order Mark (BOM): Some JSON serializers stick a U+FEFF at the start of strings.
+
+Zero-width spaces/joiners: U+200B or U+200C can sneak in when concatenating or copying.
+
+Non-breaking spaces vs normal spaces: U+00A0 vs U+0020.
+
+How to detect in Replit/JS
+
+js
+Copy
+Edit
+let id = receivedFromApi;
+console.log(Array.from(id).map(c => c.charCodeAt(0).toString(16)));
+// e.g. [ '42','61','6e','64','65','72', … ] should exactly match your expected hex codes
+If you see any codes you don’t expect (like feff, 200b, a0), you know you’ve got an extra character.
+
+2. Different “underscore” characters
+Not all underscores are U+005F. You might have a “fullwidth underscore” (U+FF3F) or some other look-alike.
+
+Fix: In your debug log (above), confirm every underscore shows up as 5f. Anything else you’ll need to replace, e.g.:
+
+js
+Copy
+Edit
+id = id.replace(/\uff3f/g, '_');
+3. Trailing or leading whitespace
+APIs sometimes pad or trim in unexpected ways.
+
+Quick test in AppSheet:
+
+appsheet
+Copy
+Edit
+/* compare lengths */
+LEN([PPD_Patient_Link]) <> LEN("Bander_Jeffrey__11_29_1976")
+If that’s TRUE, you know there’s an extra space somewhere. Then:
+
+appsheet
+Copy
+Edit
+/* trim both sides */
+TRIM([PPD_Patient_Link]) = TRIM("Bander_Jeffrey__11_29_1976")
+4. Encoding mismatches (UTF-8 vs Latin-1)
+If your client or server mis-labels the charset, a multi-byte UTF-8 sequence can get mangled. You’ll see odd replacement chars (�) or garbled bytes.
+
+How to confirm: In your Replit code, force UTF-8 and inspect Buffer.from(id, 'utf8') vs Buffer.from(id, 'latin1').
+
+5. JSON escaping left in the string
+If your API layer double-escapes, you might literally be getting \u005f in your string instead of _.
+
+Detect:
+
+js
+Copy
+Edit
+console.log(id.includes('\\u005f'));  // if true, you have escaped text
+Then unescape it:
+
+js
+Copy
+Edit
+id = id.replace(/\\u([0-9A-Fa-f]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex,16)));
+Next steps to debug on your side
+Log the raw codepoints coming over the wire (see snippet above).
+
+Compare that array to the array for a known good literal.
+
+Normalize/clean the incoming string in your Replit code before sending it on (e.g. .trim(), .replace(/[\u200B-\u200D\uFEFF]/g,''), .normalize('NFC')).
+
+Then confirm in AppSheet with your LEN() or IN() test that the cleaned value now matches exactly.
+
+Once the characters coming from Replit are truly U+005F for underscores, true ASCII letters, and no hidden bytes, your AppSheet = "Bander_Jeffrey__11_29_1976" will work every time.
