@@ -4,8 +4,6 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
-- **2025-07-10**: Made Generated Source ID input field editable on patient intake page - users can now modify auto-generated Patient IDs before submission
-- **2025-07-10**: Added comprehensive character debugging and analysis utilities to validate Unicode character encoding in Patient IDs
 - **2025-07-09**: Fixed Patient ID generation to ensure ALL special characters are converted to underscores (U+005F) for AppSheet compatibility and database matching
 - **2025-07-09**: Improved mobile photo capture for insurance cards with separate inputs for "Select Image" vs "Take Photo" and mobile-optimized layout
 - **2025-07-09**: Removed confirmation dialog - system now automatically processes and submits to QuickAddQHC after photo upload

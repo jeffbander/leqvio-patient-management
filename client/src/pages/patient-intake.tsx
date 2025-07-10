@@ -618,16 +618,7 @@ export default function PatientIntake() {
                         <p><span className="font-medium">DOB:</span> {patientData.dateOfBirth}</p>
                         <p><span className="font-medium">Confidence:</span> {Math.round(patientData.confidence * 100)}%</p>
                         {sourceId && (
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Source ID:</span>
-                            <input
-                              type="text"
-                              value={sourceId}
-                              onChange={(e) => setSourceId(e.target.value)}
-                              className="bg-white px-2 py-1 rounded border text-sm font-mono flex-1"
-                              placeholder="Generated Source ID"
-                            />
-                          </div>
+                          <p><span className="font-medium">Source ID:</span> <code className="bg-white px-1 py-0.5 rounded">{sourceId}</code></p>
                         )}
                       </div>
                     </div>
