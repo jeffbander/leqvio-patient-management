@@ -54,6 +54,7 @@ export default function AutomationTrigger() {
   const [responseStatus, setResponseStatus] = useState<'success' | 'error' | null>(null);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [newChainName, setNewChainName] = useState("");
+  const [isManualSourceId, setIsManualSourceId] = useState(false);
   const { toast } = useToast();
 
   // Database queries
@@ -124,8 +125,10 @@ export default function AutomationTrigger() {
     },
   });
 
-  // Auto-generate Source ID when patient info changes
+  // Auto-generate Source ID when patient info changes (only if not in manual mode)
   useEffect(() => {
+    if (isManualSourceId) return; // Skip auto-generation if in manual mode
+    
     const firstName = form.watch("first_name");
     const lastName = form.watch("last_name");
     const dob = form.watch("dob");
@@ -142,8 +145,11 @@ export default function AutomationTrigger() {
       
       const sourceId = `${formattedLastName}_${formattedFirstName}__${dobFormatted}`;
       form.setValue("source_id", sourceId);
+    } else if (!firstName || !lastName || !dob) {
+      // Clear source ID if any required field is empty (only in auto mode)
+      form.setValue("source_id", "");
     }
-  }, [form.watch("first_name"), form.watch("last_name"), form.watch("dob")]);
+  }, [form.watch("first_name"), form.watch("last_name"), form.watch("dob"), isManualSourceId]);
 
   const addVariable = () => {
     setVariables([...variables, { key: "", value: "" }]);
@@ -194,6 +200,38 @@ export default function AutomationTrigger() {
     } catch (error) {
       // Error handling is now in the mutation's onError
       console.error('Error adding chain:', error);
+    }
+  };
+
+  const toggleSourceIdMode = () => {
+    setIsManualSourceId(!isManualSourceId);
+    if (!isManualSourceId) {
+      // Switching to manual mode - keep current value
+      toast({
+        title: "Manual Mode Enabled",
+        description: "You can now edit the Source ID manually",
+        variant: "default",
+      });
+    } else {
+      // Switching to auto mode - regenerate from current data
+      const firstName = form.getValues("first_name");
+      const lastName = form.getValues("last_name");
+      const dob = form.getValues("dob");
+      
+      if (firstName && lastName && dob) {
+        const formattedFirstName = firstName.trim().replace(/\s+/g, '_');
+        const formattedLastName = lastName.trim().replace(/\s+/g, '_');
+        const dobFormatted = dob.split('-').length === 3 
+          ? `${dob.split('-')[1]}_${dob.split('-')[2]}_${dob.split('-')[0]}`
+          : dob.replace(/\//g, '_');
+        const sourceId = `${formattedLastName}_${formattedFirstName}__${dobFormatted}`;
+        form.setValue("source_id", sourceId);
+      }
+      toast({
+        title: "Auto Mode Enabled", 
+        description: "Source ID will be auto-generated from patient info",
+        variant: "default",
+      });
     }
   };
 
@@ -534,23 +572,47 @@ export default function AutomationTrigger() {
                   />
                 </div>
 
-                {/* Source ID - Auto-generated */}
+                {/* Source ID - Auto-generated or Manual */}
                 <FormField
                   control={form.control}
                   name="source_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Generated Source ID</FormLabel>
+                      <FormLabel className="flex items-center justify-between">
+                        <span>{isManualSourceId ? "Manual Source ID" : "Generated Source ID"}</span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={toggleSourceIdMode}
+                          className="text-xs"
+                        >
+                          {isManualSourceId ? (
+                            <>
+                              <RotateCcw className="h-3 w-3 mr-1" />
+                              Switch to Auto
+                            </>
+                          ) : (
+                            <>
+                              <User className="h-3 w-3 mr-1" />
+                              Edit Manually
+                            </>
+                          )}
+                        </Button>
+                      </FormLabel>
                       <FormControl>
                         <Input
                           {...field}
-                          readOnly
-                          className="bg-gray-50 text-gray-700"
-                          placeholder="Source ID will be auto-generated from patient info"
+                          readOnly={!isManualSourceId}
+                          className={isManualSourceId ? "border-blue-300 focus:border-blue-500" : "bg-gray-50 text-gray-700"}
+                          placeholder={isManualSourceId ? "Enter custom Source ID..." : "Source ID will be auto-generated from patient info"}
                         />
                       </FormControl>
                       <FormDescription>
-                        Format: LAST_FIRST__MM_DD_YYYY (auto-generated from patient information)
+                        {isManualSourceId 
+                          ? "Enter a custom Source ID or switch back to auto-generation"
+                          : "Format: LAST_FIRST__MM_DD_YYYY (auto-generated from patient information)"
+                        }
                       </FormDescription>
                     </FormItem>
                   )}
