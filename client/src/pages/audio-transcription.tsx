@@ -113,16 +113,7 @@ export default function AudioTranscription() {
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
-          console.log(`Audio chunk received: ${event.data.size} bytes, total chunks: ${audioChunksRef.current.length}`);
         }
-      };
-      
-      mediaRecorder.onstop = () => {
-        console.log('MediaRecorder stopped unexpectedly');
-      };
-      
-      mediaRecorder.onerror = (event) => {
-        console.error('MediaRecorder error:', event);
       };
       
       mediaRecorder.start(1000); // Collect data every second
@@ -132,9 +123,7 @@ export default function AudioTranscription() {
       
       // Start periodic transcription
       transcriptionIntervalRef.current = setInterval(async () => {
-        console.log(`Transcription interval: chunks=${audioChunksRef.current.length}, isPaused=${isPausedRef.current}, state=${mediaRecorderRef.current?.state}`);
-        if (audioChunksRef.current.length > lastSentIndexRef.current && !isPausedRef.current && mediaRecorderRef.current?.state === 'recording') {
-          console.log('Sending audio for transcription...');
+        if (audioChunksRef.current.length > 0 && !isPausedRef.current && mediaRecorderRef.current?.state === 'recording') {
           await sendAudioForTranscription();
         }
       }, 5000); // Send audio every 5 seconds
@@ -154,16 +143,15 @@ export default function AudioTranscription() {
   };
 
   const sendAudioForTranscription = async () => {
-    // Check if we have new chunks to send
-    const newChunks = audioChunksRef.current.slice(lastSentIndexRef.current);
-    if (newChunks.length === 0 || isSendingAudioRef.current) return;
+    // Check if we have chunks to send
+    if (audioChunksRef.current.length === 0 || isSendingAudioRef.current) return;
     
     isSendingAudioRef.current = true;
     setIsProcessing(true);
     
     try {
-      // Create a blob from new audio chunks only
-      const audioBlob = new Blob(newChunks, { type: 'audio/webm' });
+      // Create a blob from ALL audio chunks (WebM needs complete format)
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
       
       // Check if blob has content
       if (audioBlob.size === 0) {
@@ -175,6 +163,7 @@ export default function AudioTranscription() {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
       formData.append('isFinal', 'false');
+      formData.append('lastTranscriptLength', currentTranscript.length.toString());
       
       // Send to backend for transcription
       const response = await fetch('/api/transcribe-audio', {
@@ -188,23 +177,25 @@ export default function AudioTranscription() {
       
       const result = await response.json();
       
-      if (result.text) {
-        const newSegment: TranscriptionSegment = {
-          text: result.text,
-          timestamp: Date.now(),
-          isFinal: false
-        };
+      if (result.text && result.text.length > currentTranscript.length) {
+        // Get only the new part of the transcription
+        const newText = result.text.substring(currentTranscript.length).trim();
         
-        setTranscription(prev => [...prev, newSegment]);
-        setCurrentTranscript(prev => prev + ' ' + result.text);
+        if (newText) {
+          const newSegment: TranscriptionSegment = {
+            text: newText,
+            timestamp: Date.now(),
+            isFinal: false
+          };
+          
+          setTranscription(prev => [...prev, newSegment]);
+          setCurrentTranscript(result.text);
+        }
         
         // Try to extract patient info
         if (result.patientInfo) {
           setPatientInfo(result.patientInfo);
         }
-        
-        // Update the last sent index instead of clearing chunks
-        lastSentIndexRef.current = audioChunksRef.current.length;
       }
     } catch (error) {
       console.error('Transcription error:', error);
@@ -268,18 +259,16 @@ export default function AudioTranscription() {
   };
 
   const sendFinalTranscription = async () => {
-    // Get any remaining chunks that haven't been sent
-    const remainingChunks = audioChunksRef.current.slice(lastSentIndexRef.current);
-    
-    // Skip if no new chunks to process
-    if (remainingChunks.length === 0) {
+    // Skip if no chunks to process
+    if (audioChunksRef.current.length === 0) {
       return;
     }
     
     setIsProcessing(true);
     
     try {
-      const audioBlob = new Blob(remainingChunks, { type: 'audio/webm' });
+      // Send all chunks for final transcription
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
       
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
