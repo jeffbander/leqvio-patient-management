@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Mic, MicOff, Download, Send, AlertCircle, Loader2, HardDrive } from "lucide-react";
+import { Mic, MicOff, Download, Send, AlertCircle, Loader2, HardDrive, Edit2, Save } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const CHAIN_OPTIONS = [
   "ATTACHMENT PROCESSING (LABS)",
@@ -39,6 +41,8 @@ export default function AudioTranscriptionVosk() {
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [modelProgress, setModelProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isEditingPatient, setIsEditingPatient] = useState(false);
+  const [editedPatientInfo, setEditedPatientInfo] = useState<PatientInfo>({});
   
   const { toast } = useToast();
   const recognizerRef = useRef<any>(null);
@@ -121,42 +125,84 @@ export default function AudioTranscriptionVosk() {
 
   // Extract patient information from transcript
   const extractPatientInfo = (text: string) => {
+    // Normalize text for better matching
+    const normalizedText = text.toLowerCase();
+    
     const patterns = {
       name: [
-        /patient(?:\s+is)?(?:\s+named?)?\s+([A-Z][a-z]+)\s+([A-Z][a-z]+)/i,
-        /name(?:\s+is)?(?:\s+)?\s+([A-Z][a-z]+)\s+([A-Z][a-z]+)/i,
-        /([A-Z][a-z]+)\s+([A-Z][a-z]+)(?:\s+is)?(?:\s+the)?(?:\s+patient)?/i,
+        // More flexible patterns
+        /patient(?:\s+is)?(?:\s+named?)?\s+([a-z]+)\s+([a-z]+)/i,
+        /name(?:\s+is)?(?:\s+)?\s+([a-z]+)\s+([a-z]+)/i,
+        /([a-z]+)\s+([a-z]+)(?:\s+is)?(?:\s+the)?(?:\s+patient)/i,
+        /treating\s+([a-z]+)\s+([a-z]+)/i,
+        /for\s+([a-z]+)\s+([a-z]+)/i,
+        /mr\.?\s+([a-z]+)\s+([a-z]+)/i,
+        /mrs\.?\s+([a-z]+)\s+([a-z]+)/i,
+        /ms\.?\s+([a-z]+)\s+([a-z]+)/i,
+        /miss\s+([a-z]+)\s+([a-z]+)/i,
+        /doctor\s+([a-z]+)\s+([a-z]+)/i,
+        // First name last name patterns
+        /first\s+name\s+(?:is\s+)?([a-z]+).*last\s+name\s+(?:is\s+)?([a-z]+)/i,
+        /([a-z]+)\s+is\s+the\s+first\s+name.*([a-z]+)\s+is\s+the\s+last\s+name/i,
       ],
       dob: [
-        /born(?:\s+on)?\s+(\d{1,2})[\s-\/](\d{1,2})[\s-\/](\d{2,4})/i,
-        /date of birth(?:\s+is)?\s+(\d{1,2})[\s-\/](\d{1,2})[\s-\/](\d{2,4})/i,
-        /DOB(?:\s+is)?\s+(\d{1,2})[\s-\/](\d{1,2})[\s-\/](\d{2,4})/i,
-        /(\d{1,2})[\s-\/](\d{1,2})[\s-\/](\d{2,4})(?:\s+birth)?/i,
-      ]
+        // More flexible date patterns
+        /born(?:\s+on)?\s+(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/i,
+        /date\s+of\s+birth(?:\s+is)?\s+(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/i,
+        /dob(?:\s+is)?\s+(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/i,
+        /birthday(?:\s+is)?\s+(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/i,
+        // Month name patterns
+        /born(?:\s+on)?\s+(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{2,4})/i,
+        /(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{2,4})\s+birth/i,
+        // Numeric only patterns
+        /(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/,
+      ],
+      monthNames: {
+        january: '01', february: '02', march: '03', april: '04',
+        may: '05', june: '06', july: '07', august: '08',
+        september: '09', october: '10', november: '11', december: '12',
+        jan: '01', feb: '02', mar: '03', apr: '04',
+        jun: '06', jul: '07', aug: '08', sep: '09', sept: '09',
+        oct: '10', nov: '11', dec: '12'
+      }
     };
 
     let extractedInfo: PatientInfo = {};
 
-    // Extract name
+    // Extract name with improved matching
     for (const pattern of patterns.name) {
       const match = text.match(pattern);
       if (match) {
-        extractedInfo.firstName = match[1];
-        extractedInfo.lastName = match[2];
+        // Capitalize first letters
+        extractedInfo.firstName = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+        extractedInfo.lastName = match[2].charAt(0).toUpperCase() + match[2].slice(1).toLowerCase();
         break;
       }
     }
 
-    // Extract DOB
+    // Extract DOB with improved patterns
     for (const pattern of patterns.dob) {
       const match = text.match(pattern);
       if (match) {
-        const month = match[1].padStart(2, '0');
-        const day = match[2].padStart(2, '0');
-        let year = match[3];
+        let month: string, day: string, year: string;
+        
+        // Check if first match is a month name
+        if (isNaN(parseInt(match[1]))) {
+          const monthName = match[1].toLowerCase();
+          month = patterns.monthNames[monthName as keyof typeof patterns.monthNames] || '01';
+          day = match[2].padStart(2, '0');
+          year = match[3];
+        } else {
+          month = match[1].padStart(2, '0');
+          day = match[2].padStart(2, '0');
+          year = match[3];
+        }
+        
+        // Handle 2-digit years
         if (year.length === 2) {
           year = (parseInt(year) > 50 ? '19' : '20') + year;
         }
+        
         extractedInfo.dob = `${year}-${month}-${day}`;
         break;
       }
@@ -212,8 +258,11 @@ export default function AudioTranscriptionVosk() {
           
           // Extract patient info from the complete transcript
           const info = extractPatientInfo(fullText);
-          if (info.sourceId) {
-            setPatientInfo(info);
+          if (info.firstName || info.lastName || info.dob) {
+            setPatientInfo(prev => ({
+              ...prev,
+              ...info
+            }));
           }
         }
       });
@@ -456,11 +505,27 @@ export default function AudioTranscriptionVosk() {
 
               {/* Recording Status */}
               {isRecording && (
-                <div className="text-center">
-                  <Badge variant="destructive" className="animate-pulse">
-                    <div className="h-2 w-2 bg-red-500 rounded-full mr-2 animate-pulse" />
-                    Recording... Speak clearly
-                  </Badge>
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <Badge variant="destructive" className="animate-pulse">
+                      <div className="h-2 w-2 bg-red-500 rounded-full mr-2 animate-pulse" />
+                      Recording... Speak clearly
+                    </Badge>
+                  </div>
+                  
+                  {/* Patient Info Guide */}
+                  <Card className="border-blue-200 bg-blue-50">
+                    <CardContent className="pt-4">
+                      <h4 className="font-semibold text-sm text-blue-900 mb-2">Say patient information like:</h4>
+                      <ul className="text-sm text-blue-700 space-y-1">
+                        <li>• "Patient is John Smith"</li>
+                        <li>• "Treating Mary Johnson"</li>
+                        <li>• "For Mr. Robert Davis"</li>
+                        <li>• "Date of birth January 15th 1980"</li>
+                        <li>• "Born on 03/25/1965"</li>
+                      </ul>
+                    </CardContent>
+                  </Card>
                 </div>
               )}
 
@@ -484,25 +549,117 @@ export default function AudioTranscriptionVosk() {
               )}
 
               {/* Extracted Patient Info */}
-              {patientInfo && (
-                <Card className="border-green-200 bg-green-50">
-                  <CardHeader>
-                    <CardTitle className="text-lg text-green-800">
-                      Patient Information Extracted
+              {(patientInfo || transcript) && (
+                <Card className={patientInfo?.sourceId ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className={`text-lg ${patientInfo?.sourceId ? "text-green-800" : "text-orange-800"}`}>
+                      {patientInfo?.sourceId ? "Patient Information Extracted" : "Patient Information Needed"}
                     </CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsEditingPatient(!isEditingPatient);
+                        if (!isEditingPatient) {
+                          setEditedPatientInfo(patientInfo || {});
+                        }
+                      }}
+                    >
+                      {isEditingPatient ? (
+                        <>
+                          <Save className="h-4 w-4 mr-1" />
+                          Save
+                        </>
+                      ) : (
+                        <>
+                          <Edit2 className="h-4 w-4 mr-1" />
+                          Edit
+                        </>
+                      )}
+                    </Button>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium">Name:</span> {patientInfo.firstName} {patientInfo.lastName}
+                    {!isEditingPatient ? (
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium">First Name:</span> {patientInfo?.firstName || <span className="text-gray-400">Not detected</span>}
+                        </div>
+                        <div>
+                          <span className="font-medium">Last Name:</span> {patientInfo?.lastName || <span className="text-gray-400">Not detected</span>}
+                        </div>
+                        <div>
+                          <span className="font-medium">DOB:</span> {patientInfo?.dob || <span className="text-gray-400">Not detected</span>}
+                        </div>
+                        <div>
+                          <span className="font-medium">Source ID:</span> {patientInfo?.sourceId || <span className="text-gray-400">Will be generated</span>}
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-medium">DOB:</span> {patientInfo.dob}
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="firstName">First Name</Label>
+                            <Input
+                              id="firstName"
+                              value={editedPatientInfo.firstName || ''}
+                              onChange={(e) => setEditedPatientInfo({...editedPatientInfo, firstName: e.target.value})}
+                              placeholder="Enter first name"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="lastName">Last Name</Label>
+                            <Input
+                              id="lastName"
+                              value={editedPatientInfo.lastName || ''}
+                              onChange={(e) => setEditedPatientInfo({...editedPatientInfo, lastName: e.target.value})}
+                              placeholder="Enter last name"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="dob">Date of Birth</Label>
+                          <Input
+                            id="dob"
+                            type="date"
+                            value={editedPatientInfo.dob || ''}
+                            onChange={(e) => setEditedPatientInfo({...editedPatientInfo, dob: e.target.value})}
+                          />
+                        </div>
+                        <Button
+                          className="w-full"
+                          onClick={() => {
+                            const firstName = editedPatientInfo.firstName;
+                            const lastName = editedPatientInfo.lastName;
+                            const dob = editedPatientInfo.dob;
+                            
+                            if (firstName && lastName && dob) {
+                              const [year, month, day] = dob.split('-');
+                              const sourceId = `${lastName}_${firstName}__${month}_${day}_${year}`;
+                              
+                              setPatientInfo({
+                                ...editedPatientInfo,
+                                sourceId
+                              });
+                              
+                              toast({
+                                title: "Patient Information Updated",
+                                description: "Patient details have been saved successfully.",
+                              });
+                            } else {
+                              toast({
+                                title: "Missing Information",
+                                description: "Please fill in all fields to generate Source ID.",
+                                variant: "destructive",
+                              });
+                            }
+                            
+                            setIsEditingPatient(false);
+                          }}
+                        >
+                          Save Patient Information
+                        </Button>
                       </div>
-                      <div className="col-span-2">
-                        <span className="font-medium">Source ID:</span> {patientInfo.sourceId}
-                      </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
