@@ -179,6 +179,9 @@ export default function AudioTranscription() {
         if (result.patientInfo) {
           setPatientInfo(result.patientInfo);
         }
+        
+        // Clear audio chunks after successful transcription
+        audioChunksRef.current = [];
       }
     } catch (error) {
       console.error('Transcription error:', error);
@@ -240,6 +243,11 @@ export default function AudioTranscription() {
   };
 
   const sendFinalTranscription = async () => {
+    // Skip if no chunks to process
+    if (audioChunksRef.current.length === 0) {
+      return;
+    }
+    
     setIsProcessing(true);
     
     try {
