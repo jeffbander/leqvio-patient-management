@@ -71,6 +71,105 @@ export interface ExtractedInsuranceData {
   };
 }
 
+export async function extractPatientInfoFromScreenshot(base64Image: string): Promise<any> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: `You are a medical system data extraction expert. Extract patient information from screenshots of medical systems, EHR/EMR interfaces, or patient registration screens.
+
+Return your response in JSON format with these exact fields:
+{
+  "accountNo": "string",
+  "firstName": "string",
+  "lastName": "string",
+  "dateOfBirth": "MM/DD/YYYY",
+  "age": "string",
+  "sex": "string",
+  "street": "string",
+  "city": "string",
+  "state": "string",
+  "zip": "string",
+  "country": "string",
+  "homePhone": "string",
+  "cellPhone": "string",
+  "email": "string",
+  "primaryCareProvider": "string",
+  "maritalStatus": "string",
+  "language": "string",
+  "race": "string",
+  "ethnicity": "string",
+  "insurancePlanName": "string",
+  "subscriberNo": "string",
+  "relationship": "string",
+  "rawData": "all text found in the image",
+  "confidence": 0.0-1.0
+}
+
+EXTRACTION RULES:
+- Extract exact text as shown in the system
+- Use empty string "" for missing fields
+- Phone numbers should include formatting if present
+- Dates in MM/DD/YYYY format
+- Be thorough - medical systems contain critical patient data
+- Set confidence based on image clarity and completeness`
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Extract all patient information from this medical system screenshot. Capture every field visible including demographics, contact info, insurance, and provider details."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`
+              }
+            }
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 2000,
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || "{}");
+    
+    return {
+      accountNo: result.accountNo || "",
+      firstName: result.firstName || "",
+      lastName: result.lastName || "",
+      dateOfBirth: result.dateOfBirth || "",
+      age: result.age || "",
+      sex: result.sex || "",
+      street: result.street || "",
+      city: result.city || "",
+      state: result.state || "",
+      zip: result.zip || "",
+      country: result.country || "",
+      homePhone: result.homePhone || "",
+      cellPhone: result.cellPhone || "",
+      email: result.email || "",
+      primaryCareProvider: result.primaryCareProvider || "",
+      maritalStatus: result.maritalStatus || "",
+      language: result.language || "",
+      race: result.race || "",
+      ethnicity: result.ethnicity || "",
+      insurancePlanName: result.insurancePlanName || "",
+      subscriberNo: result.subscriberNo || "",
+      relationship: result.relationship || "",
+      rawData: result.rawData || "",
+      confidence: Math.max(0, Math.min(1, result.confidence || 0))
+    };
+  } catch (error) {
+    console.error("OpenAI patient info extraction error:", error);
+    throw new Error("Failed to extract patient information: " + (error as Error).message);
+  }
+}
+
 export async function extractPatientDataFromImage(base64Image: string): Promise<ExtractedPatientData> {
   try {
     const response = await openai.chat.completions.create({

@@ -453,6 +453,16 @@ export default function AutomationTrigger() {
                   <span>Insurance Cards</span>
                 </Button>
               </Link>
+              <Link href="/patient-info">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2"
+                >
+                  <User className="h-4 w-4" />
+                  <span>Patient Info</span>
+                </Button>
+              </Link>
               <Link href="/audio">
                 <Button
                   variant="outline"

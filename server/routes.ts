@@ -5,7 +5,7 @@ import session from "express-session";
 import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
-import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio } from "./openai-service";
+import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio, extractPatientInfoFromScreenshot } from "./openai-service";
 
 
 // Analytics middleware to track API requests
@@ -701,6 +701,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Photo extraction error:", error);
       res.status(500).json({ 
         error: "Failed to extract patient data from photo",
+        details: (error as Error).message 
+      });
+    }
+  });
+
+  // Patient info extraction from medical system screenshots
+  app.post("/api/extract-patient-info", upload.single('photo'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No screenshot uploaded" });
+      }
+
+      // Convert uploaded file to base64
+      const base64Image = req.file.buffer.toString('base64');
+      const startTime = Date.now();
+      
+      // Extract patient info using OpenAI Vision
+      const extractedData = await extractPatientInfoFromScreenshot(base64Image);
+      const processingTime = Date.now() - startTime;
+      
+      // Add processing time to response
+      const responseData = {
+        ...extractedData,
+        processingTime_ms: processingTime
+      };
+      
+      console.log("Patient info extraction completed:", {
+        fileName: req.file.originalname,
+        processingTime,
+        patientName: `${extractedData.firstName} ${extractedData.lastName}`,
+        accountNo: extractedData.accountNo
+      });
+      
+      res.json(responseData);
+    } catch (error) {
+      console.error("Patient info extraction error:", error);
+      res.status(500).json({ 
+        error: "Failed to extract patient information",
         details: (error as Error).message 
       });
     }
