@@ -18,20 +18,24 @@ const analyticsMiddleware = (req: any, res: any, next: any) => {
     const responseTime = Date.now() - startTime;
     responseSize = data ? Buffer.byteLength(data, 'utf8') : 0;
     
-    // Only track API endpoints and webhooks, skip static files
-    if (req.path.startsWith('/api') || req.path.startsWith('/webhook')) {
+    // Only track API endpoints and webhooks, skip static files and audio endpoints
+    if ((req.path.startsWith('/api') || req.path.startsWith('/webhook')) && !req.path.includes('/transcribe-audio')) {
       const analyticsData = {
         endpoint: req.path,
         method: req.method,
         statusCode: res.statusCode,
         responseTime,
         userAgent: req.get('User-Agent') || '',
-        ipAddress: req.ip || req.connection.remoteAddress || '',
+        ipAddress: req.ip || req.connection?.remoteAddress || '',
         chainType: req.body?.chain_to_run || req.body?.chainType || null,
         uniqueId: req.body?.uniqueId || req.body?.["Chain Run ID"] || null,
         requestSize: req.get('Content-Length') ? parseInt(req.get('Content-Length')) : 0,
         responseSize,
-        errorMessage: res.statusCode >= 400 ? (data?.error || data?.message || 'Unknown error') : null,
+        errorMessage: res.statusCode >= 400 ? (
+          typeof data === 'object' && data ? 
+            (data.error || data.message || 'Unknown error') : 
+            'Unknown error'
+        ) : null,
         requestData: req.method !== 'GET' ? req.body : null
       };
 

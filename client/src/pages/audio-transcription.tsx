@@ -43,6 +43,7 @@ export default function AudioTranscription() {
   const streamRef = useRef<MediaStream | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const transcriptionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isSendingAudioRef = useRef(false);
   
   const { toast } = useToast();
 
@@ -64,6 +65,29 @@ export default function AudioTranscription() {
       }
     };
   }, [isRecording, isPaused]);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Stop recording if active
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      
+      // Stop all tracks
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
+      // Clear all intervals
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+      if (transcriptionIntervalRef.current) {
+        clearInterval(transcriptionIntervalRef.current);
+      }
+    };
+  }, []);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -95,10 +119,10 @@ export default function AudioTranscription() {
       
       // Start periodic transcription
       transcriptionIntervalRef.current = setInterval(async () => {
-        if (audioChunksRef.current.length > 0 && !isPaused) {
+        if (audioChunksRef.current.length > 0 && !isPaused && mediaRecorderRef.current?.state === 'recording') {
           await sendAudioForTranscription();
         }
-      }, 3000); // Send audio every 3 seconds
+      }, 5000); // Send audio every 5 seconds
       
       toast({
         title: "Recording Started",
@@ -115,8 +139,9 @@ export default function AudioTranscription() {
   };
 
   const sendAudioForTranscription = async () => {
-    if (audioChunksRef.current.length === 0) return;
+    if (audioChunksRef.current.length === 0 || isSendingAudioRef.current) return;
     
+    isSendingAudioRef.current = true;
     setIsProcessing(true);
     
     try {
@@ -159,6 +184,7 @@ export default function AudioTranscription() {
       console.error('Transcription error:', error);
     } finally {
       setIsProcessing(false);
+      isSendingAudioRef.current = false;
     }
   };
 
