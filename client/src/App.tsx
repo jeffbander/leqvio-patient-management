@@ -9,6 +9,7 @@ import AnalyticsPage from "@/pages/analytics";
 import InsuranceExtractionPage from "@/pages/insurance-extraction";
 import PatientIntake from "@/pages/patient-intake";
 import AudioTranscription from "@/pages/audio-transcription";
+import AudioTranscriptionLocal from "@/pages/audio-transcription-local";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/" component={AutomationTrigger} />
       <Route path="/intake" component={PatientIntake} />
       <Route path="/audio" component={AudioTranscription} />
+      <Route path="/audio-local" component={AudioTranscriptionLocal} />
       <Route path="/logs" component={LogsPage} />
       <Route path="/analytics" component={AnalyticsPage} />
       <Route path="/insurance" component={InsuranceExtractionPage} />

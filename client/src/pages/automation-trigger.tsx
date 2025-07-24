@@ -463,6 +463,16 @@ export default function AutomationTrigger() {
                   <span>Audio Notes</span>
                 </Button>
               </Link>
+              <Link href="/audio-local">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2"
+                >
+                  <Mic className="h-4 w-4" />
+                  <span>Audio (No API)</span>
+                </Button>
+              </Link>
               <Link href="/analytics">
                 <Button
                   variant="outline"
