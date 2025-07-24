@@ -4,6 +4,8 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-24**: Optimized audio transcription to reduce API costs by 30x - now only sends each 5-second segment once instead of entire recording
+- **2025-07-24**: Fixed duplicate transcription bug and WebM format errors by implementing segment-based recording approach
 - **2025-07-24**: Implemented audio transcription module with OpenAI Whisper API for real-time patient visit recording
 - **2025-07-24**: Added backend audio transcription endpoint `/api/transcribe-audio` with patient identification extraction
 - **2025-07-24**: Created audio-transcription page with recording interface and real-time transcript display

@@ -40,7 +40,7 @@ export default function AudioTranscription() {
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const lastSentIndexRef = useRef(0);
+  const segmentChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const transcriptionIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -108,11 +108,12 @@ export default function AudioTranscription() {
       
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
-      lastSentIndexRef.current = 0;
+      segmentChunksRef.current = [];
       
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+          segmentChunksRef.current.push(event.data);
         }
       };
       
@@ -143,15 +144,15 @@ export default function AudioTranscription() {
   };
 
   const sendAudioForTranscription = async () => {
-    // Check if we have chunks to send
-    if (audioChunksRef.current.length === 0 || isSendingAudioRef.current) return;
+    // Check if we have segment chunks to send
+    if (segmentChunksRef.current.length === 0 || isSendingAudioRef.current) return;
     
     isSendingAudioRef.current = true;
     setIsProcessing(true);
     
     try {
-      // Create a blob from ALL audio chunks (WebM needs complete format)
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      // Create a blob from ONLY the current segment chunks (cost-effective)
+      const audioBlob = new Blob(segmentChunksRef.current, { type: 'audio/webm' });
       
       // Check if blob has content
       if (audioBlob.size === 0) {
@@ -163,7 +164,6 @@ export default function AudioTranscription() {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
       formData.append('isFinal', 'false');
-      formData.append('lastTranscriptLength', currentTranscript.length.toString());
       
       // Send to backend for transcription
       const response = await fetch('/api/transcribe-audio', {
@@ -177,25 +177,23 @@ export default function AudioTranscription() {
       
       const result = await response.json();
       
-      if (result.text && result.text.length > currentTranscript.length) {
-        // Get only the new part of the transcription
-        const newText = result.text.substring(currentTranscript.length).trim();
+      if (result.text) {
+        const newSegment: TranscriptionSegment = {
+          text: result.text,
+          timestamp: Date.now(),
+          isFinal: false
+        };
         
-        if (newText) {
-          const newSegment: TranscriptionSegment = {
-            text: newText,
-            timestamp: Date.now(),
-            isFinal: false
-          };
-          
-          setTranscription(prev => [...prev, newSegment]);
-          setCurrentTranscript(result.text);
-        }
+        setTranscription(prev => [...prev, newSegment]);
+        setCurrentTranscript(prev => prev + ' ' + result.text);
         
         // Try to extract patient info
         if (result.patientInfo) {
           setPatientInfo(result.patientInfo);
         }
+        
+        // Clear segment chunks after successful transcription
+        segmentChunksRef.current = [];
       }
     } catch (error) {
       console.error('Transcription error:', error);
