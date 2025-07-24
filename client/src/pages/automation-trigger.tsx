@@ -473,6 +473,16 @@ export default function AutomationTrigger() {
                   <span>Audio (No API)</span>
                 </Button>
               </Link>
+              <Link href="/audio-vosk">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2"
+                >
+                  <Mic className="h-4 w-4" />
+                  <span>Audio (Vosk)</span>
+                </Button>
+              </Link>
               <Link href="/analytics">
                 <Button
                   variant="outline"

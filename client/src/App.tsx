@@ -10,6 +10,7 @@ import InsuranceExtractionPage from "@/pages/insurance-extraction";
 import PatientIntake from "@/pages/patient-intake";
 import AudioTranscription from "@/pages/audio-transcription";
 import AudioTranscriptionLocal from "@/pages/audio-transcription-local";
+import AudioTranscriptionVosk from "@/pages/audio-transcription-vosk";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/intake" component={PatientIntake} />
       <Route path="/audio" component={AudioTranscription} />
       <Route path="/audio-local" component={AudioTranscriptionLocal} />
+      <Route path="/audio-vosk" component={AudioTranscriptionVosk} />
       <Route path="/logs" component={LogsPage} />
       <Route path="/analytics" component={AnalyticsPage} />
       <Route path="/insurance" component={InsuranceExtractionPage} />
