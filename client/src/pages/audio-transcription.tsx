@@ -40,6 +40,7 @@ export default function AudioTranscription() {
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const lastSentIndexRef = useRef(0);
   const streamRef = useRef<MediaStream | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const transcriptionIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -106,6 +107,7 @@ export default function AudioTranscription() {
       
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
+      lastSentIndexRef.current = 0;
       
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -139,14 +141,22 @@ export default function AudioTranscription() {
   };
 
   const sendAudioForTranscription = async () => {
-    if (audioChunksRef.current.length === 0 || isSendingAudioRef.current) return;
+    // Check if we have new chunks to send
+    const newChunks = audioChunksRef.current.slice(lastSentIndexRef.current);
+    if (newChunks.length === 0 || isSendingAudioRef.current) return;
     
     isSendingAudioRef.current = true;
     setIsProcessing(true);
     
     try {
-      // Create a blob from current audio chunks
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      // Create a blob from new audio chunks only
+      const audioBlob = new Blob(newChunks, { type: 'audio/webm' });
+      
+      // Check if blob has content
+      if (audioBlob.size === 0) {
+        console.log('Empty audio blob, skipping transcription');
+        return;
+      }
       
       // Create form data
       const formData = new FormData();
@@ -180,8 +190,8 @@ export default function AudioTranscription() {
           setPatientInfo(result.patientInfo);
         }
         
-        // Clear audio chunks after successful transcription
-        audioChunksRef.current = [];
+        // Update the last sent index instead of clearing chunks
+        lastSentIndexRef.current = audioChunksRef.current.length;
       }
     } catch (error) {
       console.error('Transcription error:', error);
@@ -243,15 +253,18 @@ export default function AudioTranscription() {
   };
 
   const sendFinalTranscription = async () => {
-    // Skip if no chunks to process
-    if (audioChunksRef.current.length === 0) {
+    // Get any remaining chunks that haven't been sent
+    const remainingChunks = audioChunksRef.current.slice(lastSentIndexRef.current);
+    
+    // Skip if no new chunks to process
+    if (remainingChunks.length === 0) {
       return;
     }
     
     setIsProcessing(true);
     
     try {
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      const audioBlob = new Blob(remainingChunks, { type: 'audio/webm' });
       
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
