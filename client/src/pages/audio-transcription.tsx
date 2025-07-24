@@ -45,6 +45,7 @@ export default function AudioTranscription() {
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const transcriptionIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isSendingAudioRef = useRef(false);
+  const isPausedRef = useRef(false);
   
   const { toast } = useToast();
 
@@ -112,16 +113,28 @@ export default function AudioTranscription() {
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+          console.log(`Audio chunk received: ${event.data.size} bytes, total chunks: ${audioChunksRef.current.length}`);
         }
+      };
+      
+      mediaRecorder.onstop = () => {
+        console.log('MediaRecorder stopped unexpectedly');
+      };
+      
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder error:', event);
       };
       
       mediaRecorder.start(1000); // Collect data every second
       setIsRecording(true);
       setIsPaused(false);
+      isPausedRef.current = false;
       
       // Start periodic transcription
       transcriptionIntervalRef.current = setInterval(async () => {
-        if (audioChunksRef.current.length > 0 && !isPaused && mediaRecorderRef.current?.state === 'recording') {
+        console.log(`Transcription interval: chunks=${audioChunksRef.current.length}, isPaused=${isPausedRef.current}, state=${mediaRecorderRef.current?.state}`);
+        if (audioChunksRef.current.length > lastSentIndexRef.current && !isPausedRef.current && mediaRecorderRef.current?.state === 'recording') {
+          console.log('Sending audio for transcription...');
           await sendAudioForTranscription();
         }
       }, 5000); // Send audio every 5 seconds
@@ -205,6 +218,7 @@ export default function AudioTranscription() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.pause();
       setIsPaused(true);
+      isPausedRef.current = true;
       toast({
         title: "Recording Paused",
         description: "Click resume to continue recording",
@@ -216,6 +230,7 @@ export default function AudioTranscription() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
       mediaRecorderRef.current.resume();
       setIsPaused(false);
+      isPausedRef.current = false;
       toast({
         title: "Recording Resumed",
         description: "Continue speaking",
