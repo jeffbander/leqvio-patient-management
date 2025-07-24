@@ -5,7 +5,7 @@ import session from "express-session";
 import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
-import { extractPatientDataFromImage, extractInsuranceCardData } from "./openai-service";
+import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio } from "./openai-service";
 
 
 // Analytics middleware to track API requests
@@ -741,6 +741,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Insurance card extraction error:", error);
       res.status(500).json({ 
         error: "Failed to extract insurance card data",
+        details: (error as Error).message 
+      });
+    }
+  });
+
+  // Audio transcription endpoint
+  app.post("/api/transcribe-audio", upload.single('audio'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No audio file uploaded" });
+      }
+
+      const isFinal = req.body.isFinal === 'true';
+      
+      // Transcribe audio using OpenAI Whisper
+      const transcriptionResult = await transcribeAudio(req.file.buffer, isFinal);
+      
+      console.log("Audio transcription completed:", {
+        fileName: req.file.originalname,
+        isFinal: isFinal,
+        textLength: transcriptionResult.text.length,
+        patientFound: !!transcriptionResult.patientInfo
+      });
+      
+      res.json(transcriptionResult);
+    } catch (error) {
+      console.error("Audio transcription error:", error);
+      res.status(500).json({ 
+        error: "Failed to transcribe audio",
         details: (error as Error).message 
       });
     }

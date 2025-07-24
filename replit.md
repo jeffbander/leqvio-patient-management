@@ -4,6 +4,9 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-24**: Implemented audio transcription module with OpenAI Whisper API for real-time patient visit recording
+- **2025-07-24**: Added backend audio transcription endpoint `/api/transcribe-audio` with patient identification extraction
+- **2025-07-24**: Created audio-transcription page with recording interface and real-time transcript display
 - **2025-07-17**: Added manual Source ID editing capability to home page automation trigger with toggle between auto-generation and manual input
 - **2025-07-09**: Fixed Patient ID generation to ensure ALL special characters are converted to underscores (U+005F) for AppSheet compatibility and database matching
 - **2025-07-09**: Improved mobile photo capture for insurance cards with separate inputs for "Select Image" vs "Take Photo" and mobile-optimized layout
@@ -108,6 +111,13 @@ Patient data processing application for Providerloop Chains, designed to streaml
 - **Extraction**: Member information, pharmacy details, copays, contact information, plan details
 - **Processing**: Real-time confidence scoring, metadata capture, raw text preservation
 - **Interface**: Clean tabbed display of all extracted fields with visual preview cards
+
+### OpenAI Whisper Integration
+- **Service**: Advanced speech-to-text transcription for medical conversations
+- **Features**: Real-time audio recording and transcription, automatic patient identification extraction
+- **Audio Processing**: WebM audio format support, streaming transcription capability
+- **Patient Identification**: Automatic extraction of patient name and DOB from transcripts
+- **Source ID Generation**: Auto-generates patient source IDs from extracted information
 
 ### Webhook System
 - **Email Webhook**: `/api/email-webhook` - Receives AppSheet automation responses via email

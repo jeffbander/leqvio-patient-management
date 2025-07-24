@@ -1,4 +1,6 @@
 import OpenAI from "openai";
+import fs from "fs";
+import { Readable } from "stream";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -294,5 +296,107 @@ EXTRACTION RULES:
   } catch (error) {
     console.error("OpenAI insurance card extraction error:", error);
     throw new Error("Failed to extract insurance card data: " + (error as Error).message);
+  }
+}
+
+interface TranscriptionResult {
+  text: string;
+  fullTranscript?: string;
+  patientInfo?: {
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string;
+    sourceId: string;
+  };
+}
+
+export async function transcribeAudio(audioBuffer: Buffer, isFinal: boolean = false): Promise<TranscriptionResult> {
+  try {
+    // Create a temporary file for the audio
+    const tempFilePath = `/tmp/audio-${Date.now()}.webm`;
+    fs.writeFileSync(tempFilePath, audioBuffer);
+    
+    // Create a readable stream from the file
+    const audioStream = fs.createReadStream(tempFilePath);
+    
+    // Transcribe using Whisper API
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioStream,
+      model: "whisper-1",
+      response_format: "text",
+      language: "en"
+    });
+    
+    // Clean up temp file
+    fs.unlinkSync(tempFilePath);
+    
+    // Extract patient info if mentioned
+    const patientInfo = await extractPatientInfoFromTranscript(transcription);
+    
+    return {
+      text: transcription,
+      fullTranscript: isFinal ? transcription : undefined,
+      patientInfo: patientInfo
+    };
+  } catch (error) {
+    console.error("Audio transcription error:", error);
+    throw new Error("Failed to transcribe audio: " + (error as Error).message);
+  }
+}
+
+async function extractPatientInfoFromTranscript(transcript: string): Promise<TranscriptionResult['patientInfo'] | undefined> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: `You are analyzing medical conversation transcripts. Extract patient identification information if mentioned.
+
+Return your response in JSON format with these exact fields (or null if not found):
+{
+  "firstName": "string or null",
+  "lastName": "string or null",
+  "dateOfBirth": "MM/DD/YYYY or null",
+  "foundPatient": true/false
+}
+
+Look for patterns like:
+- "Patient is [name]"
+- "Speaking with [name]" 
+- "Date of birth is [date]"
+- "Born on [date]"
+- Any mention of full names and birthdates`
+        },
+        {
+          role: "user",
+          content: transcript
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 200
+    });
+    
+    const result = JSON.parse(response.choices[0].message.content || "{}");
+    
+    if (result.foundPatient && result.firstName && result.lastName && result.dateOfBirth) {
+      // Generate source ID
+      const formattedFirstName = result.firstName.trim().replace(/\s+/g, '_');
+      const formattedLastName = result.lastName.trim().replace(/\s+/g, '_');
+      const [month, day, year] = result.dateOfBirth.split('/');
+      const sourceId = `${formattedLastName}_${formattedFirstName}__${month}_${day}_${year}`;
+      
+      return {
+        firstName: result.firstName,
+        lastName: result.lastName,
+        dateOfBirth: result.dateOfBirth,
+        sourceId: sourceId
+      };
+    }
+    
+    return undefined;
+  } catch (error) {
+    console.error("Failed to extract patient info:", error);
+    return undefined;
   }
 }

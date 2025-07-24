@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { User, Calendar, Link as LinkIcon, Plus, Trash2, Send, RotateCcw, Loader2, History, TrendingUp, CreditCard, FileUser } from "lucide-react";
+import { User, Calendar, Link as LinkIcon, Plus, Trash2, Send, RotateCcw, Loader2, History, TrendingUp, CreditCard, FileUser, Mic } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,7 +62,7 @@ export default function AutomationTrigger() {
     queryKey: ['/api/automation-logs'],
     queryFn: () => fetch('/api/automation-logs').then(res => res.json()),
     staleTime: 0,
-    cacheTime: 0,
+    gcTime: 0,
   });
 
   const { data: customChains = [] } = useQuery({
@@ -451,6 +451,16 @@ export default function AutomationTrigger() {
                 >
                   <CreditCard className="h-4 w-4" />
                   <span>Insurance Cards</span>
+                </Button>
+              </Link>
+              <Link href="/audio">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2"
+                >
+                  <Mic className="h-4 w-4" />
+                  <span>Audio Notes</span>
                 </Button>
               </Link>
               <Link href="/analytics">
