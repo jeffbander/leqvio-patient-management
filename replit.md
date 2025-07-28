@@ -4,6 +4,8 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-28**: Fixed ambient dictation integration to send directly to AIGENTS API endpoint (https://start-chain-run-943506065004.us-central1.run.app) instead of non-existent Providerloop endpoint
+- **2025-07-28**: Updated all integration files (paste-this-code.js, ambient-dictation-integration.js, ambient-dictation-example.html) to use correct AIGENTS API endpoint with proper response parsing
 - **2025-07-27**: Added patient info extraction from medical system screenshots - extracts 20+ fields including demographics, insurance, and contact info
 - **2025-07-27**: Fixed Vosk offline model download issues - added multiple fallback URLs and improved error handling with clear alternatives
 - **2025-07-27**: Enhanced Vosk implementation with retry mechanism and better user guidance when CORS restrictions prevent model download

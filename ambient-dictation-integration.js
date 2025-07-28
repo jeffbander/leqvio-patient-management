@@ -1,7 +1,7 @@
 // Ambient Dictation Integration Module for Providerloop Chains
 // Copy this file to your ambient dictation app and import the functions you need
 
-const PROVIDERLOOP_API_URL = "https://chain-automator-notifications6.replit.app";
+const AIGENTS_API_URL = "https://start-chain-run-943506065004.us-central1.run.app";
 
 // Extract patient information from transcribed text
 export function extractPatientInfo(transcriptText) {
@@ -92,22 +92,18 @@ export async function triggerAIGENTSChain(patientInfo, transcriptText, chainName
   }
 
   try {
-    const response = await fetch(`${PROVIDERLOOP_API_URL}/api/automation/trigger`, {
+    const response = await fetch(AIGENTS_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        // Patient identification
-        first_name: patientInfo.firstName,
-        last_name: patientInfo.lastName,
-        dob: patientInfo.dob,
-        source_id: patientInfo.sourceId,
-        
-        // Chain configuration
+        // Required fields for AIGENTS
+        run_email: "jeffrey.Bander@providerloop.com",
         chain_to_run: chainName,
+        human_readable_record: "Ambient dictation transcript from external app",
+        source_id: patientInfo.sourceId,
         first_step_user_input: "",
-        human_readable_record: `Ambient dictation transcript from external app`,
         
         // Additional variables for the chain
         starting_variables: {
@@ -126,14 +122,24 @@ export async function triggerAIGENTSChain(patientInfo, transcriptText, chainName
     const result = await response.json();
     
     if (response.ok) {
+      // Extract Chain Run ID from AIGENTS response
+      let chainRunId = result.ChainRun_ID || null;
+      
+      // Fallback to AppSheet response structure if needed
+      if (!chainRunId && result.responses && result.responses[0] && result.responses[0].rows) {
+        const firstRow = result.responses[0].rows[0];
+        chainRunId = firstRow["Run_ID"] || firstRow["_RowNumber"] || firstRow["ID"] || 
+                     firstRow["Run_Auto_Key"] || firstRow["Chain_Run_Key"] || firstRow.id;
+      }
+      
       return {
         success: true,
-        chainRunId: result.uniqueId,
+        chainRunId: chainRunId,
         message: `Chain ${chainName} triggered successfully`,
-        viewUrl: `https://aigents-realtime-logs-943506065004.us-central1.run.app/?chainRunId=${result.uniqueId}`
+        viewUrl: `https://aigents-realtime-logs-943506065004.us-central1.run.app/?chainRunId=${chainRunId}`
       };
     } else {
-      throw new Error(result.error || 'Failed to trigger chain');
+      throw new Error(result.error || result.message || 'Failed to trigger chain');
     }
   } catch (error) {
     return {

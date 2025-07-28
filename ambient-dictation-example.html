@@ -158,8 +158,8 @@
     </div>
 
     <script>
-        // Configuration
-        const PROVIDERLOOP_API_URL = "https://chain-automator-notifications6.replit.app";
+        // Configuration - Direct AIGENTS API endpoint
+        const AIGENTS_API_URL = "https://start-chain-run-943506065004.us-central1.run.app";
         let currentTranscript = "";
         let extractedInfo = null;
 
@@ -315,19 +315,17 @@
             showResult('Submitting to Providerloop Chains...', 'info');
 
             try {
-                const response = await fetch(`${PROVIDERLOOP_API_URL}/api/automation/trigger`, {
+                const response = await fetch(AIGENTS_API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        first_name: patientInfo.firstName,
-                        last_name: patientInfo.lastName,
-                        dob: patientInfo.dob,
-                        source_id: patientInfo.sourceId,
+                        run_email: "jeffrey.Bander@providerloop.com",
                         chain_to_run: chainName,
+                        human_readable_record: "Ambient dictation transcript from integration test",
+                        source_id: patientInfo.sourceId,
                         first_step_user_input: "",
-                        human_readable_record: `Ambient dictation transcript from integration test`,
                         starting_variables: {
                             ambient_transcript: currentTranscript,
                             transcription_source: "ambient_dictation_test",
@@ -343,18 +341,28 @@
                 const result = await response.json();
                 
                 if (response.ok) {
-                    const viewUrl = `https://aigents-realtime-logs-943506065004.us-central1.run.app/?chainRunId=${result.uniqueId}`;
+                    // Extract Chain Run ID from AIGENTS response
+                    let chainRunId = result.ChainRun_ID || null;
+                    
+                    // Fallback to AppSheet response structure if needed
+                    if (!chainRunId && result.responses && result.responses[0] && result.responses[0].rows) {
+                        const firstRow = result.responses[0].rows[0];
+                        chainRunId = firstRow["Run_ID"] || firstRow["_RowNumber"] || firstRow["ID"] || 
+                                     firstRow["Run_Auto_Key"] || firstRow["Chain_Run_Key"] || firstRow.id;
+                    }
+                    
+                    const viewUrl = `https://aigents-realtime-logs-943506065004.us-central1.run.app/?chainRunId=${chainRunId}`;
                     let html = '<h3 class="success">✓ Success!</h3>';
                     html += '<div class="patient-info">';
                     html += `<strong>Patient:</strong> ${patientInfo.firstName} ${patientInfo.lastName}<br>`;
                     html += `<strong>Source ID:</strong> ${patientInfo.sourceId}<br>`;
                     html += `<strong>Chain:</strong> ${chainName}<br>`;
-                    html += `<strong>Chain Run ID:</strong> ${result.uniqueId}<br>`;
+                    html += `<strong>Chain Run ID:</strong> ${chainRunId}<br>`;
                     html += `<strong>View Logs:</strong> <a href="${viewUrl}" target="_blank">${viewUrl}</a>`;
                     html += '</div>';
                     showResult(html, 'success');
                 } else {
-                    showResult(`Error: ${result.error || 'Failed to trigger chain'}`, 'error');
+                    showResult(`Error: ${result.error || result.message || 'Failed to trigger chain'}`, 'error');
                 }
             } catch (error) {
                 showResult(`Network Error: ${error.message}`, 'error');

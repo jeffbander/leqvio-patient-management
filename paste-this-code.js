@@ -2,8 +2,8 @@
 // PASTE THIS CODE INTO YOUR AMBIENT DICTATION APP
 // ============================================
 
-// Configuration - Change this to your Providerloop Chains URL if different
-const PROVIDERLOOP_API_URL = "https://chain-automator-notifications6.replit.app";
+// Configuration - Direct AIGENTS API endpoint (same as used in Providerloop Chains)
+const AIGENTS_API_URL = "https://start-chain-run-943506065004.us-central1.run.app";
 
 // Main function - Call this with your transcribed text
 async function sendToProviderloop(transcriptText) {
@@ -42,19 +42,17 @@ async function sendToProviderloop(transcriptText) {
     patientInfo.sourceId = `${patientInfo.lastName}_${patientInfo.firstName}__${dobFormatted}`;
   }
   
-  // Step 3: Send to Providerloop Chains
+  // Step 3: Send directly to AIGENTS API (same as Providerloop Chains does)
   try {
-    const response = await fetch(`${PROVIDERLOOP_API_URL}/api/automation/trigger`, {
+    const response = await fetch(AIGENTS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        first_name: patientInfo.firstName,
-        last_name: patientInfo.lastName,
-        dob: patientInfo.dob,
-        source_id: patientInfo.sourceId,
+        run_email: "jeffrey.Bander@providerloop.com",
         chain_to_run: "QuickAddQHC", // Change this to different chain if needed
-        first_step_user_input: "",
         human_readable_record: "Ambient dictation transcript from external app",
+        source_id: patientInfo.sourceId,
+        first_step_user_input: "",
         starting_variables: {
           ambient_transcript: transcriptText,
           transcription_source: "ambient_dictation_app",
@@ -70,13 +68,22 @@ async function sendToProviderloop(transcriptText) {
     const result = await response.json();
     
     if (response.ok) {
-      // Success!
-      const viewUrl = `https://aigents-realtime-logs-943506065004.us-central1.run.app/?chainRunId=${result.uniqueId}`;
-      alert(`✓ Success! Patient ${patientInfo.firstName} ${patientInfo.lastName} submitted.\n\nChain Run ID: ${result.uniqueId}\n\nView logs at:\n${viewUrl}`);
+      // Success! Extract the Chain Run ID from AIGENTS response
+      let chainRunId = result.ChainRun_ID || null;
+      
+      // Fallback to AppSheet response structure if needed
+      if (!chainRunId && result.responses && result.responses[0] && result.responses[0].rows) {
+        const firstRow = result.responses[0].rows[0];
+        chainRunId = firstRow["Run_ID"] || firstRow["_RowNumber"] || firstRow["ID"] || 
+                     firstRow["Run_Auto_Key"] || firstRow["Chain_Run_Key"] || firstRow.id;
+      }
+      
+      const viewUrl = `https://aigents-realtime-logs-943506065004.us-central1.run.app/?chainRunId=${chainRunId}`;
+      alert(`✓ Success! Patient ${patientInfo.firstName} ${patientInfo.lastName} submitted.\n\nChain Run ID: ${chainRunId}\n\nView logs at:\n${viewUrl}`);
       console.log("[Providerloop] Success! View at:", viewUrl);
-      return { success: true, chainRunId: result.uniqueId, viewUrl };
+      return { success: true, chainRunId, viewUrl };
     } else {
-      throw new Error(result.error || 'Failed to trigger chain');
+      throw new Error(result.error || result.message || 'Failed to trigger chain');
     }
   } catch (error) {
     alert(`Error: ${error.message}`);
