@@ -19,8 +19,9 @@ const CHAIN_OPTIONS = [
   "SLEEP STUDY RESULTS"
 ];
 
-// Vosk model URLs - using small English model for efficiency
-const MODEL_URL = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip";
+// Vosk model URLs - using vosk-browser compatible model
+// Note: vosk-browser requires unzipped model files hosted with proper CORS headers
+const MODEL_URL = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15";
 const MODEL_SIZE_MB = 40;
 
 interface PatientInfo {
@@ -83,27 +84,61 @@ export default function AudioTranscriptionVosk() {
         throw new Error('Vosk library not loaded yet. Please wait and try again.');
       }
 
+      console.log('Starting model download from:', MODEL_URL);
+      
       toast({
         title: "Downloading Model",
-        description: `Downloading ${MODEL_SIZE_MB}MB speech recognition model...`,
+        description: `Downloading ${MODEL_SIZE_MB}MB speech recognition model. This may take a moment...`,
       });
 
-      // Create a simple progress simulation since Vosk doesn't provide download progress
-      const progressInterval = setInterval(() => {
-        setModelProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 1000);
+      // Try different model URLs if the first one fails
+      const modelUrls = [
+        MODEL_URL,
+        "https://ccoreilly.github.io/vosk-browser/models/vosk-model-small-en-us-0.15",
+        "https://cdn.jsdelivr.net/gh/ccoreilly/vosk-browser@latest/examples/models/vosk-model-small-en-us-0.15"
+      ];
 
-      // Load the model
-      modelRef.current = await Vosk.createModel(MODEL_URL);
+      let modelLoaded = false;
+      let lastError = null;
+
+      for (const url of modelUrls) {
+        try {
+          console.log('Attempting to load model from:', url);
+          
+          // Create a simple progress simulation
+          const progressInterval = setInterval(() => {
+            setModelProgress(prev => {
+              if (prev >= 90) {
+                clearInterval(progressInterval);
+                return 90;
+              }
+              return prev + 5;
+            });
+          }, 500);
+
+          // Load the model with timeout
+          const modelPromise = Vosk.createModel(url);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Model download timeout (30s)')), 30000)
+          );
+
+          modelRef.current = await Promise.race([modelPromise, timeoutPromise]);
+          
+          clearInterval(progressInterval);
+          setModelProgress(100);
+          modelLoaded = true;
+          console.log('Model loaded successfully from:', url);
+          break;
+        } catch (err) {
+          console.error(`Failed to load model from ${url}:`, err);
+          lastError = err;
+        }
+      }
+
+      if (!modelLoaded) {
+        throw new Error(`Failed to load model from any source. Last error: ${lastError?.message || 'Unknown error'}`);
+      }
       
-      clearInterval(progressInterval);
-      setModelProgress(100);
       setModelLoaded(true);
       
       toast({
@@ -112,10 +147,11 @@ export default function AudioTranscriptionVosk() {
       });
     } catch (error) {
       console.error('Failed to load model:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load speech recognition model');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load speech recognition model';
+      setError(`Model loading failed: ${errorMessage}. This might be due to CORS restrictions. Please try refreshing the page or using the API-based transcription instead.`);
       toast({
         title: "Model Loading Failed",
-        description: "Failed to load the speech recognition model. Please try again.",
+        description: "Unable to download the speech recognition model. Please check your internet connection or try the API-based transcription.",
         variant: "destructive",
       });
     } finally {
@@ -435,7 +471,7 @@ export default function AudioTranscriptionVosk() {
             <Card className="border-dashed">
               <CardContent className="pt-6">
                 <div className="text-center space-y-4">
-                  {!isLoadingModel ? (
+                  {!isLoadingModel && !error ? (
                     <>
                       <HardDrive className="h-12 w-12 mx-auto text-gray-400" />
                       <div>
@@ -443,13 +479,35 @@ export default function AudioTranscriptionVosk() {
                         <p className="text-sm text-gray-500 mt-1">
                           One-time download of {MODEL_SIZE_MB}MB. Works completely offline after download.
                         </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Note: Download may fail due to CORS restrictions on some networks.
+                        </p>
                       </div>
                       <Button onClick={loadModel} disabled={isLoadingModel}>
                         <Download className="h-4 w-4 mr-2" />
                         Download Model
                       </Button>
+                      <div className="pt-2 border-t">
+                        <p className="text-xs text-gray-500 mb-2">Or try these alternatives:</p>
+                        <div className="flex gap-2 justify-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.location.href = '/audio'}
+                          >
+                            API Version
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.location.href = '/audio-local'}
+                          >
+                            Browser Speech
+                          </Button>
+                        </div>
+                      </div>
                     </>
-                  ) : (
+                  ) : isLoadingModel ? (
                     <>
                       <Loader2 className="h-12 w-12 mx-auto animate-spin text-blue-500" />
                       <div>
@@ -463,20 +521,51 @@ export default function AudioTranscriptionVosk() {
                             style={{ width: `${modelProgress}%` }}
                           />
                         </div>
+                        <p className="text-xs text-gray-400 mt-2">
+                          This may take 1-2 minutes depending on your connection
+                        </p>
                       </div>
                     </>
-                  )}
+                  ) : error ? (
+                    <>
+                      <AlertCircle className="h-12 w-12 mx-auto text-red-500" />
+                      <div>
+                        <h3 className="font-semibold text-red-700">Download Failed</h3>
+                        <p className="text-sm text-gray-600 mt-1">{error}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Button onClick={() => {
+                          setError(null);
+                          loadModel();
+                        }} variant="outline">
+                          <Download className="h-4 w-4 mr-2" />
+                          Retry Download
+                        </Button>
+                        <div className="pt-2">
+                          <p className="text-xs text-gray-500 mb-2">Try these alternatives instead:</p>
+                          <div className="flex gap-2 justify-center">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => window.location.href = '/audio'}
+                            >
+                              Use API Version
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => window.location.href = '/audio-local'}
+                            >
+                              Use Browser Speech
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
-          )}
-
-          {/* Error Alert */}
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
           )}
 
           {/* Recording Controls */}

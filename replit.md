@@ -4,6 +4,9 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-27**: Added patient info extraction from medical system screenshots - extracts 20+ fields including demographics, insurance, and contact info
+- **2025-07-27**: Fixed Vosk offline model download issues - added multiple fallback URLs and improved error handling with clear alternatives
+- **2025-07-27**: Enhanced Vosk implementation with retry mechanism and better user guidance when CORS restrictions prevent model download
 - **2025-07-24**: Optimized audio transcription to reduce API costs by 30x - now only sends each 5-second segment once instead of entire recording
 - **2025-07-24**: Fixed duplicate transcription bug and WebM format errors by implementing segment-based recording approach
 - **2025-07-24**: Implemented audio transcription module with OpenAI Whisper API for real-time patient visit recording
