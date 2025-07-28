@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ambient Dictation Integration Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .info {
+            color: #2196F3;
+        }
+        .patient-info {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e3f2fd;
+            border-radius: 4px;
+        }
+        .manual-input {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff3cd;
+            border-radius: 4px;
+            border: 1px solid #ffeaa7;
+        }
+        .manual-input input {
+            width: calc(33% - 10px);
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .test-examples {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f5e9;
+            border-radius: 4px;
+        }
+        .example-button {
+            background-color: #2196F3;
+            font-size: 14px;
+            padding: 5px 10px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ambient Dictation → AIGENTS Integration</h1>
+        <p class="subtitle">Test patient extraction and chain triggering from transcribed text</p>
+
+        <label for="transcript">Enter Transcribed Text:</label>
+        <textarea id="transcript" placeholder="Example: I'm seeing patient John Smith today. He was born on March 15th, 1985..."></textarea>
+
+        <label for="chainSelect">Select Chain to Trigger:</label>
+        <select id="chainSelect">
+            <option value="QuickAddQHC">QuickAddQHC (Patient Registration)</option>
+            <option value="ATTACHMENT PROCESSING (LABS)">Lab Processing</option>
+            <option value="ATTACHMENT PROCESSING (SLEEP STUDY)">Sleep Study Processing</option>
+            <option value="REFERRAL PROCESSING">Referral Processing</option>
+            <option value="CLIENT REPORT SENT">Client Report</option>
+        </select>
+
+        <button onclick="processTranscript()">Process & Submit</button>
+        <button onclick="testExtraction()">Test Extraction Only</button>
+        <button onclick="clearAll()">Clear</button>
+
+        <div class="manual-input" id="manualInput">
+            <h3>Complete Patient Information:</h3>
+            <p>Could not extract all patient information. Please provide:</p>
+            <input type="text" id="firstName" placeholder="First Name">
+            <input type="text" id="lastName" placeholder="Last Name">
+            <input type="text" id="dob" placeholder="MM/DD/YYYY">
+            <br><br>
+            <button onclick="submitManualInfo()">Submit with Manual Info</button>
+            <button onclick="cancelManual()">Cancel</button>
+        </div>
+
+        <div id="results" class="results" style="display:none;"></div>
+
+        <div class="test-examples">
+            <h3>Test Examples:</h3>
+            <button class="example-button" onclick="loadExample(1)">Example 1</button>
+            <button class="example-button" onclick="loadExample(2)">Example 2</button>
+            <button class="example-button" onclick="loadExample(3)">Example 3</button>
+            <button class="example-button" onclick="loadExample(4)">Example 4</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const PROVIDERLOOP_API_URL = "https://chain-automator-notifications6.replit.app";
+        let currentTranscript = "";
+        let extractedInfo = null;
+
+        // Patient extraction function
+        function extractPatientInfo(transcriptText) {
+            const patterns = {
+                namePatterns: [
+                    /patient (?:is |named? )?([A-Z][a-z]+)\s+([A-Z][a-z]+)/i,
+                    /treating ([A-Z][a-z]+)\s+([A-Z][a-z]+)/i,
+                    /(?:mr\.|mrs\.|ms\.|miss|doctor|dr\.) ([A-Z][a-z]+)\s+([A-Z][a-z]+)/i,
+                    /name is ([A-Z][a-z]+)\s+([A-Z][a-z]+)/i,
+                    /([A-Z][a-z]+)\s+([A-Z][a-z]+),?\s+(?:born|dob|date of birth)/i,
+                    /for ([A-Z][a-z]+)\s+([A-Z][a-z]+)/i,
+                    /patient ([A-Z][a-z]+)\s+([A-Z][a-z]+)/i
+                ],
+                dobPatterns: [
+                    /(?:born|dob|date of birth|birthday)[:\s]+(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i,
+                    /(?:born|dob|date of birth|birthday)[:\s]+(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})/i,
+                    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/,
+                    /(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})/
+                ]
+            };
+
+            let patientInfo = {
+                firstName: null,
+                lastName: null,
+                dob: null,
+                sourceId: null
+            };
+
+            // Extract name
+            for (const pattern of patterns.namePatterns) {
+                const match = transcriptText.match(pattern);
+                if (match) {
+                    patientInfo.firstName = match[1].trim();
+                    patientInfo.lastName = match[2].trim();
+                    break;
+                }
+            }
+
+            // Extract DOB
+            for (const pattern of patterns.dobPatterns) {
+                const match = transcriptText.match(pattern);
+                if (match) {
+                    if (match[0].match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/)) {
+                        const month = match[1].padStart(2, '0');
+                        const day = match[2].padStart(2, '0');
+                        const year = match[3].length === 2 ? '20' + match[3] : match[3];
+                        patientInfo.dob = `${month}/${day}/${year}`;
+                    } else {
+                        const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 
+                                          'july', 'august', 'september', 'october', 'november', 'december'];
+                        const monthNum = monthNames.findIndex(m => match[1].toLowerCase().startsWith(m)) + 1;
+                        if (monthNum > 0) {
+                            const month = monthNum.toString().padStart(2, '0');
+                            const day = match[2].padStart(2, '0');
+                            const year = match[3];
+                            patientInfo.dob = `${month}/${day}/${year}`;
+                        }
+                    }
+                    break;
+                }
+            }
+
+            // Generate source ID
+            if (patientInfo.firstName && patientInfo.lastName && patientInfo.dob) {
+                const dobFormatted = patientInfo.dob.replace(/\//g, '_');
+                patientInfo.sourceId = `${patientInfo.lastName}_${patientInfo.firstName}__${dobFormatted}`;
+            }
+
+            return patientInfo;
+        }
+
+        // Process transcript
+        async function processTranscript() {
+            currentTranscript = document.getElementById('transcript').value.trim();
+            if (!currentTranscript) {
+                showResult('Please enter some transcribed text', 'error');
+                return;
+            }
+
+            // Extract patient info
+            extractedInfo = extractPatientInfo(currentTranscript);
+            
+            if (!extractedInfo.sourceId) {
+                // Show manual input form
+                showResult('Could not extract complete patient information', 'info');
+                document.getElementById('manualInput').style.display = 'block';
+                
+                // Pre-fill any extracted data
+                if (extractedInfo.firstName) document.getElementById('firstName').value = extractedInfo.firstName;
+                if (extractedInfo.lastName) document.getElementById('lastName').value = extractedInfo.lastName;
+                if (extractedInfo.dob) document.getElementById('dob').value = extractedInfo.dob;
+            } else {
+                // Submit automatically
+                await submitToChain(extractedInfo);
+            }
+        }
+
+        // Test extraction only
+        function testExtraction() {
+            const transcript = document.getElementById('transcript').value.trim();
+            if (!transcript) {
+                showResult('Please enter some transcribed text', 'error');
+                return;
+            }
+
+            const info = extractPatientInfo(transcript);
+            let html = '<h3>Extraction Results:</h3>';
+            html += '<div class="patient-info">';
+            html += `<strong>First Name:</strong> ${info.firstName || 'Not found'}<br>`;
+            html += `<strong>Last Name:</strong> ${info.lastName || 'Not found'}<br>`;
+            html += `<strong>Date of Birth:</strong> ${info.dob || 'Not found'}<br>`;
+            html += `<strong>Source ID:</strong> ${info.sourceId || 'Cannot generate - missing information'}<br>`;
+            html += '</div>';
+            
+            showResult(html, info.sourceId ? 'success' : 'info');
+        }
+
+        // Submit with manual info
+        async function submitManualInfo() {
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const dob = document.getElementById('dob').value.trim();
+
+            if (!firstName || !lastName || !dob) {
+                showResult('Please fill in all fields', 'error');
+                return;
+            }
+
+            // Validate date format
+            if (!dob.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                showResult('Please enter date in MM/DD/YYYY format', 'error');
+                return;
+            }
+
+            const dobFormatted = dob.replace(/\//g, '_');
+            const manualInfo = {
+                firstName,
+                lastName,
+                dob,
+                sourceId: `${lastName}_${firstName}__${dobFormatted}`
+            };
+
+            document.getElementById('manualInput').style.display = 'none';
+            await submitToChain(manualInfo);
+        }
+
+        // Submit to chain
+        async function submitToChain(patientInfo) {
+            const chainName = document.getElementById('chainSelect').value;
+            
+            showResult('Submitting to Providerloop Chains...', 'info');
+
+            try {
+                const response = await fetch(`${PROVIDERLOOP_API_URL}/api/automation/trigger`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        first_name: patientInfo.firstName,
+                        last_name: patientInfo.lastName,
+                        dob: patientInfo.dob,
+                        source_id: patientInfo.sourceId,
+                        chain_to_run: chainName,
+                        first_step_user_input: "",
+                        human_readable_record: `Ambient dictation transcript from integration test`,
+                        starting_variables: {
+                            ambient_transcript: currentTranscript,
+                            transcription_source: "ambient_dictation_test",
+                            patient_first_name: patientInfo.firstName,
+                            patient_last_name: patientInfo.lastName,
+                            patient_dob: patientInfo.dob,
+                            Patient_ID: patientInfo.sourceId,
+                            timestamp: new Date().toISOString()
+                        }
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const viewUrl = `https://aigents-realtime-logs-943506065004.us-central1.run.app/?chainRunId=${result.uniqueId}`;
+                    let html = '<h3 class="success">✓ Success!</h3>';
+                    html += '<div class="patient-info">';
+                    html += `<strong>Patient:</strong> ${patientInfo.firstName} ${patientInfo.lastName}<br>`;
+                    html += `<strong>Source ID:</strong> ${patientInfo.sourceId}<br>`;
+                    html += `<strong>Chain:</strong> ${chainName}<br>`;
+                    html += `<strong>Chain Run ID:</strong> ${result.uniqueId}<br>`;
+                    html += `<strong>View Logs:</strong> <a href="${viewUrl}" target="_blank">${viewUrl}</a>`;
+                    html += '</div>';
+                    showResult(html, 'success');
+                } else {
+                    showResult(`Error: ${result.error || 'Failed to trigger chain'}`, 'error');
+                }
+            } catch (error) {
+                showResult(`Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Show results
+        function showResult(message, type) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = typeof message === 'object' ? JSON.stringify(message, null, 2) : message;
+            resultsDiv.className = `results ${type}`;
+        }
+
+        // Clear all
+        function clearAll() {
+            document.getElementById('transcript').value = '';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('manualInput').style.display = 'none';
+            currentTranscript = '';
+            extractedInfo = null;
+        }
+
+        // Cancel manual input
+        function cancelManual() {
+            document.getElementById('manualInput').style.display = 'none';
+        }
+
+        // Load examples
+        function loadExample(num) {
+            const examples = {
+                1: "I'm seeing patient John Smith today. He was born on March 15th, 1985. He's here for his annual checkup.",
+                2: "Patient is Mary Johnson, DOB 12/25/1975. She's complaining of headaches.",
+                3: "Treating Mr. Robert Davis for hypertension. Date of birth is 06-03-1990.",
+                4: "The patient Sarah Williams born 09/08/1985 presents with flu-like symptoms."
+            };
+            
+            document.getElementById('transcript').value = examples[num];
+            document.getElementById('results').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
