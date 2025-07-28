@@ -1,0 +1,193 @@
+# AIGENTS API Call Format & Examples
+
+## Endpoint
+```
+POST https://start-chain-run-943506065004.us-central1.run.app
+Content-Type: application/json
+```
+
+## Required Request Body Format
+
+```json
+{
+  "run_email": "jeffrey.Bander@providerloop.com",
+  "chain_to_run": "CHAIN_NAME",
+  "human_readable_record": "Description of the process",
+  "source_id": "OPTIONAL_SOURCE_ID",
+  "first_step_user_input": "OPTIONAL_USER_INPUT",
+  "starting_variables": {
+    "key1": "value1",
+    "key2": "value2"
+  }
+}
+```
+
+## Field Descriptions
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `run_email` | Yes | String | Fixed email: "jeffrey.Bander@providerloop.com" |
+| `chain_to_run` | Yes | String | Name of the chain to execute |
+| `human_readable_record` | Yes | String | Description of what triggered this chain |
+| `source_id` | No | String | Unique identifier for the patient/record |
+| `first_step_user_input` | No | String | Initial input for the first step of the chain |
+| `starting_variables` | No | Object | Key-value pairs of variables to pass to the chain |
+
+## Example 1: Patient Registration from Ambient Dictation
+
+```json
+{
+  "run_email": "jeffrey.Bander@providerloop.com",
+  "chain_to_run": "QuickAddQHC",
+  "human_readable_record": "Ambient dictation transcript from external app",
+  "source_id": "Smith_John__03_15_1985",
+  "first_step_user_input": "",
+  "starting_variables": {
+    "ambient_transcript": "I'm seeing patient John Smith today. He was born on March 15th, 1985. He's here for his annual checkup and reports feeling well overall.",
+    "transcription_source": "ambient_dictation_app",
+    "patient_first_name": "John",
+    "patient_last_name": "Smith",
+    "patient_dob": "03/15/1985",
+    "Patient_ID": "Smith_John__03_15_1985",
+    "timestamp": "2025-07-28T20:30:00.000Z"
+  }
+}
+```
+
+## Example 2: Lab Processing
+
+```json
+{
+  "run_email": "jeffrey.Bander@providerloop.com",
+  "chain_to_run": "ATTACHMENT PROCESSING (LABS)",
+  "human_readable_record": "Lab results processing for patient",
+  "source_id": "Johnson_Mary__12_25_1975",
+  "first_step_user_input": "Lab results attached for review",
+  "starting_variables": {
+    "patient_name": "Mary Johnson",
+    "lab_type": "Complete Blood Count",
+    "ordered_date": "07/28/2025",
+    "results_available": "true"
+  }
+}
+```
+
+## Example 3: Sleep Study Processing
+
+```json
+{
+  "run_email": "jeffrey.Bander@providerloop.com",
+  "chain_to_run": "ATTACHMENT PROCESSING (SLEEP STUDY)",
+  "human_readable_record": "Sleep study results processing",
+  "source_id": "Davis_Robert__06_03_1990",
+  "first_step_user_input": "",
+  "starting_variables": {
+    "patient_name": "Robert Davis",
+    "study_date": "07/25/2025",
+    "study_type": "Overnight Polysomnography",
+    "referring_physician": "Dr. Smith"
+  }
+}
+```
+
+## Available Chain Names
+
+- `"QuickAddQHC"` - Quick patient registration
+- `"ATTACHMENT PROCESSING (LABS)"` - Lab results processing
+- `"ATTACHMENT PROCESSING (SLEEP STUDY)"` - Sleep study processing
+- `"ATTACHMENT PROCESSING (RESEARCH STUDY)"` - Research study processing
+- `"REFERRAL PROCESSING"` - Referral processing
+- `"CLIENT REPORT SENT"` - Client report generation
+- `"SLEEP STUDY RESULTS"` - Sleep study results
+
+## Expected Response Format
+
+### Success Response
+```json
+{
+  "ChainRun_ID": "abc123def",
+  "status": "success",
+  "message": "Chain triggered successfully",
+  "responses": [
+    {
+      "rows": [
+        {
+          "Run_ID": "abc123def",
+          "_RowNumber": 1,
+          "ID": "unique_id_here"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Error Response
+```json
+{
+  "error": "Error description",
+  "message": "Detailed error message",
+  "status": "error"
+}
+```
+
+## JavaScript Example Usage
+
+```javascript
+async function triggerChain(patientInfo, transcript) {
+  const response = await fetch('https://start-chain-run-943506065004.us-central1.run.app', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      run_email: "jeffrey.Bander@providerloop.com",
+      chain_to_run: "QuickAddQHC",
+      human_readable_record: "Ambient dictation transcript from external app",
+      source_id: patientInfo.sourceId,
+      first_step_user_input: "",
+      starting_variables: {
+        ambient_transcript: transcript,
+        transcription_source: "ambient_dictation_app",
+        patient_first_name: patientInfo.firstName,
+        patient_last_name: patientInfo.lastName,
+        patient_dob: patientInfo.dob,
+        Patient_ID: patientInfo.sourceId,
+        timestamp: new Date().toISOString()
+      }
+    })
+  });
+
+  const result = await response.json();
+  
+  if (response.ok) {
+    const chainRunId = result.ChainRun_ID || 
+                       (result.responses?.[0]?.rows?.[0]?.Run_ID);
+    console.log('Success! Chain Run ID:', chainRunId);
+    return { success: true, chainRunId };
+  } else {
+    console.error('Error:', result.error || result.message);
+    return { success: false, error: result.error || result.message };
+  }
+}
+```
+
+## Notes
+
+1. **Fixed Email**: Always use "jeffrey.Bander@providerloop.com" as the run_email
+2. **Source ID Format**: Use format "LastName_FirstName__MM_DD_YYYY" for patient IDs
+3. **Chain Names**: Must match exactly (case-sensitive)
+4. **Variables**: All values in starting_variables should be strings
+5. **Response Parsing**: Chain Run ID can be in multiple locations in the response
+6. **Logs URL**: View chain execution at `https://aigents-realtime-logs-943506065004.us-central1.run.app/?chainRunId={chainRunId}`
+
+## Minimal Required Request
+
+The absolute minimum request needs:
+```json
+{
+  "run_email": "jeffrey.Bander@providerloop.com",
+  "chain_to_run": "QuickAddQHC",
+  "human_readable_record": "Manual trigger"
+}
+```
