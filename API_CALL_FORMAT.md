@@ -33,22 +33,21 @@ Content-Type: application/json
 | `first_step_user_input` | No | String | Initial input for the first step of the chain |
 | `starting_variables` | No | Object | Key-value pairs of variables to pass to the chain |
 
-## Example 1: Patient Registration from Ambient Dictation
+## Example 1: Patient Creation from Screenshot
 
 ```json
 {
   "run_email": "jeffrey.Bander@providerloop.com",
-  "chain_to_run": "QuickAddQHC",
-  "human_readable_record": "Ambient dictation transcript from external app",
+  "chain_to_run": "Screenshot_Patient_Creator",
+  "human_readable_record": "Medical database screenshot processing from external app",
   "source_id": "Smith_John__03_15_1985",
   "first_step_user_input": "",
   "starting_variables": {
-    "ambient_transcript": "I'm seeing patient John Smith today. He was born on March 15th, 1985. He's here for his annual checkup and reports feeling well overall.",
-    "transcription_source": "ambient_dictation_app",
     "patient_first_name": "John",
     "patient_last_name": "Smith",
     "patient_dob": "03/15/1985",
     "Patient_ID": "Smith_John__03_15_1985",
+    "extraction_source": "medical_database_screenshot",
     "timestamp": "2025-07-28T20:30:00.000Z"
   }
 }
@@ -92,7 +91,8 @@ Content-Type: application/json
 
 ## Available Chain Names
 
-- `"QuickAddQHC"` - Quick patient registration
+- `"Screenshot_Patient_Creator"` - Creates a new patient using uploaded screenshot
+- `"QuickAddQHC"` - Quick patient registration  
 - `"ATTACHMENT PROCESSING (LABS)"` - Lab results processing
 - `"ATTACHMENT PROCESSING (SLEEP STUDY)"` - Sleep study processing
 - `"ATTACHMENT PROCESSING (RESEARCH STUDY)"` - Research study processing
@@ -134,7 +134,7 @@ Content-Type: application/json
 ## JavaScript Example Usage
 
 ```javascript
-async function triggerChain(patientInfo, transcript) {
+async function triggerChain(patientInfo, extractedData) {
   const response = await fetch('https://start-chain-run-943506065004.us-central1.run.app', {
     method: 'POST',
     headers: {
@@ -142,16 +142,13 @@ async function triggerChain(patientInfo, transcript) {
     },
     body: JSON.stringify({
       run_email: "jeffrey.Bander@providerloop.com",
-      chain_to_run: "QuickAddQHC",
-      human_readable_record: "Ambient dictation transcript from external app",
+      chain_to_run: "Screenshot_Patient_Creator",
+      human_readable_record: "Medical database screenshot processing from external app",
       source_id: patientInfo.sourceId,
       first_step_user_input: "",
       starting_variables: {
-        ambient_transcript: transcript,
-        transcription_source: "ambient_dictation_app",
-        patient_first_name: patientInfo.firstName,
-        patient_last_name: patientInfo.lastName,
-        patient_dob: patientInfo.dob,
+        ...extractedData,
+        extraction_source: "medical_database_screenshot",
         Patient_ID: patientInfo.sourceId,
         timestamp: new Date().toISOString()
       }
@@ -187,7 +184,7 @@ The absolute minimum request needs:
 ```json
 {
   "run_email": "jeffrey.Bander@providerloop.com",
-  "chain_to_run": "QuickAddQHC",
+  "chain_to_run": "Screenshot_Patient_Creator",
   "human_readable_record": "Manual trigger"
 }
 ```

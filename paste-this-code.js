@@ -78,7 +78,7 @@ async function sendToProviderloop(transcriptText) {
   }
   
   // Step 3: Send directly to AIGENTS API (same as Providerloop Chains does)
-  const chainName = "QuickAddQHC"; // Change this to different chain if needed
+  const chainName = "Screenshot_Patient_Creator"; // Change this to different chain if needed
   const requestData = {
     run_email: "jeffrey.Bander@providerloop.com",
     chain_to_run: chainName,
@@ -310,7 +310,8 @@ function showAmbientLogs() {
 // 4. To view logs, call showAmbientLogs():
 //    showAmbientLogs(); // Shows a popup with all logged attempts
 //
-// 5. To use a different chain, change "QuickAddQHC" to one of:
+// 5. To use a different chain, change "Screenshot_Patient_Creator" to one of:
+//    - "QuickAddQHC"
 //    - "ATTACHMENT PROCESSING (LABS)"
 //    - "ATTACHMENT PROCESSING (SLEEP STUDY)"
 //    - "REFERRAL PROCESSING"

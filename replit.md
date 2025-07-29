@@ -4,6 +4,9 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-28**: Added new chain "Screenshot_Patient_Creator" for creating patients from uploaded screenshots across all system interfaces
+- **2025-07-28**: Updated all chain selection lists, API documentation, and integration files to include the new Screenshot_Patient_Creator chain
+- **2025-07-28**: Set Screenshot_Patient_Creator as default chain for main automation trigger and ambient dictation integration
 - **2025-07-28**: Added Medical Database Screenshot Processing UX (/medical-database) for comprehensive patient data extraction and AIGENTS chain triggering
 - **2025-07-28**: Enhanced OpenAI extraction service to handle medical database screenshots with 25+ field extraction including demographics, insurance, medical history, and appointments
 - **2025-07-28**: Created complete logging system for ambient dictation integration with localStorage tracking and visual UI display

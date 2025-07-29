@@ -44,6 +44,7 @@ interface ChainOption {
 
 const availableChains: ChainOption[] = [
   { id: 'QuickAddQHC', name: 'Quick Patient Registration', description: 'Register new patient in system' },
+  { id: 'Screenshot_Patient_Creator', name: 'Screenshot Patient Creator', description: 'Creates a new patient using uploaded screenshot' },
   { id: 'ATTACHMENT PROCESSING (LABS)', name: 'Lab Processing', description: 'Process lab results and reports' },
   { id: 'ATTACHMENT PROCESSING (SLEEP STUDY)', name: 'Sleep Study Processing', description: 'Process sleep study results' },
   { id: 'REFERRAL PROCESSING', name: 'Referral Processing', description: 'Process patient referrals' },

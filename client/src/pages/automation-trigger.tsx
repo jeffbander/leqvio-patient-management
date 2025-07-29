@@ -34,6 +34,10 @@ interface Variable {
 
 const CHAIN_OPTIONS = [
   {
+    value: "Screenshot_Patient_Creator",
+    label: "Screenshot Patient Creator"
+  },
+  {
     value: "ATTACHMENT PROCESSING (LABS)",
     label: "Attachment Processing (Labs)"
   },
@@ -119,7 +123,7 @@ export default function AutomationTrigger() {
       first_name: "",
       last_name: "",
       dob: "",
-      chain_to_run: "ATTACHMENT PROCESSING (LABS)",
+      chain_to_run: "Screenshot_Patient_Creator",
       source_id: "",
       first_step_user_input: "",
     },
