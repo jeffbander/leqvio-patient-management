@@ -27,16 +27,16 @@ const analyticsMiddleware = (req: any, res: any, next: any) => {
         responseTime,
         userAgent: req.get('User-Agent') || '',
         ipAddress: req.ip || req.connection?.remoteAddress || '',
-        chainType: req.body?.chain_to_run || req.body?.chainType || null,
-        uniqueId: req.body?.uniqueId || req.body?.["Chain Run ID"] || null,
+        chainType: req.body?.chain_to_run || req.body?.chainType || '', // Change null to empty string
+        uniqueId: req.body?.uniqueId || req.body?.["Chain Run ID"] || '', // Change null to empty string
         requestSize: req.get('Content-Length') ? parseInt(req.get('Content-Length')) : 0,
         responseSize,
         errorMessage: res.statusCode >= 400 ? (
           typeof data === 'object' && data ? 
             (data.error || data.message || 'Unknown error') : 
             'Unknown error'
-        ) : null,
-        requestData: req.method !== 'GET' ? req.body : null
+        ) : '', // Change null to empty string
+        requestData: req.method !== 'GET' ? req.body : {} // Change null to empty object
       };
 
       // Store analytics asynchronously
@@ -742,8 +742,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileName: req.file.originalname,
         extractionType,
         processingTime,
-        patientName: `${extractedData.firstName} ${extractedData.lastName}`,
-        accountNo: extractedData.accountNo
+        patientName: extractionType === 'medical_database' 
+          ? `${extractedData.patient_first_name || 'N/A'} ${extractedData.patient_last_name || 'N/A'}`
+          : `${extractedData.firstName || 'N/A'} ${extractedData.lastName || 'N/A'}`,
+        accountNo: extractionType === 'medical_database' 
+          ? extractedData.account_number 
+          : extractedData.accountNo
       });
       
       res.json(responseData);
