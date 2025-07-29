@@ -126,18 +126,20 @@ export default function MedicalDatabaseExtraction() {
           extraction_source: "medical_database_screenshot",
           Patient_ID: sourceId,
           timestamp: new Date().toISOString(),
-          // Required patient variables
-          Patient_Address: extractedData.patient_address || '',
-          first_name: extractedData.patient_first_name || '',
-          last_name: extractedData.patient_last_name || '',
-          date_of_birth: extractedData.patient_dob || '',
-          Patient_Primary_Insurance: extractedData.insurance_provider || '',
-          Patient_Primary_Insurance_ID: extractedData.insurance_id || '',
-          Patient_Secondary_Insurance: extractedData.secondary_insurance || '',
-          Patient_Secondary_Insurance_ID: extractedData.secondary_insurance_id || '',
-          Patient_Phone_Number: extractedData.patient_phone || '',
-          Patient_Email: extractedData.patient_email || '',
-          ...(additionalNotes && { additional_notes: additionalNotes })
+          ...(additionalNotes && { additional_notes: additionalNotes }),
+          // Include specific patient variables only for Screenshot_Patient_Creator chain
+          ...(selectedChain === "Screenshot_Patient_Creator" && {
+            Patient_Address: extractedData.patient_address || '',
+            first_name: extractedData.patient_first_name || '',
+            last_name: extractedData.patient_last_name || '',
+            date_of_birth: extractedData.patient_dob || '',
+            Patient_Primary_Insurance: extractedData.insurance_provider || '',
+            Patient_Primary_Insurance_ID: extractedData.insurance_id || '',
+            Patient_Secondary_Insurance: extractedData.secondary_insurance || '',
+            Patient_Secondary_Insurance_ID: extractedData.secondary_insurance_id || '',
+            Patient_Phone_Number: extractedData.patient_phone || '',
+            Patient_Email: extractedData.patient_email || ''
+          })
         }
       }
 
