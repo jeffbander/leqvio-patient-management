@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { User, Calendar, Link as LinkIcon, Plus, Trash2, Send, RotateCcw, Loader2, History, TrendingUp, CreditCard, FileUser, Mic } from "lucide-react";
+import { User, Calendar, Link as LinkIcon, Plus, Trash2, Send, RotateCcw, Loader2, History, TrendingUp, CreditCard, FileUser, Mic, Database } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -461,6 +461,16 @@ export default function AutomationTrigger() {
                 >
                   <User className="h-4 w-4" />
                   <span>Patient Info</span>
+                </Button>
+              </Link>
+              <Link href="/medical-database">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2"
+                >
+                  <Database className="h-4 w-4" />
+                  <span>Medical DB</span>
                 </Button>
               </Link>
               <Link href="/audio">

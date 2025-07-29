@@ -717,18 +717,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const base64Image = req.file.buffer.toString('base64');
       const startTime = Date.now();
       
-      // Extract patient info using OpenAI Vision
-      const extractedData = await extractPatientInfoFromScreenshot(base64Image);
+      // Get extraction type from request body
+      const extractionType = req.body?.extractionType || 'medical_system';
+      
+      let extractedData;
+      if (extractionType === 'medical_database') {
+        // Use the comprehensive medical database extraction
+        extractedData = await extractPatientInfoFromScreenshot(base64Image, 'medical_database');
+      } else {
+        // Use existing medical system extraction
+        extractedData = await extractPatientInfoFromScreenshot(base64Image, 'medical_system');
+      }
+      
       const processingTime = Date.now() - startTime;
       
-      // Add processing time to response
+      // Format response based on extraction type
       const responseData = {
-        ...extractedData,
-        processingTime_ms: processingTime
+        extractedData: extractedData,
+        processingTime_ms: processingTime,
+        extractionType: extractionType
       };
       
       console.log("Patient info extraction completed:", {
         fileName: req.file.originalname,
+        extractionType,
         processingTime,
         patientName: `${extractedData.firstName} ${extractedData.lastName}`,
         accountNo: extractedData.accountNo

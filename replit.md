@@ -4,6 +4,9 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-28**: Added Medical Database Screenshot Processing UX (/medical-database) for comprehensive patient data extraction and AIGENTS chain triggering
+- **2025-07-28**: Enhanced OpenAI extraction service to handle medical database screenshots with 25+ field extraction including demographics, insurance, medical history, and appointments
+- **2025-07-28**: Created complete logging system for ambient dictation integration with localStorage tracking and visual UI display
 - **2025-07-28**: Fixed ambient dictation integration to send directly to AIGENTS API endpoint (https://start-chain-run-943506065004.us-central1.run.app) instead of non-existent Providerloop endpoint
 - **2025-07-28**: Updated all integration files (paste-this-code.js, ambient-dictation-integration.js, ambient-dictation-example.html) to use correct AIGENTS API endpoint with proper response parsing
 - **2025-07-27**: Added patient info extraction from medical system screenshots - extracts 20+ fields including demographics, insurance, and contact info
@@ -104,6 +107,11 @@ Patient data processing application for Providerloop Chains, designed to streaml
   - Step 2: Insurance card front scanning
   - Step 3: Insurance card back scanning (optional)
   - Step 4: Review and submit with auto-generated source ID
+- **Medical Database Extraction (/medical-database)**: Comprehensive screenshot processing workflow
+  - Step 1: Upload medical database screenshot
+  - Step 2: AI-powered extraction of 25+ patient data fields
+  - Step 3: Chain selection and configuration
+  - Step 4: Direct AIGENTS API integration with real-time results
 
 ### Backend
 - Express.js server

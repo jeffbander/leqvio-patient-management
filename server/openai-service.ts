@@ -71,14 +71,95 @@ export interface ExtractedInsuranceData {
   };
 }
 
-export async function extractPatientInfoFromScreenshot(base64Image: string): Promise<any> {
+export async function extractPatientInfoFromScreenshot(base64Image: string, extractionType: string = 'medical_system'): Promise<any> {
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `You are a medical system data extraction expert. Extract patient information from screenshots of medical systems, EHR/EMR interfaces, or patient registration screens.
+    let systemContent = '';
+    let userText = '';
+    let responseFields = {};
+
+    if (extractionType === 'medical_database') {
+      systemContent = `You are a medical database data extraction expert. Extract comprehensive patient information from medical database screenshots, EHR/EMR interfaces, patient management systems, or medical software screens.
+
+Return your response in JSON format with these exact fields (use empty string for missing data):
+{
+  "patient_first_name": "string",
+  "patient_last_name": "string", 
+  "patient_dob": "MM/DD/YYYY",
+  "patient_gender": "string",
+  "patient_phone": "string",
+  "patient_email": "string",
+  "patient_address": "string",
+  "patient_city": "string",
+  "patient_state": "string",
+  "patient_zip": "string",
+  "patient_ssn": "string",
+  "medical_record_number": "string",
+  "account_number": "string",
+  "insurance_provider": "string",
+  "insurance_id": "string",
+  "insurance_group": "string",
+  "primary_care_physician": "string",
+  "allergies": "string",
+  "medications": "string",
+  "medical_conditions": "string",
+  "emergency_contact_name": "string", 
+  "emergency_contact_phone": "string",
+  "last_visit_date": "MM/DD/YYYY",
+  "next_appointment": "MM/DD/YYYY",
+  "marital_status": "string",
+  "language": "string",
+  "race": "string",
+  "ethnicity": "string",
+  "rawData": "all text found in the image",
+  "confidence": 0.0-1.0
+}
+
+EXTRACTION RULES:
+- Extract exact text as shown in the database interface
+- Use empty string "" for missing fields
+- Phone numbers should include formatting if present: (xxx) xxx-xxxx
+- Dates in MM/DD/YYYY format
+- Be thorough - medical databases contain comprehensive patient data
+- Look for all form fields, labels, and data entries
+- Set confidence based on image clarity and data completeness`;
+
+      userText = "Extract all patient information from this medical database screenshot. Capture every field visible including demographics, contact info, insurance, medical history, appointments, and provider details.";
+      
+      responseFields = {
+        patient_first_name: "",
+        patient_last_name: "",
+        patient_dob: "",
+        patient_gender: "",
+        patient_phone: "",
+        patient_email: "",
+        patient_address: "",
+        patient_city: "",
+        patient_state: "",
+        patient_zip: "",
+        patient_ssn: "",
+        medical_record_number: "",
+        account_number: "",
+        insurance_provider: "",
+        insurance_id: "",
+        insurance_group: "",
+        primary_care_physician: "",
+        allergies: "",
+        medications: "",
+        medical_conditions: "",
+        emergency_contact_name: "",
+        emergency_contact_phone: "",
+        last_visit_date: "",
+        next_appointment: "",
+        marital_status: "",
+        language: "",
+        race: "",
+        ethnicity: "",
+        rawData: "",
+        confidence: 0
+      };
+    } else {
+      // Original medical system extraction
+      systemContent = `You are a medical system data extraction expert. Extract patient information from screenshots of medical systems, EHR/EMR interfaces, or patient registration screens.
 
 Return your response in JSON format with these exact fields:
 {
@@ -114,14 +195,51 @@ EXTRACTION RULES:
 - Phone numbers should include formatting if present
 - Dates in MM/DD/YYYY format
 - Be thorough - medical systems contain critical patient data
-- Set confidence based on image clarity and completeness`
+- Set confidence based on image clarity and completeness`;
+
+      userText = "Extract all patient information from this medical system screenshot. Capture every field visible including demographics, contact info, insurance, and provider details.";
+
+      responseFields = {
+        accountNo: "",
+        firstName: "",
+        lastName: "",
+        dateOfBirth: "",
+        age: "",
+        sex: "",
+        street: "",
+        city: "",
+        state: "",
+        zip: "",
+        country: "",
+        homePhone: "",
+        cellPhone: "",
+        email: "",
+        primaryCareProvider: "",
+        maritalStatus: "",
+        language: "",
+        race: "",
+        ethnicity: "",
+        insurancePlanName: "",
+        subscriberNo: "",
+        relationship: "",
+        rawData: "",
+        confidence: 0
+      };
+    }
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: systemContent
         },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: "Extract all patient information from this medical system screenshot. Capture every field visible including demographics, contact info, insurance, and provider details."
+              text: userText
             },
             {
               type: "image_url",
@@ -138,32 +256,20 @@ EXTRACTION RULES:
 
     const result = JSON.parse(response.choices[0].message.content || "{}");
     
-    return {
-      accountNo: result.accountNo || "",
-      firstName: result.firstName || "",
-      lastName: result.lastName || "",
-      dateOfBirth: result.dateOfBirth || "",
-      age: result.age || "",
-      sex: result.sex || "",
-      street: result.street || "",
-      city: result.city || "",
-      state: result.state || "",
-      zip: result.zip || "",
-      country: result.country || "",
-      homePhone: result.homePhone || "",
-      cellPhone: result.cellPhone || "",
-      email: result.email || "",
-      primaryCareProvider: result.primaryCareProvider || "",
-      maritalStatus: result.maritalStatus || "",
-      language: result.language || "",
-      race: result.race || "",
-      ethnicity: result.ethnicity || "",
-      insurancePlanName: result.insurancePlanName || "",
-      subscriberNo: result.subscriberNo || "",
-      relationship: result.relationship || "",
-      rawData: result.rawData || "",
-      confidence: Math.max(0, Math.min(1, result.confidence || 0))
-    };
+    // Merge with defaults and ensure all fields exist
+    const extractedData = { ...responseFields };
+    Object.keys(responseFields).forEach(key => {
+      if (result[key] !== undefined) {
+        extractedData[key] = result[key];
+      }
+    });
+
+    // Ensure confidence is within bounds
+    if (extractedData.confidence !== undefined) {
+      extractedData.confidence = Math.max(0, Math.min(1, extractedData.confidence));
+    }
+    
+    return extractedData;
   } catch (error) {
     console.error("OpenAI patient info extraction error:", error);
     throw new Error("Failed to extract patient information: " + (error as Error).message);
