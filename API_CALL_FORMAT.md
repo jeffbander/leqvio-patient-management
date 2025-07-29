@@ -48,7 +48,17 @@ Content-Type: application/json
     "patient_dob": "03/15/1985",
     "Patient_ID": "Smith_John__03_15_1985",
     "extraction_source": "medical_database_screenshot",
-    "timestamp": "2025-07-28T20:30:00.000Z"
+    "timestamp": "2025-07-28T20:30:00.000Z",
+    "Patient_Address": "123 Main St, Anytown, ST 12345",
+    "first_name": "John",
+    "last_name": "Smith", 
+    "date_of_birth": "03/15/1985",
+    "Patient_Primary_Insurance": "Blue Cross Blue Shield",
+    "Patient_Primary_Insurance_ID": "ABC123456789",
+    "Patient_Secondary_Insurance": "Aetna",
+    "Patient_Secondary_Insurance_ID": "XYZ987654321",
+    "Patient_Phone_Number": "(555) 123-4567",
+    "Patient_Email": "john.smith@email.com"
   }
 }
 ```
@@ -150,7 +160,18 @@ async function triggerChain(patientInfo, extractedData) {
         ...extractedData,
         extraction_source: "medical_database_screenshot",
         Patient_ID: patientInfo.sourceId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        // Required patient variables
+        Patient_Address: extractedData.patient_address || '',
+        first_name: extractedData.patient_first_name || '',
+        last_name: extractedData.patient_last_name || '',
+        date_of_birth: extractedData.patient_dob || '',
+        Patient_Primary_Insurance: extractedData.insurance_provider || '',
+        Patient_Primary_Insurance_ID: extractedData.insurance_id || '',
+        Patient_Secondary_Insurance: extractedData.secondary_insurance || '',
+        Patient_Secondary_Insurance_ID: extractedData.secondary_insurance_id || '',
+        Patient_Phone_Number: extractedData.patient_phone || '',
+        Patient_Email: extractedData.patient_email || ''
       }
     })
   });

@@ -92,7 +92,18 @@ async function sendToProviderloop(transcriptText) {
       patient_last_name: patientInfo.lastName,
       patient_dob: patientInfo.dob,
       Patient_ID: patientInfo.sourceId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      // Required patient variables
+      Patient_Address: patientInfo.address || '',
+      first_name: patientInfo.firstName || '',
+      last_name: patientInfo.lastName || '',
+      date_of_birth: patientInfo.dob || '',
+      Patient_Primary_Insurance: patientInfo.primaryInsurance || '',
+      Patient_Primary_Insurance_ID: patientInfo.primaryInsuranceId || '',
+      Patient_Secondary_Insurance: patientInfo.secondaryInsurance || '',
+      Patient_Secondary_Insurance_ID: patientInfo.secondaryInsuranceId || '',
+      Patient_Phone_Number: patientInfo.phone || '',
+      Patient_Email: patientInfo.email || ''
     }
   };
 
