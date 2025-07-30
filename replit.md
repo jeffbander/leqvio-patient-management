@@ -5,6 +5,9 @@ Patient data processing application for Providerloop Chains, designed to streaml
 
 ## Recent Changes
 - **2025-07-28**: Simplified medical database extraction UI to automatically use Screenshot_Patient_Creator chain - removed chain dropdown and additional notes fields for streamlined workflow
+- **2025-07-28**: Simplified medical database extraction page to automatically use Screenshot_Patient_Creator chain with no dropdown selection
+- **2025-07-28**: Added raw_data starting variable containing original extracted JSON data for automation processing
+- **2025-07-28**: Removed additional notes field and chain selection - page now dedicated to patient creation workflow
 - **2025-07-28**: Added manual override capability to medical database extraction page - all extracted fields are now editable with "Reset to Original" functionality
 - **2025-07-28**: Enhanced medical database extraction to conditionally include specific patient variables only for Screenshot_Patient_Creator chain: Patient_Address, first_name, last_name, date_of_birth, Patient_Primary_Insurance, Patient_Primary_Insurance_ID, Patient_Secondary_Insurance, Patient_Secondary_Insurance_ID, Patient_Phone_Number, Patient_Email
 - **2025-07-28**: Added secondary insurance fields to OpenAI extraction service for comprehensive insurance data capture

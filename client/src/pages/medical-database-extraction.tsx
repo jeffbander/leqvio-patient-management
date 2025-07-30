@@ -4,8 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+
 import { useToast } from '@/hooks/use-toast'
 import { AlertCircle, Upload, Camera, Eye, Send, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -36,21 +35,7 @@ interface ExtractedPatientData {
   [key: string]: string | undefined
 }
 
-interface ChainOption {
-  id: string
-  name: string
-  description: string
-}
 
-const availableChains: ChainOption[] = [
-  { id: 'QuickAddQHC', name: 'Quick Patient Registration', description: 'Register new patient in system' },
-  { id: 'Screenshot_Patient_Creator', name: 'Screenshot Patient Creator', description: 'Creates a new patient using uploaded screenshot' },
-  { id: 'ATTACHMENT PROCESSING (LABS)', name: 'Lab Processing', description: 'Process lab results and reports' },
-  { id: 'ATTACHMENT PROCESSING (SLEEP STUDY)', name: 'Sleep Study Processing', description: 'Process sleep study results' },
-  { id: 'REFERRAL PROCESSING', name: 'Referral Processing', description: 'Process patient referrals' },
-  { id: 'CLIENT REPORT SENT', name: 'Client Report', description: 'Generate and send client reports' },
-  { id: 'SLEEP STUDY RESULTS', name: 'Sleep Study Results', description: 'Process sleep study results' }
-]
 
 export default function MedicalDatabaseExtraction() {
   const { toast } = useToast()
@@ -122,26 +107,24 @@ export default function MedicalDatabaseExtraction() {
         chain_to_run: selectedChain,
         human_readable_record: "Medical database screenshot processing from external app",
         source_id: sourceId,
-        first_step_user_input: additionalNotes,
+        first_step_user_input: "",
         starting_variables: {
           ...editableData,
           extraction_source: "medical_database_screenshot",
           Patient_ID: sourceId,
           timestamp: new Date().toISOString(),
-          ...(additionalNotes && { additional_notes: additionalNotes }),
-          // Include specific patient variables only for Screenshot_Patient_Creator chain
-          ...(selectedChain === "Screenshot_Patient_Creator" && {
-            Patient_Address: editableData.patient_address || '',
-            first_name: editableData.patient_first_name || '',
-            last_name: editableData.patient_last_name || '',
-            date_of_birth: editableData.patient_dob || '',
-            Patient_Primary_Insurance: editableData.insurance_provider || '',
-            Patient_Primary_Insurance_ID: editableData.insurance_id || '',
-            Patient_Secondary_Insurance: editableData.secondary_insurance || '',
-            Patient_Secondary_Insurance_ID: editableData.secondary_insurance_id || '',
-            Patient_Phone_Number: editableData.patient_phone || '',
-            Patient_Email: editableData.patient_email || ''
-          })
+          raw_data: JSON.stringify(extractedData || {}),
+          // Include specific patient variables for Screenshot_Patient_Creator chain
+          Patient_Address: editableData.patient_address || '',
+          first_name: editableData.patient_first_name || '',
+          last_name: editableData.patient_last_name || '',
+          date_of_birth: editableData.patient_dob || '',
+          Patient_Primary_Insurance: editableData.insurance_provider || '',
+          Patient_Primary_Insurance_ID: editableData.insurance_id || '',
+          Patient_Secondary_Insurance: editableData.secondary_insurance || '',
+          Patient_Secondary_Insurance_ID: editableData.secondary_insurance_id || '',
+          Patient_Phone_Number: editableData.patient_phone || '',
+          Patient_Email: editableData.patient_email || ''
         }
       }
 
@@ -262,7 +245,7 @@ export default function MedicalDatabaseExtraction() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Medical Database Screenshot Processing</h1>
-        <p className="text-gray-600">Upload a screenshot from your medical database to extract patient information and trigger AIGENTS automation chains.</p>
+        <p className="text-gray-600">Upload a screenshot from your medical database to extract patient information and create a new patient record.</p>
       </div>
 
       <div className="grid gap-6">
