@@ -58,10 +58,10 @@ export default function MedicalDatabaseExtraction() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [extractedData, setExtractedData] = useState<ExtractedPatientData | null>(null)
   const [editableData, setEditableData] = useState<ExtractedPatientData | null>(null)
-  const [selectedChain, setSelectedChain] = useState<string>('')
+  const [selectedChain] = useState<string>('Screenshot_Patient_Creator')
   const [sourceId, setSourceId] = useState<string>('')
   const [isManualSourceId, setIsManualSourceId] = useState<boolean>(false)
-  const [additionalNotes, setAdditionalNotes] = useState<string>('')
+  const [additionalNotes] = useState<string>('')
   const [chainRunId, setChainRunId] = useState<string | null>(null)
 
   // Extract patient data from screenshot
@@ -222,10 +222,8 @@ export default function MedicalDatabaseExtraction() {
     setPreviewUrl(null)
     setExtractedData(null)
     setEditableData(null)
-    setSelectedChain('')
     setSourceId('')
     setIsManualSourceId(false)
-    setAdditionalNotes('')
     setChainRunId(null)
   }
 
@@ -396,64 +394,44 @@ export default function MedicalDatabaseExtraction() {
           </Card>
         )}
 
-        {/* Step 3: Configure Chain */}
+        {/* Step 3: Create Patient */}
         {editableData && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Send className="h-5 w-5" />
-                Step 3: Configure & Trigger Chain
+                Step 3: Create Patient Record
               </CardTitle>
               <CardDescription>
-                Select the automation chain to run with this patient data
+                Create a new patient record using the Screenshot Patient Creator automation
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="chain">Select Chain to Run</Label>
-                <Select value={selectedChain} onValueChange={setSelectedChain}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose an automation chain" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableChains.map((chain) => (
-                      <SelectItem key={chain.id} value={chain.id}>
-                        <div>
-                          <div className="font-medium">{chain.name}</div>
-                          <div className="text-sm text-gray-500">{chain.description}</div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Additional Notes (Optional)</Label>
-                <Textarea
-                  id="notes"
-                  value={additionalNotes}
-                  onChange={(e) => setAdditionalNotes(e.target.value)}
-                  placeholder="Any additional context or instructions for the chain..."
-                  rows={3}
-                />
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="font-medium text-blue-800">Screenshot Patient Creator</span>
+                </div>
+                <p className="text-sm text-blue-700">
+                  This automation will create a new patient record using the extracted information from your medical database screenshot.
+                </p>
               </div>
 
               <Button
                 onClick={handleTriggerChain}
-                disabled={!selectedChain || !sourceId.trim() || triggerChainMutation.isPending}
+                disabled={!sourceId.trim() || triggerChainMutation.isPending}
                 className="w-full"
                 size="lg"
               >
                 {triggerChainMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Triggering Chain...
+                    Creating Patient Record...
                   </>
                 ) : (
                   <>
                     <Send className="mr-2 h-4 w-4" />
-                    Trigger {availableChains.find(c => c.id === selectedChain)?.name || 'Chain'}
+                    Create Patient Record
                   </>
                 )}
               </Button>
