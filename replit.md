@@ -4,6 +4,7 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-28**: Added manual override capability to medical database extraction page - all extracted fields are now editable with "Reset to Original" functionality
 - **2025-07-28**: Enhanced medical database extraction to conditionally include specific patient variables only for Screenshot_Patient_Creator chain: Patient_Address, first_name, last_name, date_of_birth, Patient_Primary_Insurance, Patient_Primary_Insurance_ID, Patient_Secondary_Insurance, Patient_Secondary_Insurance_ID, Patient_Phone_Number, Patient_Email
 - **2025-07-28**: Added secondary insurance fields to OpenAI extraction service for comprehensive insurance data capture
 - **2025-07-28**: Updated all integration files (paste-this-code.js, ambient-dictation-with-logs.html, API documentation) to include required patient variables in AIGENTS chain calls

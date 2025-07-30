@@ -57,6 +57,7 @@ export default function MedicalDatabaseExtraction() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [extractedData, setExtractedData] = useState<ExtractedPatientData | null>(null)
+  const [editableData, setEditableData] = useState<ExtractedPatientData | null>(null)
   const [selectedChain, setSelectedChain] = useState<string>('')
   const [sourceId, setSourceId] = useState<string>('')
   const [isManualSourceId, setIsManualSourceId] = useState<boolean>(false)
@@ -83,6 +84,7 @@ export default function MedicalDatabaseExtraction() {
     },
     onSuccess: (data) => {
       setExtractedData(data.extractedData)
+      setEditableData({ ...data.extractedData })
       
       // Auto-generate source ID if we have name and DOB
       if (data.extractedData.patient_first_name && data.extractedData.patient_last_name && data.extractedData.patient_dob) {
@@ -111,7 +113,7 @@ export default function MedicalDatabaseExtraction() {
   // Trigger AIGENTS chain
   const triggerChainMutation = useMutation({
     mutationFn: async () => {
-      if (!extractedData || !selectedChain) {
+      if (!editableData || !selectedChain) {
         throw new Error('Missing required data')
       }
 
@@ -122,23 +124,23 @@ export default function MedicalDatabaseExtraction() {
         source_id: sourceId,
         first_step_user_input: additionalNotes,
         starting_variables: {
-          ...extractedData,
+          ...editableData,
           extraction_source: "medical_database_screenshot",
           Patient_ID: sourceId,
           timestamp: new Date().toISOString(),
           ...(additionalNotes && { additional_notes: additionalNotes }),
           // Include specific patient variables only for Screenshot_Patient_Creator chain
           ...(selectedChain === "Screenshot_Patient_Creator" && {
-            Patient_Address: extractedData.patient_address || '',
-            first_name: extractedData.patient_first_name || '',
-            last_name: extractedData.patient_last_name || '',
-            date_of_birth: extractedData.patient_dob || '',
-            Patient_Primary_Insurance: extractedData.insurance_provider || '',
-            Patient_Primary_Insurance_ID: extractedData.insurance_id || '',
-            Patient_Secondary_Insurance: extractedData.secondary_insurance || '',
-            Patient_Secondary_Insurance_ID: extractedData.secondary_insurance_id || '',
-            Patient_Phone_Number: extractedData.patient_phone || '',
-            Patient_Email: extractedData.patient_email || ''
+            Patient_Address: editableData.patient_address || '',
+            first_name: editableData.patient_first_name || '',
+            last_name: editableData.patient_last_name || '',
+            date_of_birth: editableData.patient_dob || '',
+            Patient_Primary_Insurance: editableData.insurance_provider || '',
+            Patient_Primary_Insurance_ID: editableData.insurance_id || '',
+            Patient_Secondary_Insurance: editableData.secondary_insurance || '',
+            Patient_Secondary_Insurance_ID: editableData.secondary_insurance_id || '',
+            Patient_Phone_Number: editableData.patient_phone || '',
+            Patient_Email: editableData.patient_email || ''
           })
         }
       }
@@ -197,6 +199,7 @@ export default function MedicalDatabaseExtraction() {
       
       // Reset previous data
       setExtractedData(null)
+      setEditableData(null)
       setSourceId('')
       setChainRunId(null)
     }
@@ -209,7 +212,7 @@ export default function MedicalDatabaseExtraction() {
   }
 
   const handleTriggerChain = () => {
-    if (extractedData && selectedChain) {
+    if (editableData && selectedChain) {
       triggerChainMutation.mutate()
     }
   }
@@ -218,11 +221,27 @@ export default function MedicalDatabaseExtraction() {
     setSelectedFile(null)
     setPreviewUrl(null)
     setExtractedData(null)
+    setEditableData(null)
     setSelectedChain('')
     setSourceId('')
     setIsManualSourceId(false)
     setAdditionalNotes('')
     setChainRunId(null)
+  }
+
+  const resetToOriginal = () => {
+    if (extractedData) {
+      setEditableData({ ...extractedData })
+      
+      // Regenerate source ID if needed
+      if (!isManualSourceId && extractedData.patient_first_name && extractedData.patient_last_name && extractedData.patient_dob) {
+        const firstName = extractedData.patient_first_name.replace(/\s+/g, '_')
+        const lastName = extractedData.patient_last_name.replace(/\s+/g, '_')
+        const dobFormatted = extractedData.patient_dob.replace(/[\/\-]/g, '_')
+        const autoSourceId = `${lastName}_${firstName}__${dobFormatted}`
+        setSourceId(autoSourceId)
+      }
+    }
   }
 
   const handleSourceIdToggle = () => {
@@ -231,10 +250,10 @@ export default function MedicalDatabaseExtraction() {
       // Switching to manual - keep current value
     } else {
       // Switching to auto - regenerate if we have data
-      if (extractedData?.patient_first_name && extractedData?.patient_last_name && extractedData?.patient_dob) {
-        const firstName = extractedData.patient_first_name.replace(/\s+/g, '_')
-        const lastName = extractedData.patient_last_name.replace(/\s+/g, '_')
-        const dobFormatted = extractedData.patient_dob.replace(/[\/\-]/g, '_')
+      if (editableData?.patient_first_name && editableData?.patient_last_name && editableData?.patient_dob) {
+        const firstName = editableData.patient_first_name.replace(/\s+/g, '_')
+        const lastName = editableData.patient_last_name.replace(/\s+/g, '_')
+        const dobFormatted = editableData.patient_dob.replace(/[\/\-]/g, '_')
         const autoSourceId = `${lastName}_${firstName}__${dobFormatted}`
         setSourceId(autoSourceId)
       }
@@ -305,31 +324,45 @@ export default function MedicalDatabaseExtraction() {
           </CardContent>
         </Card>
 
-        {/* Step 2: Review Extracted Data */}
-        {extractedData && (
+        {/* Step 2: Review & Edit Extracted Data */}
+        {extractedData && editableData && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Eye className="h-5 w-5" />
-                Step 2: Review Extracted Patient Data
+                Step 2: Review & Edit Patient Data
               </CardTitle>
               <CardDescription>
-                Verify the extracted information is correct before proceeding
+                Review and modify the extracted information as needed before proceeding
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex justify-between items-center mb-4">
+                <p className="text-sm text-gray-600">Edit any fields as needed</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={resetToOriginal}
+                  className="text-xs"
+                >
+                  Reset to Original
+                </Button>
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(extractedData).map(([key, value]) => (
-                  value && (
-                    <div key={key} className="space-y-1">
-                      <Label className="text-sm font-medium text-gray-700">
-                        {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </Label>
-                      <div className="p-2 bg-gray-50 rounded border text-sm">
-                        {value}
-                      </div>
-                    </div>
-                  )
+                {Object.entries(editableData).map(([key, value]) => (
+                  <div key={key} className="space-y-1">
+                    <Label htmlFor={key} className="text-sm font-medium text-gray-700">
+                      {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </Label>
+                    <Input
+                      id={key}
+                      value={value || ''}
+                      onChange={(e) => setEditableData(prev => prev ? { ...prev, [key]: e.target.value } : null)}
+                      placeholder={`Enter ${key.replace(/_/g, ' ').toLowerCase()}`}
+                      className="text-sm"
+                    />
+                  </div>
                 ))}
               </div>
 
@@ -364,7 +397,7 @@ export default function MedicalDatabaseExtraction() {
         )}
 
         {/* Step 3: Configure Chain */}
-        {extractedData && (
+        {editableData && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
