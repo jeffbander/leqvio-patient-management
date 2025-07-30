@@ -164,7 +164,6 @@ async function triggerAIGENTSChain(patientInfo, transcriptText, chainName = "Qui
           patient_first_name: patientInfo.firstName,
           patient_last_name: patientInfo.lastName,
           patient_dob: patientInfo.dob,
-          Patient_ID: patientInfo.sourceId,
           timestamp: new Date().toISOString()
         }
       })
