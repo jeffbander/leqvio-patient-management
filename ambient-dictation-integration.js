@@ -112,6 +112,9 @@ export async function triggerAIGENTSChain(patientInfo, transcriptText, chainName
           patient_first_name: patientInfo.firstName,
           patient_last_name: patientInfo.lastName,
           patient_dob: patientInfo.dob,
+          ...(chainName !== "Screenshot_Patient_Creator" && {
+            Patient_ID: patientInfo.sourceId
+          }),
           extraction_confidence: patientInfo.extractionConfidence,
           timestamp: new Date().toISOString()
         }
