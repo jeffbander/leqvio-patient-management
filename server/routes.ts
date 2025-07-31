@@ -808,12 +808,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (provider && provider !== '') extractedData.provider_name = provider;
         }
         
-        const responseData = {
-          extractedData: extractedData,
-          processingTime_ms: 50,
-          extractionType: extractionType
-        };
-        
         // For testing with blank forms, add sample data if no fields were extracted
         if (!extractedData.patient_first_name && !extractedData.patient_last_name && !extractedData.patient_sex) {
           console.log("No data extracted from PDF - adding sample data to demonstrate field mapping");
@@ -827,6 +821,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           extractedData.signature_date = "01/15/2025";
           extractedData.confidence = 0.1; // Low confidence for sample data
         }
+        
+        const responseData = {
+          extractedData: extractedData,
+          processingTime_ms: 50,
+          extractionType: extractionType
+        };
 
         console.log("LEQVIO PDF extraction completed:", {
           fileName: req.file.originalname,
