@@ -477,6 +477,156 @@ export default function MedicalDatabaseExtraction() {
         <p className="text-gray-600">Upload LEQVIO Service Center Start Forms to extract patient information and create new patient records with leqvio chain automation.</p>
       </div>
 
+      {/* LEQVIO Patient Information - Show at top when available */}
+      {extractedData && editableData && editableData.provider_name !== undefined && editableData.signature_date !== undefined && (
+        <Card className="border-2 border-blue-300 shadow-lg mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-700">
+              <User className="h-5 w-5" />
+              LEQVIO Patient Information
+            </CardTitle>
+            <CardDescription>
+              Extracted patient details from LEQVIO form - review and edit as needed
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Personal Information Section - First */}
+            <div className="space-y-4">
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <h3 className="font-medium text-green-800 mb-2">Personal Information</h3>
+                <p className="text-sm text-green-700">Patient identification and demographics</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="top_patient_first_name" className="text-sm font-medium text-gray-700">
+                    First Name
+                  </Label>
+                  <Input
+                    id="top_patient_first_name"
+                    value={editableData.patient_first_name || ''}
+                    onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_first_name: e.target.value } : null)}
+                    placeholder="Enter patient first name"
+                    className="text-sm"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <Label htmlFor="top_patient_last_name" className="text-sm font-medium text-gray-700">
+                    Last Name
+                  </Label>
+                  <Input
+                    id="top_patient_last_name"
+                    value={editableData.patient_last_name || ''}
+                    onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_last_name: e.target.value } : null)}
+                    placeholder="Enter patient last name"
+                    className="text-sm"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <Label htmlFor="top_patient_sex" className="text-sm font-medium text-gray-700">
+                    Sex
+                  </Label>
+                  <Input
+                    id="top_patient_sex"
+                    value={editableData.patient_sex || ''}
+                    onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_sex: e.target.value } : null)}
+                    placeholder="Male/Female"
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Information Section - Second */}
+            <div className="space-y-4">
+              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <h3 className="font-medium text-purple-800 mb-2">Contact Information</h3>
+                <p className="text-sm text-purple-700">Patient communication details</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="top_patient_home_phone" className="text-sm font-medium text-gray-700">
+                    Home Phone
+                  </Label>
+                  <Input
+                    id="top_patient_home_phone"
+                    value={editableData.patient_home_phone || ''}
+                    onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_home_phone: e.target.value } : null)}
+                    placeholder="(xxx) xxx-xxxx"
+                    className="text-sm"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <Label htmlFor="top_patient_cell_phone" className="text-sm font-medium text-gray-700">
+                    Cell Phone
+                  </Label>
+                  <Input
+                    id="top_patient_cell_phone"
+                    value={editableData.patient_cell_phone || ''}
+                    onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_cell_phone: e.target.value } : null)}
+                    placeholder="(xxx) xxx-xxxx"
+                    className="text-sm"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <Label htmlFor="top_patient_address" className="text-sm font-medium text-gray-700">
+                    Address
+                  </Label>
+                  <Input
+                    id="top_patient_address"
+                    value={editableData.patient_address || ''}
+                    onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_address: e.target.value } : null)}
+                    placeholder="Street address"
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Provider & Signature Section - Third */}
+            <div className="space-y-4">
+              <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                <h3 className="font-medium text-orange-800 mb-2">Provider & Signature</h3>
+                <p className="text-sm text-orange-700">Prescriber and authorization details</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="top_provider_name" className="text-sm font-medium text-gray-700">
+                    Provider Name
+                  </Label>
+                  <Input
+                    id="top_provider_name"
+                    value={editableData.provider_name || ''}
+                    onChange={(e) => setEditableData(prev => prev ? { ...prev, provider_name: e.target.value } : null)}
+                    placeholder="Enter prescriber/provider name"
+                    className="text-sm"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <Label htmlFor="top_signature_date" className="text-sm font-medium text-gray-700">
+                    Date of Signature
+                  </Label>
+                  <Input
+                    id="top_signature_date"
+                    value={editableData.signature_date || ''}
+                    onChange={(e) => setEditableData(prev => prev ? { ...prev, signature_date: e.target.value } : null)}
+                    placeholder="MM/DD/YYYY"
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-6">
         {/* Step 1: LEQVIO Form Upload */}
         <Card>
