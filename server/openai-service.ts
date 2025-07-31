@@ -78,28 +78,37 @@ export async function extractPatientInfoFromScreenshot(base64Image: string, extr
     let responseFields = {};
 
     if (extractionType === 'clinical_notes') {
-      systemContent = `You are a medical form extraction expert specializing in LEQVIO forms and clinical documentation. Extract comprehensive information from LEQVIO Service Center Start Forms, clinical notes, and medical documentation.
+      systemContent = `You are a LEQVIO form extraction expert. Extract ONLY the essential patient identification and provider information from LEQVIO Service Center Start Forms.
 
 Return your response in JSON format with these exact fields:
 {
-  "rawData": "Complete extracted text from the LEQVIO form including patient information, prescriber details, diagnosis codes, treatment plans, and all clinical data",
+  "patient_first_name": "Patient's first name",
+  "patient_last_name": "Patient's last name", 
+  "patient_date_of_birth": "Patient's date of birth in MM/DD/YYYY format",
+  "signature_date": "Patient signature date in MM/DD/YYYY format",
+  "provider_name": "Prescriber/Provider name",
+  "rawData": "All text found in the form for reference",
   "confidence": 0.0-1.0
 }
 
 EXTRACTION RULES FOR LEQVIO FORMS:
-- Extract ALL form fields including patient demographics, insurance information, prescriber details
-- Capture ICD-10 diagnosis codes, treatment specifications, and clinical requirements
-- Include any handwritten notes, signatures, dates, and clinical observations
-- Extract prescriber attestation, dosing instructions, and treatment site information
-- Preserve medical terminology, drug names, dosages, and clinical specifications
-- Include authorization consents, co-pay program details, and service center information
+- Extract ONLY: patient first name, last name, date of birth, signature date, and provider name
+- Look for "First Name:" and "Last Name:" fields in the patient section
+- Find "Date of Birth:" in the patient information section
+- Locate "Date of Signature" near the patient signature area
+- Find "Prescriber Name:" in the prescriber information section
 - Use empty string "" for missing fields
-- Set confidence based on form completeness and text clarity
-- Focus on medical and administrative data relevant to LEQVIO treatment`;
+- Set confidence based on how clearly these specific fields are visible
+- Ignore all other clinical data, diagnosis codes, treatment details, etc.`;
 
-      userText = "Extract all information from this LEQVIO form. Capture every field including patient data, prescriber information, diagnosis codes, treatment specifications, and any clinical notes or observations.";
+      userText = "Extract only the patient name, date of birth, signature date, and provider name from this LEQVIO form. Focus on these essential identification fields only.";
       
       responseFields = {
+        patient_first_name: "",
+        patient_last_name: "",
+        patient_date_of_birth: "",
+        signature_date: "",
+        provider_name: "",
         rawData: "",
         confidence: 0
       };
