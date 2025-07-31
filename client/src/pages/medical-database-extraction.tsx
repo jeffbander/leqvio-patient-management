@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import { useToast } from '@/hooks/use-toast'
-import { AlertCircle, Upload, Camera, Eye, Send, Loader2, UserPlus, ClipboardList } from 'lucide-react'
+import { AlertCircle, Upload, Camera, Eye, Send, Loader2, UserPlus, ClipboardList, User } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
