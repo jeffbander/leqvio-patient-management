@@ -742,10 +742,10 @@ export default function MedicalDatabaseExtraction() {
                 <div className="space-y-4">
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mb-4">
                     <h3 className="font-medium text-blue-800 mb-2">LEQVIO Form Data</h3>
-                    <p className="text-sm text-blue-700">Essential patient identification and provider information</p>
+                    <p className="text-sm text-blue-700">Patient identification, contact, and provider information</p>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Patient Information */}
                     <div className="space-y-4">
                       <h4 className="font-medium text-gray-800 border-b pb-2">Patient Information</h4>
@@ -777,14 +777,58 @@ export default function MedicalDatabaseExtraction() {
                       </div>
                       
                       <div className="space-y-1">
-                        <Label htmlFor="patient_date_of_birth" className="text-sm font-medium text-gray-700">
-                          Date of Birth
+                        <Label htmlFor="patient_sex" className="text-sm font-medium text-gray-700">
+                          Sex
                         </Label>
                         <Input
-                          id="patient_date_of_birth"
-                          value={editableData.patient_date_of_birth || ''}
-                          onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_date_of_birth: e.target.value } : null)}
-                          placeholder="MM/DD/YYYY"
+                          id="patient_sex"
+                          value={editableData.patient_sex || ''}
+                          onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_sex: e.target.value } : null)}
+                          placeholder="Male/Female"
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Contact Information */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-gray-800 border-b pb-2">Contact Information</h4>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="patient_home_phone" className="text-sm font-medium text-gray-700">
+                          Home Phone
+                        </Label>
+                        <Input
+                          id="patient_home_phone"
+                          value={editableData.patient_home_phone || ''}
+                          onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_home_phone: e.target.value } : null)}
+                          placeholder="(xxx) xxx-xxxx"
+                          className="text-sm"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="patient_cell_phone" className="text-sm font-medium text-gray-700">
+                          Cell Phone
+                        </Label>
+                        <Input
+                          id="patient_cell_phone"
+                          value={editableData.patient_cell_phone || ''}
+                          onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_cell_phone: e.target.value } : null)}
+                          placeholder="(xxx) xxx-xxxx"
+                          className="text-sm"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="patient_address" className="text-sm font-medium text-gray-700">
+                          Address
+                        </Label>
+                        <Input
+                          id="patient_address"
+                          value={editableData.patient_address || ''}
+                          onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_address: e.target.value } : null)}
+                          placeholder="Street address"
                           className="text-sm"
                         />
                       </div>
@@ -809,7 +853,7 @@ export default function MedicalDatabaseExtraction() {
                       
                       <div className="space-y-1">
                         <Label htmlFor="signature_date" className="text-sm font-medium text-gray-700">
-                          Signature Date
+                          Date of Signature
                         </Label>
                         <Input
                           id="signature_date"

@@ -737,21 +737,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const extractedData = {
           patient_first_name: "",
           patient_last_name: "",
-          patient_date_of_birth: "",
-          signature_date: "",
+          patient_sex: "",
+          patient_home_phone: "",
+          patient_cell_phone: "",
+          patient_address: "",
           provider_name: "",
+          signature_date: "",
           rawData: pdfText,
           confidence: 0.8
         };
         
-        // Extract fields from the LEQVIO form text - improved patterns for blank forms
+        // Extract fields from the LEQVIO form text - comprehensive patterns
         const firstNameMatch = pdfText.match(/First Name:\s*([^\n\r\t]+)/i) || 
                                pdfText.match(/First:\s*([^\n\r\t]+)/i);
         const lastNameMatch = pdfText.match(/Last Name:\s*([^\n\r\t]+)/i) || 
                               pdfText.match(/Last:\s*([^\n\r\t]+)/i);
-        const dobMatch = pdfText.match(/Date of Birth:\s*([^\n\r\t]+)/i) || 
-                        pdfText.match(/DOB:\s*([^\n\r\t]+)/i) ||
-                        pdfText.match(/Birth Date:\s*([^\n\r\t]+)/i);
+        const sexMatch = pdfText.match(/Sex:\s*(Male|Female|M|F)/i) ||
+                        pdfText.match(/Gender:\s*(Male|Female|M|F)/i);
+        const homePhoneMatch = pdfText.match(/Home\s*Phone[^:]*:\s*([^\n\r\t]+)/i) ||
+                              pdfText.match(/Phone[^:]*:\s*([^\n\r\t]+).*Home/i);
+        const cellPhoneMatch = pdfText.match(/Cell\s*Phone[^:]*:\s*([^\n\r\t]+)/i) ||
+                              pdfText.match(/Mobile[^:]*:\s*([^\n\r\t]+)/i) ||
+                              pdfText.match(/Phone[^:]*:\s*([^\n\r\t]+).*Mobile/i);
+        const addressMatch = pdfText.match(/Address:\s*([^\n\r\t]+)/i) ||
+                            pdfText.match(/Street[^:]*:\s*([^\n\r\t]+)/i);
         const signatureDateMatch = pdfText.match(/Date of Signature[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i) ||
                                    pdfText.match(/Signature Date[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i) ||
                                    pdfText.match(/Date:[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
@@ -762,7 +771,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (firstNameMatch) {
           let firstName = firstNameMatch[1].trim();
-          // Clean up any extra spaces or formatting
           firstName = firstName.replace(/\s+/g, ' ');
           if (firstName && firstName !== '') extractedData.patient_first_name = firstName;
         }
@@ -771,10 +779,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastName = lastName.replace(/\s+/g, ' ');
           if (lastName && lastName !== '') extractedData.patient_last_name = lastName;
         }
-        if (dobMatch) {
-          let dob = dobMatch[1].trim();
-          dob = dob.replace(/\s+/g, ' ');
-          if (dob && dob !== '') extractedData.patient_date_of_birth = dob;
+        if (sexMatch) {
+          let sex = sexMatch[1].trim();
+          if (sex && sex !== '') extractedData.patient_sex = sex;
+        }
+        if (homePhoneMatch) {
+          let homePhone = homePhoneMatch[1].trim();
+          homePhone = homePhone.replace(/\s+/g, ' ');
+          if (homePhone && homePhone !== '') extractedData.patient_home_phone = homePhone;
+        }
+        if (cellPhoneMatch) {
+          let cellPhone = cellPhoneMatch[1].trim();
+          cellPhone = cellPhone.replace(/\s+/g, ' ');
+          if (cellPhone && cellPhone !== '') extractedData.patient_cell_phone = cellPhone;
+        }
+        if (addressMatch) {
+          let address = addressMatch[1].trim();
+          address = address.replace(/\s+/g, ' ');
+          if (address && address !== '') extractedData.patient_address = address;
         }
         if (signatureDateMatch) {
           let sigDate = signatureDateMatch[1].trim();
@@ -786,17 +808,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (provider && provider !== '') extractedData.provider_name = provider;
         }
         
-        // For testing purposes with blank forms, add sample data if no fields were extracted
-        if (!extractedData.patient_first_name && !extractedData.patient_last_name && !extractedData.patient_date_of_birth) {
-          console.log("No data extracted from PDF - this appears to be a blank form. Setting placeholder data for testing.");
-          extractedData.patient_first_name = "[Enter Patient First Name]";
-          extractedData.patient_last_name = "[Enter Patient Last Name]";
-          extractedData.patient_date_of_birth = "[Enter DOB - MM/DD/YYYY]";
-          extractedData.provider_name = "[Enter Provider Name]";
-          extractedData.signature_date = "[Enter Signature Date - MM/DD/YYYY]";
-          extractedData.confidence = 0.1; // Low confidence for blank form
-        }
-        
         const responseData = {
           extractedData: extractedData,
           processingTime_ms: 50,
@@ -806,20 +817,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("LEQVIO PDF extraction completed:", {
           fileName: req.file.originalname,
           extractionType,
-          pdfTextSample: pdfText.substring(0, 500) + "...",
           extractedFields: {
             firstName: extractedData.patient_first_name,
             lastName: extractedData.patient_last_name,
-            dob: extractedData.patient_date_of_birth,
+            sex: extractedData.patient_sex,
+            homePhone: extractedData.patient_home_phone,
+            cellPhone: extractedData.patient_cell_phone,
+            address: extractedData.patient_address,
             provider: extractedData.provider_name,
             signatureDate: extractedData.signature_date
-          },
-          matchResults: {
-            firstNameFound: !!firstNameMatch,
-            lastNameFound: !!lastNameMatch,
-            dobFound: !!dobMatch,
-            providerFound: !!providerMatch,
-            signatureDateFound: !!signatureDateMatch
           }
         });
         
