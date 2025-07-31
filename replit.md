@@ -4,6 +4,9 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-31**: Replaced screenshot/manual entry with LEQVIO form upload for clinical data processing
+- **2025-07-31**: Updated OpenAI extraction service to specifically handle LEQVIO Service Center Start Forms with comprehensive field extraction
+- **2025-07-31**: Simplified clinical data step to focus on PDF form upload and processing for leqvio workflow
 - **2025-07-31**: Added clinical data entry section with both screenshot extraction and manual notes input after patient data review
 - **2025-07-31**: Clinical notes are now included in the automation payload sent to the leqvio chain
 - **2025-07-31**: Changed chain automation from Screenshot_Patient_Creator to "leqvio" for patient processing workflow

@@ -6,10 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import { useToast } from '@/hooks/use-toast'
-import { AlertCircle, Upload, Camera, Eye, Send, Loader2, UserPlus, FileImage, FileText, ClipboardList } from 'lucide-react'
+import { AlertCircle, Upload, Camera, Eye, Send, Loader2, UserPlus, ClipboardList } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 
 interface ExtractedPatientData {
@@ -51,9 +50,8 @@ export default function MedicalDatabaseExtraction() {
   const [additionalNotes] = useState<string>('')
   const [chainRunId, setChainRunId] = useState<string | null>(null)
   const [entryMode, setEntryMode] = useState<'screenshot' | 'manual'>('screenshot')
-  const [clinicalDataMode, setClinicalDataMode] = useState<'screenshot' | 'manual'>('manual')
   const [clinicalNotes, setClinicalNotes] = useState<string>('')
-  const [clinicalScreenshot, setClinicalScreenshot] = useState<File | null>(null)
+  const [clinicalFormFile, setClinicalFormFile] = useState<File | null>(null)
   const [clinicalPreviewUrl, setClinicalPreviewUrl] = useState<string | null>(null)
   const [extractedClinicalData, setExtractedClinicalData] = useState<string>('')
 
@@ -243,11 +241,15 @@ export default function MedicalDatabaseExtraction() {
   const handleClinicalFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      setClinicalScreenshot(file)
+      setClinicalFormFile(file)
       
-      // Create preview URL
-      const url = URL.createObjectURL(file)
-      setClinicalPreviewUrl(url)
+      // Create preview URL for supported formats
+      if (file.type.startsWith('image/')) {
+        const url = URL.createObjectURL(file)
+        setClinicalPreviewUrl(url)
+      } else {
+        setClinicalPreviewUrl(null)
+      }
       
       // Reset previous data
       setExtractedClinicalData('')
@@ -256,8 +258,8 @@ export default function MedicalDatabaseExtraction() {
   }
 
   const handleExtractClinicalData = () => {
-    if (clinicalScreenshot) {
-      extractClinicalDataMutation.mutate(clinicalScreenshot)
+    if (clinicalFormFile) {
+      extractClinicalDataMutation.mutate(clinicalFormFile)
     }
   }
 
@@ -276,7 +278,7 @@ export default function MedicalDatabaseExtraction() {
     setIsManualSourceId(false)
     setChainRunId(null)
     setClinicalNotes('')
-    setClinicalScreenshot(null)
+    setClinicalFormFile(null)
     setClinicalPreviewUrl(null)
     setExtractedClinicalData('')
   }
@@ -358,19 +360,27 @@ export default function MedicalDatabaseExtraction() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs value={entryMode} onValueChange={(value) => setEntryMode(value as 'screenshot' | 'manual')} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="screenshot" className="flex items-center gap-2">
-                  <FileImage className="h-4 w-4" />
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Button 
+                  variant={entryMode === 'screenshot' ? 'default' : 'outline'}
+                  onClick={() => setEntryMode('screenshot')}
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="h-4 w-4" />
                   Screenshot Upload
-                </TabsTrigger>
-                <TabsTrigger value="manual" className="flex items-center gap-2">
+                </Button>
+                <Button 
+                  variant={entryMode === 'manual' ? 'default' : 'outline'}
+                  onClick={() => setEntryMode('manual')}
+                  className="flex items-center gap-2"
+                >
                   <UserPlus className="h-4 w-4" />
                   Manual Entry
-                </TabsTrigger>
-              </TabsList>
+                </Button>
+              </div>
               
-              <TabsContent value="screenshot" className="mt-6">
+              {entryMode === 'screenshot' && (
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="screenshot">Choose Screenshot</Label>
@@ -414,9 +424,9 @@ export default function MedicalDatabaseExtraction() {
                     )}
                   </Button>
                 </div>
-              </TabsContent>
+              )}
               
-              <TabsContent value="manual" className="mt-6">
+              {entryMode === 'manual' && (
                 <div className="space-y-4">
                   <p className="text-sm text-gray-600">
                     Start with a blank form to manually enter patient information
@@ -429,8 +439,8 @@ export default function MedicalDatabaseExtraction() {
                     Start Manual Patient Entry
                   </Button>
                 </div>
-              </TabsContent>
-            </Tabs>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -512,98 +522,73 @@ export default function MedicalDatabaseExtraction() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ClipboardList className="h-5 w-5" />
-                Step 3: Clinical Data Entry
+                Step 3: LEQVIO Form Upload
               </CardTitle>
               <CardDescription>
-                Add clinical notes and observations for this patient
+                Upload and process the LEQVIO form for this patient
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs value={clinicalDataMode} onValueChange={(value) => setClinicalDataMode(value as 'screenshot' | 'manual')} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="manual" className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Manual Notes
-                  </TabsTrigger>
-                  <TabsTrigger value="screenshot" className="flex items-center gap-2">
-                    <FileImage className="h-4 w-4" />
-                    Screenshot Extract
-                  </TabsTrigger>
-                </TabsList>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="clinical-form">LEQVIO Form Upload</Label>
+                  <Input
+                    id="clinical-form"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp"
+                    onChange={handleClinicalFileSelect}
+                    className="mt-1"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Upload the completed LEQVIO form (PDF) or image
+                  </p>
+                </div>
                 
-                <TabsContent value="manual" className="mt-6">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="clinical-notes">Clinical Notes</Label>
-                      <Textarea
-                        id="clinical-notes"
-                        placeholder="Enter clinical notes, observations, symptoms, treatment plans, etc..."
-                        value={clinicalNotes}
-                        onChange={(e) => setClinicalNotes(e.target.value)}
-                        className="mt-1 min-h-[120px]"
+                {clinicalPreviewUrl && (
+                  <div className="space-y-2">
+                    <Label>Preview</Label>
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <img
+                        src={clinicalPreviewUrl}
+                        alt="Clinical form preview"
+                        className="max-w-full h-auto max-h-64 object-contain mx-auto"
                       />
                     </div>
                   </div>
-                </TabsContent>
-                
-                <TabsContent value="screenshot" className="mt-6">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="clinical-screenshot">Clinical Data Screenshot</Label>
-                      <Input
-                        id="clinical-screenshot"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleClinicalFileSelect}
-                        className="mt-1"
-                      />
-                    </div>
-                    
-                    {clinicalPreviewUrl && (
-                      <div className="space-y-2">
-                        <Label>Preview</Label>
-                        <div className="border rounded-lg p-4 bg-gray-50">
-                          <img
-                            src={clinicalPreviewUrl}
-                            alt="Clinical screenshot preview"
-                            className="max-w-full h-auto max-h-64 object-contain mx-auto"
-                          />
-                        </div>
-                      </div>
-                    )}
+                )}
 
-                    <Button 
-                      onClick={handleExtractClinicalData}
-                      disabled={!clinicalScreenshot || extractClinicalDataMutation.isPending}
-                      className="w-full"
-                    >
-                      {extractClinicalDataMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Extracting Clinical Data...
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Extract Clinical Data
-                        </>
-                      )}
-                    </Button>
-
-                    {extractedClinicalData && (
-                      <div className="space-y-2">
-                        <Label>Extracted Clinical Notes</Label>
-                        <Textarea
-                          value={clinicalNotes}
-                          onChange={(e) => setClinicalNotes(e.target.value)}
-                          className="min-h-[120px]"
-                          placeholder="Edit extracted clinical notes as needed..."
-                        />
-                      </div>
+                {clinicalFormFile && (
+                  <Button 
+                    onClick={handleExtractClinicalData}
+                    disabled={extractClinicalDataMutation.isPending}
+                    className="w-full"
+                  >
+                    {extractClinicalDataMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing Form...
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Process LEQVIO Form
+                      </>
                     )}
+                  </Button>
+                )}
+
+                {extractedClinicalData && (
+                  <div className="space-y-2">
+                    <Label>Extracted Clinical Information</Label>
+                    <Textarea
+                      value={clinicalNotes}
+                      onChange={(e) => setClinicalNotes(e.target.value)}
+                      className="min-h-[120px]"
+                      placeholder="Review and edit extracted clinical information..."
+                    />
                   </div>
-                </TabsContent>
-              </Tabs>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}

@@ -78,24 +78,26 @@ export async function extractPatientInfoFromScreenshot(base64Image: string, extr
     let responseFields = {};
 
     if (extractionType === 'clinical_notes') {
-      systemContent = `You are a clinical data extraction expert. Extract clinical notes, observations, symptoms, diagnoses, treatment plans, and medical findings from medical screenshots, charts, or clinical documentation.
+      systemContent = `You are a medical form extraction expert specializing in LEQVIO forms and clinical documentation. Extract comprehensive information from LEQVIO Service Center Start Forms, clinical notes, and medical documentation.
 
 Return your response in JSON format with these exact fields:
 {
-  "rawData": "Complete extracted clinical text including all notes, observations, symptoms, diagnoses, treatments, and medical findings",
+  "rawData": "Complete extracted text from the LEQVIO form including patient information, prescriber details, diagnosis codes, treatment plans, and all clinical data",
   "confidence": 0.0-1.0
 }
 
-EXTRACTION RULES:
-- Extract ALL visible clinical text including handwritten notes
-- Capture medical terminology, abbreviations, and clinical observations
-- Include symptoms, vital signs, lab results, diagnoses, treatment plans
-- Preserve clinical context and medical relationships between data points
+EXTRACTION RULES FOR LEQVIO FORMS:
+- Extract ALL form fields including patient demographics, insurance information, prescriber details
+- Capture ICD-10 diagnosis codes, treatment specifications, and clinical requirements
+- Include any handwritten notes, signatures, dates, and clinical observations
+- Extract prescriber attestation, dosing instructions, and treatment site information
+- Preserve medical terminology, drug names, dosages, and clinical specifications
+- Include authorization consents, co-pay program details, and service center information
 - Use empty string "" for missing fields
-- Set confidence based on text clarity and medical content completeness
-- Focus on clinical relevance - prioritize medical information over administrative data`;
+- Set confidence based on form completeness and text clarity
+- Focus on medical and administrative data relevant to LEQVIO treatment`;
 
-      userText = "Extract all clinical information from this medical screenshot. Capture every clinical note, observation, symptom, diagnosis, treatment plan, and medical finding visible in the image.";
+      userText = "Extract all information from this LEQVIO form. Capture every field including patient data, prescriber information, diagnosis codes, treatment specifications, and any clinical notes or observations.";
       
       responseFields = {
         rawData: "",
