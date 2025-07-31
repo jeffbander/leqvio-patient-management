@@ -826,7 +826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           extractionType: extractionType
         };
 
-        console.log("LEQVIO PDF extraction completed:", {
+        console.log("LEQVIO PDF extraction completed with sample data:", {
           fileName: req.file.originalname,
           extractionType,
           extractedFields: {
