@@ -724,6 +724,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (extractionType === 'medical_database') {
         // Use the comprehensive medical database extraction
         extractedData = await extractPatientInfoFromScreenshot(base64Image, 'medical_database');
+      } else if (extractionType === 'clinical_notes') {
+        // Use LEQVIO form extraction
+        extractedData = await extractPatientInfoFromScreenshot(base64Image, 'clinical_notes');
+      } else if (extractionType === 'insurance_card') {
+        // Use insurance card extraction
+        extractedData = await extractPatientInfoFromScreenshot(base64Image, 'insurance_card');
       } else {
         // Use existing medical system extraction
         extractedData = await extractPatientInfoFromScreenshot(base64Image, 'medical_system');

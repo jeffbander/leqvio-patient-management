@@ -187,6 +187,51 @@ EXTRACTION RULES:
         rawData: "",
         confidence: 0
       };
+    } else if (extractionType === 'insurance_card') {
+      systemContent = `You are an insurance card data extraction expert. Extract comprehensive information from insurance card images (front or back).
+
+Return your response in JSON format with these exact fields:
+{
+  "insurance_provider": "string",
+  "member_id": "string", 
+  "group_number": "string",
+  "subscriber_name": "string",
+  "plan_name": "string",
+  "effective_date": "MM/DD/YYYY",
+  "copay_amounts": "string",
+  "deductible": "string",
+  "phone_numbers": "string",
+  "website": "string",
+  "rawData": "all text found on the card",
+  "confidence": 0.0-1.0
+}
+
+EXTRACTION RULES FOR INSURANCE CARDS:
+- Extract insurer/plan name, member ID, group number clearly
+- Capture subscriber name, plan details, effective dates
+- Include copay amounts, deductibles, contact information
+- Look for member services phone numbers and websites
+- Extract any additional benefits or coverage details
+- Use empty string "" for missing fields
+- Set confidence based on card clarity and text readability
+- Focus on key insurance verification data`;
+
+      userText = "Extract all information from this insurance card. Capture member details, plan information, contact numbers, and any coverage details visible.";
+      
+      responseFields = {
+        insurance_provider: "",
+        member_id: "",
+        group_number: "",
+        subscriber_name: "",
+        plan_name: "",
+        effective_date: "",
+        copay_amounts: "",
+        deductible: "",
+        phone_numbers: "",
+        website: "",
+        rawData: "",
+        confidence: 0
+      };
     } else {
       // Original medical system extraction
       systemContent = `You are a medical system data extraction expert. Extract patient information from screenshots of medical systems, EHR/EMR interfaces, or patient registration screens.
