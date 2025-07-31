@@ -103,8 +103,26 @@ export default function ESignatureForm() {
     setFormData(prev => ({ ...prev, [field]: checked }))
   }
 
-  // Signature handling
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Signature handling - supporting both mouse and touch events
+  const getCoordinates = (e: any, canvas: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect()
+    if (e.touches && e.touches[0]) {
+      // Touch event
+      return {
+        x: e.touches[0].clientX - rect.left,
+        y: e.touches[0].clientY - rect.top
+      }
+    } else {
+      // Mouse event
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      }
+    }
+  }
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
     setIsDrawing(true)
     const canvas = canvasRef.current
     if (!canvas) return
@@ -112,13 +130,17 @@ export default function ESignatureForm() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     
-    const rect = canvas.getBoundingClientRect()
+    const coords = getCoordinates(e, canvas)
     ctx.beginPath()
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top)
+    ctx.moveTo(coords.x, coords.y)
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    ctx.globalCompositeOperation = 'source-over'
   }
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return
+    e.preventDefault()
     
     const canvas = canvasRef.current
     if (!canvas) return
@@ -126,13 +148,14 @@ export default function ESignatureForm() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     
-    const rect = canvas.getBoundingClientRect()
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top)
+    const coords = getCoordinates(e, canvas)
+    ctx.lineTo(coords.x, coords.y)
     ctx.stroke()
     setHasSignature(true)
   }
 
-  const stopDrawing = () => {
+  const stopDrawing = (e?: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (e) e.preventDefault()
     setIsDrawing(false)
   }
 
@@ -150,10 +173,29 @@ export default function ESignatureForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validation checks
+    if (formData.diagnosis.length === 0) {
+      toast({
+        title: "Diagnosis Required",
+        description: "Please select at least one diagnosis code",
+        variant: "destructive"
+      })
+      return
+    }
+
     if (!hasSignature) {
       toast({
         title: "Signature Required",
         description: "Please provide your signature before submitting",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!formData.recipientEmail) {
+      toast({
+        title: "Email Required",
+        description: "Please enter an email address to send the PDF",
         variant: "destructive"
       })
       return
@@ -428,11 +470,15 @@ export default function ESignatureForm() {
                 ref={canvasRef}
                 width={600}
                 height={200}
-                className="border border-gray-400 w-full cursor-crosshair"
+                className="border border-gray-400 w-full cursor-crosshair touch-none"
                 onMouseDown={startDrawing}
                 onMouseMove={draw}
                 onMouseUp={stopDrawing}
                 onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                style={{ touchAction: 'none' }}
               />
               <div className="mt-2 flex justify-between">
                 <p className="text-sm text-gray-500">Sign above</p>
@@ -517,7 +563,7 @@ export default function ESignatureForm() {
           </Button>
           <Button
             type="submit"
-            disabled={createPatientMutation.isPending || !hasSignature || formData.diagnosis.length === 0}
+            disabled={createPatientMutation.isPending || !hasSignature || formData.diagnosis.length === 0 || !formData.recipientEmail}
           >
             {createPatientMutation.isPending ? (
               <>
