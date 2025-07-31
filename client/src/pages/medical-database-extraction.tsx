@@ -736,22 +736,111 @@ export default function MedicalDatabaseExtraction() {
                 </Button>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(editableData).map(([key, value]) => (
-                  <div key={key} className="space-y-1">
-                    <Label htmlFor={key} className="text-sm font-medium text-gray-700">
-                      {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </Label>
-                    <Input
-                      id={key}
-                      value={value || ''}
-                      onChange={(e) => setEditableData(prev => prev ? { ...prev, [key]: e.target.value } : null)}
-                      placeholder={`Enter ${key.replace(/_/g, ' ').toLowerCase()}`}
-                      className="text-sm"
-                    />
+              {/* Check if this is LEQVIO form data (has provider_name and signature_date) */}
+              {editableData.provider_name !== undefined && editableData.signature_date !== undefined ? (
+                // LEQVIO Form - specialized display
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mb-4">
+                    <h3 className="font-medium text-blue-800 mb-2">LEQVIO Form Data</h3>
+                    <p className="text-sm text-blue-700">Essential patient identification and provider information</p>
                   </div>
-                ))}
-              </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Patient Information */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-gray-800 border-b pb-2">Patient Information</h4>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="patient_first_name" className="text-sm font-medium text-gray-700">
+                          First Name
+                        </Label>
+                        <Input
+                          id="patient_first_name"
+                          value={editableData.patient_first_name || ''}
+                          onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_first_name: e.target.value } : null)}
+                          placeholder="Enter patient first name"
+                          className="text-sm"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="patient_last_name" className="text-sm font-medium text-gray-700">
+                          Last Name
+                        </Label>
+                        <Input
+                          id="patient_last_name"
+                          value={editableData.patient_last_name || ''}
+                          onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_last_name: e.target.value } : null)}
+                          placeholder="Enter patient last name"
+                          className="text-sm"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="patient_date_of_birth" className="text-sm font-medium text-gray-700">
+                          Date of Birth
+                        </Label>
+                        <Input
+                          id="patient_date_of_birth"
+                          value={editableData.patient_date_of_birth || ''}
+                          onChange={(e) => setEditableData(prev => prev ? { ...prev, patient_date_of_birth: e.target.value } : null)}
+                          placeholder="MM/DD/YYYY"
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Provider & Signature Information */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-gray-800 border-b pb-2">Provider & Signature</h4>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="provider_name" className="text-sm font-medium text-gray-700">
+                          Provider Name
+                        </Label>
+                        <Input
+                          id="provider_name"
+                          value={editableData.provider_name || ''}
+                          onChange={(e) => setEditableData(prev => prev ? { ...prev, provider_name: e.target.value } : null)}
+                          placeholder="Enter prescriber/provider name"
+                          className="text-sm"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="signature_date" className="text-sm font-medium text-gray-700">
+                          Signature Date
+                        </Label>
+                        <Input
+                          id="signature_date"
+                          value={editableData.signature_date || ''}
+                          onChange={(e) => setEditableData(prev => prev ? { ...prev, signature_date: e.target.value } : null)}
+                          placeholder="MM/DD/YYYY"
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Regular patient data - full grid display
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(editableData).map(([key, value]) => (
+                    <div key={key} className="space-y-1">
+                      <Label htmlFor={key} className="text-sm font-medium text-gray-700">
+                        {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </Label>
+                      <Input
+                        id={key}
+                        value={value || ''}
+                        onChange={(e) => setEditableData(prev => prev ? { ...prev, [key]: e.target.value } : null)}
+                        placeholder={`Enter ${key.replace(/_/g, ' ').toLowerCase()}`}
+                        className="text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Source ID Configuration */}
               <div className="space-y-2 pt-4 border-t">

@@ -744,12 +744,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           confidence: 0.8
         };
         
-        // Extract fields from the LEQVIO form text
-        const firstNameMatch = pdfText.match(/First Name:\s*([^\n\r]+)/i);
-        const lastNameMatch = pdfText.match(/Last Name:\s*([^\n\r]+)/i);
-        const dobMatch = pdfText.match(/Date of Birth:\s*([^\n\r]+)/i);
-        const signatureDateMatch = pdfText.match(/Date of Signature[^\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
-        const providerMatch = pdfText.match(/Prescriber Name:\s*([^\n\r]+)/i);
+        // Extract fields from the LEQVIO form text - improved patterns for blank forms
+        const firstNameMatch = pdfText.match(/First Name:\s*([^\n\r\t]+)/i) || 
+                               pdfText.match(/First:\s*([^\n\r\t]+)/i);
+        const lastNameMatch = pdfText.match(/Last Name:\s*([^\n\r\t]+)/i) || 
+                              pdfText.match(/Last:\s*([^\n\r\t]+)/i);
+        const dobMatch = pdfText.match(/Date of Birth:\s*([^\n\r\t]+)/i) || 
+                        pdfText.match(/DOB:\s*([^\n\r\t]+)/i) ||
+                        pdfText.match(/Birth Date:\s*([^\n\r\t]+)/i);
+        const signatureDateMatch = pdfText.match(/Date of Signature[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i) ||
+                                   pdfText.match(/Signature Date[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i) ||
+                                   pdfText.match(/Date:[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+        const providerMatch = pdfText.match(/Prescriber Name:\s*([^\n\r\t]+)/i) ||
+                             pdfText.match(/Provider Name:\s*([^\n\r\t]+)/i) ||
+                             pdfText.match(/Doctor:\s*([^\n\r\t]+)/i) ||
+                             pdfText.match(/Physician:\s*([^\n\r\t]+)/i);
         
         if (firstNameMatch) extractedData.patient_first_name = firstNameMatch[1].trim();
         if (lastNameMatch) extractedData.patient_last_name = lastNameMatch[1].trim();
