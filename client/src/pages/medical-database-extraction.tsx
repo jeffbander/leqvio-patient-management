@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import { useToast } from '@/hooks/use-toast'
-import { AlertCircle, Upload, Camera, Eye, Send, Loader2 } from 'lucide-react'
+import { AlertCircle, Upload, Camera, Eye, Send, Loader2, UserPlus, FileImage } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface ExtractedPatientData {
   patient_first_name?: string
@@ -48,6 +49,7 @@ export default function MedicalDatabaseExtraction() {
   const [isManualSourceId, setIsManualSourceId] = useState<boolean>(false)
   const [additionalNotes] = useState<string>('')
   const [chainRunId, setChainRunId] = useState<string | null>(null)
+  const [entryMode, setEntryMode] = useState<'screenshot' | 'manual'>('screenshot')
 
   // Extract patient data from screenshot
   const extractDataMutation = useMutation({
@@ -210,6 +212,35 @@ export default function MedicalDatabaseExtraction() {
     setChainRunId(null)
   }
 
+  const startManualEntry = () => {
+    const emptyData: ExtractedPatientData = {
+      patient_first_name: '',
+      patient_last_name: '',
+      patient_dob: '',
+      patient_gender: '',
+      patient_phone: '',
+      patient_email: '',
+      patient_address: '',
+      patient_city: '',
+      patient_state: '',
+      patient_zip: '',
+      patient_ssn: '',
+      medical_record_number: '',
+      insurance_provider: '',
+      insurance_id: '',
+      insurance_group: '',
+      primary_care_physician: '',
+      allergies: '',
+      medications: '',
+      medical_conditions: '',
+      emergency_contact_name: '',
+      emergency_contact_phone: ''
+    }
+    setExtractedData(emptyData)
+    setEditableData(emptyData)
+    setChainRunId(null)
+  }
+
   const resetToOriginal = () => {
     if (extractedData) {
       setEditableData({ ...extractedData })
@@ -244,68 +275,97 @@ export default function MedicalDatabaseExtraction() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Medical Database Screenshot Processing</h1>
-        <p className="text-gray-600">Upload a screenshot from your medical database to extract patient information and create a new patient record.</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Patient Data Processing</h1>
+        <p className="text-gray-600">Extract patient information from medical database screenshots or manually enter patient data to create new patient records.</p>
       </div>
 
       <div className="grid gap-6">
-        {/* Step 1: Upload Screenshot */}
+        {/* Entry Mode Selection */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              Step 1: Upload Medical Database Screenshot
-            </CardTitle>
+            <CardTitle>Choose Entry Method</CardTitle>
             <CardDescription>
-              Select a screenshot from your medical database containing patient information
+              Select how you want to add patient information
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="screenshot">Choose Screenshot</Label>
-              <Input
-                id="screenshot"
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="mt-1"
-              />
-            </div>
-            
-            {previewUrl && (
-              <div className="space-y-2">
-                <Label>Preview</Label>
-                <div className="border rounded-lg p-4 bg-gray-50">
-                  <img
-                    src={previewUrl}
-                    alt="Screenshot preview"
-                    className="max-w-full h-auto max-h-96 object-contain mx-auto"
-                  />
-                </div>
-              </div>
-            )}
+          <CardContent>
+            <Tabs value={entryMode} onValueChange={(value) => setEntryMode(value as 'screenshot' | 'manual')} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="screenshot" className="flex items-center gap-2">
+                  <FileImage className="h-4 w-4" />
+                  Screenshot Upload
+                </TabsTrigger>
+                <TabsTrigger value="manual" className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Manual Entry
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="screenshot" className="mt-6">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="screenshot">Choose Screenshot</Label>
+                    <Input
+                      id="screenshot"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  {previewUrl && (
+                    <div className="space-y-2">
+                      <Label>Preview</Label>
+                      <div className="border rounded-lg p-4 bg-gray-50">
+                        <img
+                          src={previewUrl}
+                          alt="Screenshot preview"
+                          className="max-w-full h-auto max-h-96 object-contain mx-auto"
+                        />
+                      </div>
+                    </div>
+                  )}
 
-            <Button 
-              onClick={handleExtractData}
-              disabled={!selectedFile || extractDataMutation.isPending}
-              className="w-full"
-            >
-              {extractDataMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Extracting Patient Data...
-                </>
-              ) : (
-                <>
-                  <Eye className="mr-2 h-4 w-4" />
-                  Extract Patient Data
-                </>
-              )}
-            </Button>
+                  <Button 
+                    onClick={handleExtractData}
+                    disabled={!selectedFile || extractDataMutation.isPending}
+                    className="w-full"
+                  >
+                    {extractDataMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Extracting Patient Data...
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Extract Patient Data
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="manual" className="mt-6">
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    Start with a blank form to manually enter patient information
+                  </p>
+                  <Button 
+                    onClick={startManualEntry}
+                    className="w-full"
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Start Manual Patient Entry
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
-        {/* Step 2: Review & Edit Extracted Data */}
+        {/* Step 2: Review & Edit Patient Data */}
         {extractedData && editableData && (
           <Card>
             <CardHeader>
@@ -314,7 +374,7 @@ export default function MedicalDatabaseExtraction() {
                 Step 2: Review & Edit Patient Data
               </CardTitle>
               <CardDescription>
-                Review and modify the extracted information as needed before proceeding
+                Review and modify the patient information as needed before creating the record
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

@@ -4,6 +4,9 @@
 Patient data processing application for Providerloop Chains, designed to streamline medical data workflow processes with clean and simple interfaces. The system provides automated patient data processing through chain automations, auto-generating source IDs from patient information and tracking results through real-time webhook communication.
 
 ## Recent Changes
+- **2025-07-31**: Added manual patient entry option to medical database page - users can now choose between screenshot upload or manual data entry with tabbed interface
+- **2025-07-31**: Simplified application to show only medical database page as the primary interface
+- **2025-07-31**: Fixed OpenAI API key configuration and resolved TypeScript errors in OpenAI service
 - **2025-07-28**: Simplified medical database extraction UI to automatically use Screenshot_Patient_Creator chain - removed chain dropdown and additional notes fields for streamlined workflow
 - **2025-07-28**: Simplified medical database extraction page to automatically use Screenshot_Patient_Creator chain with no dropdown selection
 - **2025-07-28**: Added raw_data starting variable containing original extracted JSON data for automation processing
