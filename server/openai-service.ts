@@ -264,13 +264,13 @@ EXTRACTION RULES:
     const extractedData = { ...responseFields };
     Object.keys(responseFields).forEach(key => {
       if (result[key] !== undefined) {
-        extractedData[key] = result[key];
+        (extractedData as any)[key] = result[key];
       }
     });
 
     // Ensure confidence is within bounds
-    if (extractedData.confidence !== undefined) {
-      extractedData.confidence = Math.max(0, Math.min(1, extractedData.confidence));
+    if ('confidence' in extractedData && typeof (extractedData as any).confidence === 'number') {
+      (extractedData as any).confidence = Math.max(0, Math.min(1, (extractedData as any).confidence));
     }
     
     return extractedData;
