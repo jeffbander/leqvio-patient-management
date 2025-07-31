@@ -86,19 +86,39 @@ export default function MedicalDatabaseExtraction() {
       setExtractedClinicalData(data.extractedData?.rawData || '')
       setClinicalNotes(data.extractedData?.rawData || '')
       
-      // Try to parse patient data from LEQVIO form
-      const rawData = data.extractedData?.rawData || ''
-      const parsedPatientData = parsePatientDataFromLeqvioForm(rawData)
+      // Use the new LEQVIO extraction format directly
+      const leqvioData = data.extractedData
       
-      if (parsedPatientData && Object.keys(parsedPatientData).length > 0) {
-        setExtractedData(parsedPatientData)
-        setEditableData({ ...parsedPatientData })
+      if (leqvioData && (leqvioData.patient_first_name || leqvioData.patient_last_name)) {
+        // Map LEQVIO fields to the expected format
+        const mappedData = {
+          patient_first_name: leqvioData.patient_first_name || '',
+          patient_last_name: leqvioData.patient_last_name || '',
+          patient_dob: leqvioData.patient_date_of_birth || '',
+          provider_name: leqvioData.provider_name || '',
+          signature_date: leqvioData.signature_date || '',
+          // Fill other required fields with empty strings
+          patient_gender: '',
+          patient_phone: '',
+          patient_email: '',
+          patient_address: '',
+          patient_city: '',
+          patient_state: '',
+          patient_zip: '',
+          medical_record_number: '',
+          account_number: '',
+          insurance_provider: '',
+          insurance_id: ''
+        }
+        
+        setExtractedData(mappedData)
+        setEditableData({ ...mappedData })
         
         // Auto-generate source ID if we have name and DOB
-        if (parsedPatientData.patient_first_name && parsedPatientData.patient_last_name && parsedPatientData.patient_dob) {
-          const firstName = parsedPatientData.patient_first_name.replace(/\s+/g, '_')
-          const lastName = parsedPatientData.patient_last_name.replace(/\s+/g, '_')
-          const dobFormatted = parsedPatientData.patient_dob.replace(/[\/\-]/g, '_')
+        if (mappedData.patient_first_name && mappedData.patient_last_name && mappedData.patient_dob) {
+          const firstName = mappedData.patient_first_name.replace(/\s+/g, '_')
+          const lastName = mappedData.patient_last_name.replace(/\s+/g, '_')
+          const dobFormatted = mappedData.patient_dob.replace(/[\/\-]/g, '_')
           const autoSourceId = `${lastName}_${firstName}__${dobFormatted}`
           setSourceId(autoSourceId)
         }
@@ -368,48 +388,7 @@ export default function MedicalDatabaseExtraction() {
     }
   }
 
-  // Parse patient data from LEQVIO form raw text
-  const parsePatientDataFromLeqvioForm = (rawData: string): ExtractedPatientData | null => {
-    if (!rawData) return null
-    
-    try {
-      // Extract common patterns from LEQVIO form data
-      const data: Partial<ExtractedPatientData> = {}
-      
-      // Name extraction patterns
-      const firstNameMatch = rawData.match(/First Name:\s*([^\n]+)/i)
-      const lastNameMatch = rawData.match(/Last Name:\s*([^\n]+)/i)
-      
-      if (firstNameMatch) data.patient_first_name = firstNameMatch[1].trim()
-      if (lastNameMatch) data.patient_last_name = lastNameMatch[1].trim()
-      
-      // Date of birth pattern
-      const dobMatch = rawData.match(/Date of Birth:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i) ||
-                      rawData.match(/DOB:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i)
-      if (dobMatch) data.patient_dob = dobMatch[1]
-      
-      // Phone number pattern
-      const phoneMatch = rawData.match(/Phone[^\d]*(\(\d{3}\)\s*\d{3}-\d{4}|\d{3}-\d{3}-\d{4}|\d{10})/i)
-      if (phoneMatch) data.patient_phone = phoneMatch[1]
-      
-      // Email pattern
-      const emailMatch = rawData.match(/Email:\s*([^\s\n]+@[^\s\n]+)/i)
-      if (emailMatch) data.patient_email = emailMatch[1]
-      
-      // Address pattern
-      const addressMatch = rawData.match(/Address:\s*([^\n]+)/i)
-      if (addressMatch) data.patient_address = addressMatch[1].trim()
-      
-      // Sex/Gender pattern
-      const sexMatch = rawData.match(/Sex:\s*(Male|Female)/i)
-      if (sexMatch) data.patient_gender = sexMatch[1]
-      
-      return Object.keys(data).length > 0 ? data as ExtractedPatientData : null
-    } catch (error) {
-      console.error('Error parsing LEQVIO form data:', error)
-      return null
-    }
-  }
+
 
   const handleTriggerChain = () => {
     if (editableData && selectedChain) {
