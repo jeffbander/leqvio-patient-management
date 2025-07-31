@@ -760,11 +760,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
                              pdfText.match(/Doctor:\s*([^\n\r\t]+)/i) ||
                              pdfText.match(/Physician:\s*([^\n\r\t]+)/i);
         
-        if (firstNameMatch) extractedData.patient_first_name = firstNameMatch[1].trim();
-        if (lastNameMatch) extractedData.patient_last_name = lastNameMatch[1].trim();
-        if (dobMatch) extractedData.patient_date_of_birth = dobMatch[1].trim();
-        if (signatureDateMatch) extractedData.signature_date = signatureDateMatch[1].trim();
-        if (providerMatch) extractedData.provider_name = providerMatch[1].trim();
+        if (firstNameMatch) {
+          let firstName = firstNameMatch[1].trim();
+          // Clean up any extra spaces or formatting
+          firstName = firstName.replace(/\s+/g, ' ');
+          if (firstName && firstName !== '') extractedData.patient_first_name = firstName;
+        }
+        if (lastNameMatch) {
+          let lastName = lastNameMatch[1].trim();
+          lastName = lastName.replace(/\s+/g, ' ');
+          if (lastName && lastName !== '') extractedData.patient_last_name = lastName;
+        }
+        if (dobMatch) {
+          let dob = dobMatch[1].trim();
+          dob = dob.replace(/\s+/g, ' ');
+          if (dob && dob !== '') extractedData.patient_date_of_birth = dob;
+        }
+        if (signatureDateMatch) {
+          let sigDate = signatureDateMatch[1].trim();
+          if (sigDate && sigDate !== '') extractedData.signature_date = sigDate;
+        }
+        if (providerMatch) {
+          let provider = providerMatch[1].trim();
+          provider = provider.replace(/\s+/g, ' ');
+          if (provider && provider !== '') extractedData.provider_name = provider;
+        }
+        
+        // For testing purposes with blank forms, add sample data if no fields were extracted
+        if (!extractedData.patient_first_name && !extractedData.patient_last_name && !extractedData.patient_date_of_birth) {
+          console.log("No data extracted from PDF - this appears to be a blank form. Setting placeholder data for testing.");
+          extractedData.patient_first_name = "[Enter Patient First Name]";
+          extractedData.patient_last_name = "[Enter Patient Last Name]";
+          extractedData.patient_date_of_birth = "[Enter DOB - MM/DD/YYYY]";
+          extractedData.provider_name = "[Enter Provider Name]";
+          extractedData.signature_date = "[Enter Signature Date - MM/DD/YYYY]";
+          extractedData.confidence = 0.1; // Low confidence for blank form
+        }
         
         const responseData = {
           extractedData: extractedData,
@@ -775,12 +806,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("LEQVIO PDF extraction completed:", {
           fileName: req.file.originalname,
           extractionType,
+          pdfTextSample: pdfText.substring(0, 500) + "...",
           extractedFields: {
             firstName: extractedData.patient_first_name,
             lastName: extractedData.patient_last_name,
             dob: extractedData.patient_date_of_birth,
             provider: extractedData.provider_name,
             signatureDate: extractedData.signature_date
+          },
+          matchResults: {
+            firstNameFound: !!firstNameMatch,
+            lastNameFound: !!lastNameMatch,
+            dobFound: !!dobMatch,
+            providerFound: !!providerMatch,
+            signatureDateFound: !!signatureDateMatch
           }
         });
         
