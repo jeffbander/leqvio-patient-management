@@ -77,7 +77,31 @@ export async function extractPatientInfoFromScreenshot(base64Image: string, extr
     let userText = '';
     let responseFields = {};
 
-    if (extractionType === 'medical_database') {
+    if (extractionType === 'clinical_notes') {
+      systemContent = `You are a clinical data extraction expert. Extract clinical notes, observations, symptoms, diagnoses, treatment plans, and medical findings from medical screenshots, charts, or clinical documentation.
+
+Return your response in JSON format with these exact fields:
+{
+  "rawData": "Complete extracted clinical text including all notes, observations, symptoms, diagnoses, treatments, and medical findings",
+  "confidence": 0.0-1.0
+}
+
+EXTRACTION RULES:
+- Extract ALL visible clinical text including handwritten notes
+- Capture medical terminology, abbreviations, and clinical observations
+- Include symptoms, vital signs, lab results, diagnoses, treatment plans
+- Preserve clinical context and medical relationships between data points
+- Use empty string "" for missing fields
+- Set confidence based on text clarity and medical content completeness
+- Focus on clinical relevance - prioritize medical information over administrative data`;
+
+      userText = "Extract all clinical information from this medical screenshot. Capture every clinical note, observation, symptom, diagnosis, treatment plan, and medical finding visible in the image.";
+      
+      responseFields = {
+        rawData: "",
+        confidence: 0
+      };
+    } else if (extractionType === 'medical_database') {
       systemContent = `You are a medical database data extraction expert. Extract comprehensive patient information from medical database screenshots, EHR/EMR interfaces, patient management systems, or medical software screens.
 
 Return your response in JSON format with these exact fields (use empty string for missing data):

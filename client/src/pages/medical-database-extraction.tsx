@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import { useToast } from '@/hooks/use-toast'
-import { AlertCircle, Upload, Camera, Eye, Send, Loader2, UserPlus, FileImage } from 'lucide-react'
+import { AlertCircle, Upload, Camera, Eye, Send, Loader2, UserPlus, FileImage, FileText, ClipboardList } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
 
 interface ExtractedPatientData {
   patient_first_name?: string
@@ -50,6 +51,48 @@ export default function MedicalDatabaseExtraction() {
   const [additionalNotes] = useState<string>('')
   const [chainRunId, setChainRunId] = useState<string | null>(null)
   const [entryMode, setEntryMode] = useState<'screenshot' | 'manual'>('screenshot')
+  const [clinicalDataMode, setClinicalDataMode] = useState<'screenshot' | 'manual'>('manual')
+  const [clinicalNotes, setClinicalNotes] = useState<string>('')
+  const [clinicalScreenshot, setClinicalScreenshot] = useState<File | null>(null)
+  const [clinicalPreviewUrl, setClinicalPreviewUrl] = useState<string | null>(null)
+  const [extractedClinicalData, setExtractedClinicalData] = useState<string>('')
+
+  // Extract clinical data from screenshot
+  const extractClinicalDataMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append('photo', file)
+      formData.append('extractionType', 'clinical_notes')
+      
+      const response = await fetch('/api/extract-patient-info', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to extract clinical data')
+      }
+      
+      return response.json()
+    },
+    onSuccess: (data) => {
+      setExtractedClinicalData(data.extractedData?.rawData || '')
+      setClinicalNotes(data.extractedData?.rawData || '')
+      
+      toast({
+        title: "Clinical data extracted successfully",
+        description: "Review and edit the clinical information as needed."
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: "Extraction failed",
+        description: "Failed to extract clinical data from screenshot. Please try again.",
+        variant: "destructive"
+      })
+      console.error('Clinical data extraction error:', error)
+    }
+  })
 
   // Extract patient data from screenshot
   const extractDataMutation = useMutation({
@@ -126,7 +169,8 @@ export default function MedicalDatabaseExtraction() {
           Patient_Secondary_Insurance: editableData.secondary_insurance || '',
           Patient_Secondary_Insurance_ID: editableData.secondary_insurance_id || '',
           Patient_Phone_Number: editableData.patient_phone || '',
-          Patient_Email: editableData.patient_email || ''
+          Patient_Email: editableData.patient_email || '',
+          clinical_notes: clinicalNotes || ''
         }
       }
 
@@ -196,6 +240,27 @@ export default function MedicalDatabaseExtraction() {
     }
   }
 
+  const handleClinicalFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setClinicalScreenshot(file)
+      
+      // Create preview URL
+      const url = URL.createObjectURL(file)
+      setClinicalPreviewUrl(url)
+      
+      // Reset previous data
+      setExtractedClinicalData('')
+      setClinicalNotes('')
+    }
+  }
+
+  const handleExtractClinicalData = () => {
+    if (clinicalScreenshot) {
+      extractClinicalDataMutation.mutate(clinicalScreenshot)
+    }
+  }
+
   const handleTriggerChain = () => {
     if (editableData && selectedChain) {
       triggerChainMutation.mutate()
@@ -210,6 +275,10 @@ export default function MedicalDatabaseExtraction() {
     setSourceId('')
     setIsManualSourceId(false)
     setChainRunId(null)
+    setClinicalNotes('')
+    setClinicalScreenshot(null)
+    setClinicalPreviewUrl(null)
+    setExtractedClinicalData('')
   }
 
   const startManualEntry = () => {
@@ -437,13 +506,115 @@ export default function MedicalDatabaseExtraction() {
           </Card>
         )}
 
-        {/* Step 3: Create Patient */}
+        {/* Step 3: Clinical Data Entry */}
+        {editableData && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                Step 3: Clinical Data Entry
+              </CardTitle>
+              <CardDescription>
+                Add clinical notes and observations for this patient
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={clinicalDataMode} onValueChange={(value) => setClinicalDataMode(value as 'screenshot' | 'manual')} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="manual" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Manual Notes
+                  </TabsTrigger>
+                  <TabsTrigger value="screenshot" className="flex items-center gap-2">
+                    <FileImage className="h-4 w-4" />
+                    Screenshot Extract
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="manual" className="mt-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="clinical-notes">Clinical Notes</Label>
+                      <Textarea
+                        id="clinical-notes"
+                        placeholder="Enter clinical notes, observations, symptoms, treatment plans, etc..."
+                        value={clinicalNotes}
+                        onChange={(e) => setClinicalNotes(e.target.value)}
+                        className="mt-1 min-h-[120px]"
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="screenshot" className="mt-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="clinical-screenshot">Clinical Data Screenshot</Label>
+                      <Input
+                        id="clinical-screenshot"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleClinicalFileSelect}
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    {clinicalPreviewUrl && (
+                      <div className="space-y-2">
+                        <Label>Preview</Label>
+                        <div className="border rounded-lg p-4 bg-gray-50">
+                          <img
+                            src={clinicalPreviewUrl}
+                            alt="Clinical screenshot preview"
+                            className="max-w-full h-auto max-h-64 object-contain mx-auto"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <Button 
+                      onClick={handleExtractClinicalData}
+                      disabled={!clinicalScreenshot || extractClinicalDataMutation.isPending}
+                      className="w-full"
+                    >
+                      {extractClinicalDataMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Extracting Clinical Data...
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="mr-2 h-4 w-4" />
+                          Extract Clinical Data
+                        </>
+                      )}
+                    </Button>
+
+                    {extractedClinicalData && (
+                      <div className="space-y-2">
+                        <Label>Extracted Clinical Notes</Label>
+                        <Textarea
+                          value={clinicalNotes}
+                          onChange={(e) => setClinicalNotes(e.target.value)}
+                          className="min-h-[120px]"
+                          placeholder="Edit extracted clinical notes as needed..."
+                        />
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 4: Create Patient */}
         {editableData && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Send className="h-5 w-5" />
-                Step 3: Create Patient Record
+                Step 4: Create Patient Record
               </CardTitle>
               <CardDescription>
                 Create a new patient record using the Screenshot Patient Creator automation
@@ -482,7 +653,7 @@ export default function MedicalDatabaseExtraction() {
           </Card>
         )}
 
-        {/* Step 4: Results */}
+        {/* Step 5: Results */}
         {chainRunId && (
           <Card className="border-green-200 bg-green-50">
             <CardHeader>
