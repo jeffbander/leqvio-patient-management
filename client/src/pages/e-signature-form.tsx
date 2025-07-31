@@ -44,9 +44,11 @@ export default function ESignatureForm() {
     firstName: '',
     lastName: '',
     dateOfBirth: '',
+    gender: '',
     orderingMD: '',
     diagnosis: [] as string[], // Changed to array for multiple selections
     phone: '',
+    cellPhone: '',
     email: '',
     address: '',
     primaryInsurance: '',
@@ -57,7 +59,9 @@ export default function ESignatureForm() {
     secondaryPlan: '',
     secondaryInsuranceNumber: '',
     secondaryGroupId: '',
-    recipientEmail: ''
+    recipientEmail: '',
+    copayProgram: false,
+    ongoingSupport: false
   })
 
   const createPatientMutation = useMutation({
@@ -81,7 +85,7 @@ export default function ESignatureForm() {
     }
   })
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
@@ -93,6 +97,10 @@ export default function ESignatureForm() {
         ? [...prev.diagnosis, diagnosisCode]
         : prev.diagnosis.filter(code => code !== diagnosisCode)
     }))
+  }
+
+  const handleCheckboxChange = (field: 'copayProgram' | 'ongoingSupport', checked: boolean) => {
+    setFormData(prev => ({ ...prev, [field]: checked }))
   }
 
   // Signature handling
@@ -211,7 +219,23 @@ export default function ESignatureForm() {
                 />
               </div>
               <div>
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="gender">Gender *</Label>
+                <select
+                  id="gender"
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleInputChange}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  required
+                >
+                  <option value="">Select gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="phone">Home Phone</Label>
                 <Input
                   id="phone"
                   name="phone"
@@ -221,7 +245,18 @@ export default function ESignatureForm() {
                 />
               </div>
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="cellPhone">Cell Phone *</Label>
+                <Input
+                  id="cellPhone"
+                  name="cellPhone"
+                  type="tel"
+                  value={formData.cellPhone}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">Email (Optional)</Label>
                 <Input
                   id="email"
                   name="email"
@@ -379,10 +414,15 @@ export default function ESignatureForm() {
 
         <Card>
           <CardHeader>
-            <CardTitle>E-Signature</CardTitle>
-            <CardDescription>Please sign in the box below</CardDescription>
+            <CardTitle>Patient Consent & E-Signature</CardTitle>
+            <CardDescription>Please read and sign below</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm leading-relaxed">
+                Your doctor has initiated enrollment into Novartis Pharmaceuticals Patient Support Services for your newly prescribed medication. In order to provide services on your behalf such as confirming your coverage for the medication and assessing any financial assistance you may be eligible for; we will need you to complete the below authorization. This allows us to utilize your health information (called "Protected Health Information" or "PHI") and share it with your health plan and/or pharmacy that will receive your doctor's prescription. This authorization will allow your healthcare providers, health plans and health insurers that maintain PHI about you to disclose your PHI to Novartis Pharmaceuticals Corporation so that the Service Center may provide services to you or on your behalf.
+              </p>
+            </div>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
               <canvas
                 ref={canvasRef}
@@ -421,6 +461,48 @@ export default function ESignatureForm() {
               <p className="text-sm text-gray-500 mt-1">
                 The signed form will be sent to this email address
               </p>
+            </div>
+
+            <div className="space-y-4 mt-6">
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="copayProgram"
+                  checked={formData.copayProgram}
+                  onCheckedChange={(checked) => handleCheckboxChange('copayProgram', checked as boolean)}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <label
+                    htmlFor="copayProgram"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    LEQVIO Co-pay Program
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    I have read and agree to the Co-pay Program Terms & Conditions on page
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="ongoingSupport"
+                  checked={formData.ongoingSupport}
+                  onCheckedChange={(checked) => handleCheckboxChange('ongoingSupport', checked as boolean)}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <label
+                    htmlFor="ongoingSupport"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Ongoing Support from the LEQVIO Care Program
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Enroll in dedicated phone support from the LEQVIO Care Program—an optional program to help
+                    me stay on track with my treatment plan, and receive medication reminders, healthy living tips, and
+                    tools. By checking the box, I agree to receive calls and texts at the phone number provided.
+                  </p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

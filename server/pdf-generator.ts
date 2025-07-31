@@ -5,9 +5,11 @@ interface PatientData {
   firstName: string;
   lastName: string;
   dateOfBirth: string;
+  gender?: string;
   orderingMD: string;
   diagnosis: string;
   phone?: string;
+  cellPhone?: string;
   email?: string;
   address?: string;
   primaryInsurance?: string;
@@ -16,6 +18,8 @@ interface PatientData {
   primaryGroupId?: string;
   signatureData?: string;
   signatureDate?: string;
+  copayProgram?: boolean;
+  ongoingSupport?: boolean;
 }
 
 export async function generateLEQVIOPDF(patientData: PatientData): Promise<Buffer> {
@@ -45,7 +49,11 @@ export async function generateLEQVIOPDF(patientData: PatientData): Promise<Buffe
       doc.moveDown();
       
       doc.text(`Date of Birth: ${patientData.dateOfBirth}`, 50, doc.y);
-      doc.text(`Phone: ${patientData.phone || 'Not provided'}`, 300, doc.y - 10);
+      doc.text(`Gender: ${patientData.gender || 'Not provided'}`, 300, doc.y - 10);
+      doc.moveDown();
+      
+      doc.text(`Home Phone: ${patientData.phone || 'Not provided'}`, 50, doc.y);
+      doc.text(`Cell Phone: ${patientData.cellPhone || 'Not provided'}`, 300, doc.y - 10);
       doc.moveDown();
       
       doc.text(`Email: ${patientData.email || 'Not provided'}`, 50, doc.y);
@@ -83,7 +91,7 @@ export async function generateLEQVIOPDF(patientData: PatientData): Promise<Buffe
       doc.moveDown(0.5);
       doc.fontSize(10).font('Helvetica');
       
-      doc.text('I hereby consent to treatment with LEQVIO® (inclisiran) and authorize my healthcare provider to share my medical information as necessary for treatment coordination and insurance processing.', {
+      doc.text('Your doctor has initiated enrollment into Novartis Pharmaceuticals Patient Support Services for your newly prescribed medication. In order to provide services on your behalf such as confirming your coverage for the medication and assessing any financial assistance you may be eligible for; we will need you to complete the below authorization. This allows us to utilize your health information (called "Protected Health Information" or "PHI") and share it with your health plan and/or pharmacy that will receive your doctor\'s prescription. This authorization will allow your healthcare providers, health plans and health insurers that maintain PHI about you to disclose your PHI to Novartis Pharmaceuticals Corporation so that the Service Center may provide services to you or on your behalf.', {
         width: 500,
         align: 'justify'
       });
@@ -108,6 +116,30 @@ export async function generateLEQVIOPDF(patientData: PatientData): Promise<Buffe
       doc.fontSize(10).font('Helvetica');
       doc.text(`Patient Name: ${patientData.firstName} ${patientData.lastName}`, 50, doc.y);
       doc.text(`Date: ${patientData.signatureDate || new Date().toLocaleDateString()}`, 300, doc.y - 10);
+      
+      // Program enrollments
+      doc.moveDown(2);
+      if (patientData.copayProgram) {
+        doc.text('✓ LEQVIO Co-pay Program: I have read and agree to the Co-pay Program Terms & Conditions', 50, doc.y);
+        doc.moveDown();
+      }
+      if (patientData.ongoingSupport) {
+        doc.text('✓ Ongoing Support from the LEQVIO Care Program: Enrolled in dedicated phone support', 50, doc.y);
+        doc.moveDown();
+      }
+      
+      // Prescriber Attestation
+      doc.moveDown(2);
+      doc.fontSize(12).font('Helvetica-Bold').text('PRESCRIBER ATTESTATION', 50, doc.y);
+      doc.moveDown();
+      doc.fontSize(9).font('Helvetica');
+      doc.text('I certify the above therapy is medically necessary and this information is accurate to the best of my knowledge. I certify I am the provider who has prescribed LEQVIO to the patient named on this form. I certify that any medication received from Novartis Pharmaceuticals Corporation, its affiliates and service providers ("Novartis"), or the Novartis Patient Assistance Foundation, Inc. and its service providers ("NPAF"), will be used only for the patient named on this form and will not be offered for sale, trade, or barter, returned for credit, or submitted for reimbursement in any form. I acknowledge that NPAF is exclusively for purposes of patient care and not for remuneration of any sort. I understand that Novartis and NPAF may revise, change, or terminate their respective programs at any time. I have discussed the LEQVIO Service Center with my patient, who has authorized me under HIPAA and state law to disclose their information to Novartis for the limited purpose of enrolling in the LEQVIO Service Center. To complete this enrollment, Novartis may contact the patient by phone, text, and email.', {
+        width: 500,
+        align: 'justify'
+      });
+      doc.moveDown();
+      doc.text(`E-signed: ${patientData.orderingMD}`, 50, doc.y);
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 300, doc.y - 10);
       
       // Footer
       doc.moveDown(3);
