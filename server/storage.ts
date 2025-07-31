@@ -4,6 +4,9 @@ import {
   automationLogs, 
   customChains,
   apiAnalytics,
+  patients,
+  patientDocuments,
+  eSignatureForms,
   type User, 
   type InsertUser,
   type LoginToken,
@@ -13,7 +16,13 @@ import {
   type CustomChain,
   type InsertCustomChain,
   type ApiAnalytics,
-  type InsertApiAnalytics
+  type InsertApiAnalytics,
+  type Patient,
+  type InsertPatient,
+  type PatientDocument,
+  type InsertPatientDocument,
+  type ESignatureForm,
+  type InsertESignatureForm
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gte } from "drizzle-orm";
@@ -50,6 +59,22 @@ export interface IStorage {
   getEndpointStats(timeRange?: string): Promise<any[]>;
   getResponseTimeStats(timeRange?: string): Promise<any>;
   getErrorRateStats(timeRange?: string): Promise<any>;
+  
+  // Patient Management
+  createPatient(patient: InsertPatient): Promise<Patient>;
+  getPatient(id: number): Promise<Patient | undefined>;
+  getAllPatients(): Promise<Patient[]>;
+  updatePatient(id: number, patient: Partial<InsertPatient>): Promise<Patient | undefined>;
+  updatePatientStatus(id: number, status: string): Promise<Patient | undefined>;
+  
+  // Patient Documents
+  createPatientDocument(document: InsertPatientDocument): Promise<PatientDocument>;
+  getPatientDocuments(patientId: number): Promise<PatientDocument[]>;
+  
+  // E-Signature Forms
+  createESignatureForm(form: InsertESignatureForm): Promise<ESignatureForm>;
+  getESignatureForm(id: number): Promise<ESignatureForm | undefined>;
+  updateESignatureFormEmailStatus(id: number, emailSentTo: string): Promise<ESignatureForm | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -123,7 +148,7 @@ export class DatabaseStorage implements IStorage {
     
     // Apply date filter if provided
     if (dateFilter) {
-      query = query.where(gte(automationLogs.createdAt, dateFilter));
+      query = query.where(gte(automationLogs.createdAt, dateFilter)) as any;
     }
     
     const logs = await query.limit(limit);
@@ -397,6 +422,73 @@ export class DatabaseStorage implements IStorage {
       errorsByEndpoint,
       totalErrors: Object.values(errorsByStatus).reduce((sum, count) => sum + count, 0)
     };
+  }
+  
+  // Patient Management methods
+  async createPatient(patient: InsertPatient): Promise<Patient> {
+    const [newPatient] = await db.insert(patients).values(patient).returning();
+    return newPatient;
+  }
+
+  async getPatient(id: number): Promise<Patient | undefined> {
+    const [patient] = await db.select().from(patients).where(eq(patients.id, id));
+    return patient;
+  }
+
+  async getAllPatients(): Promise<Patient[]> {
+    return db.select().from(patients).orderBy(desc(patients.createdAt));
+  }
+
+  async updatePatient(id: number, patient: Partial<InsertPatient>): Promise<Patient | undefined> {
+    const [updatedPatient] = await db
+      .update(patients)
+      .set({ ...patient, updatedAt: new Date() })
+      .where(eq(patients.id, id))
+      .returning();
+    return updatedPatient;
+  }
+
+  async updatePatientStatus(id: number, status: string): Promise<Patient | undefined> {
+    const [updatedPatient] = await db
+      .update(patients)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(patients.id, id))
+      .returning();
+    return updatedPatient;
+  }
+
+  // Patient Documents methods
+  async createPatientDocument(document: InsertPatientDocument): Promise<PatientDocument> {
+    const [newDocument] = await db.insert(patientDocuments).values(document).returning();
+    return newDocument;
+  }
+
+  async getPatientDocuments(patientId: number): Promise<PatientDocument[]> {
+    return db
+      .select()
+      .from(patientDocuments)
+      .where(eq(patientDocuments.patientId, patientId))
+      .orderBy(desc(patientDocuments.createdAt));
+  }
+
+  // E-Signature Forms methods
+  async createESignatureForm(form: InsertESignatureForm): Promise<ESignatureForm> {
+    const [newForm] = await db.insert(eSignatureForms).values(form).returning();
+    return newForm;
+  }
+
+  async getESignatureForm(id: number): Promise<ESignatureForm | undefined> {
+    const [form] = await db.select().from(eSignatureForms).where(eq(eSignatureForms.id, id));
+    return form;
+  }
+
+  async updateESignatureFormEmailStatus(id: number, emailSentTo: string): Promise<ESignatureForm | undefined> {
+    const [updatedForm] = await db
+      .update(eSignatureForms)
+      .set({ emailSent: true, emailSentTo, emailSentAt: new Date() })
+      .where(eq(eSignatureForms.id, id))
+      .returning();
+    return updatedForm;
   }
 }
 

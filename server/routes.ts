@@ -6,6 +6,7 @@ import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
 import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio, extractPatientInfoFromScreenshot } from "./openai-service";
+import { generateLEQVIOPDF } from "./pdf-generator";
 
 
 // Analytics middleware to track API requests
@@ -992,6 +993,243 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+
+  // Patient Management Routes
+  
+  // Create a new patient
+  app.post('/api/patients', async (req, res) => {
+    try {
+      const patientData = req.body;
+      const { signatureData, recipientEmail, ...patientInfo } = patientData;
+      
+      // Create patient
+      const newPatient = await storage.createPatient(patientInfo);
+      
+      // If signature data provided, create e-signature form and send PDF
+      if (signatureData && recipientEmail) {
+        const formRecord = await storage.createESignatureForm({
+          patientId: newPatient.id,
+          formData: patientInfo,
+          signatureData: signatureData
+        });
+        
+        // Generate and send PDF via SendGrid
+        try {
+          // Generate PDF
+          const pdfData = {
+            ...patientInfo,
+            signatureData: signatureData,
+            signatureDate: new Date().toLocaleDateString()
+          };
+          const pdfBuffer = await generateLEQVIOPDF(pdfData);
+          
+          const { MailService } = await import('@sendgrid/mail');
+          const mailService = new MailService();
+          mailService.setApiKey(process.env.SENDGRID_API_KEY!);
+          
+          // Send email with PDF attachment
+          await mailService.send({
+            to: recipientEmail,
+            from: 'noreply@providerloop.com', // Replace with your verified sender
+            subject: 'LEQVIO Patient Registration Form',
+            text: `Patient registration for ${newPatient.firstName} ${newPatient.lastName} has been completed. Please find the signed enrollment form attached.`,
+            html: `
+              <h2>LEQVIO Patient Registration Confirmation</h2>
+              <p>Patient registration for <strong>${newPatient.firstName} ${newPatient.lastName}</strong> has been completed.</p>
+              <p><strong>Patient Details:</strong></p>
+              <ul>
+                <li>Patient ID: ${newPatient.id}</li>
+                <li>Date of Birth: ${newPatient.dateOfBirth}</li>
+                <li>Ordering MD: ${newPatient.orderingMD}</li>
+                <li>Diagnosis: ${newPatient.diagnosis}</li>
+              </ul>
+              <p>The signed enrollment form is attached to this email.</p>
+            `,
+            attachments: [
+              {
+                content: pdfBuffer.toString('base64'),
+                filename: `LEQVIO_Enrollment_${newPatient.lastName}_${newPatient.firstName}_${newPatient.id}.pdf`,
+                type: 'application/pdf',
+                disposition: 'attachment'
+              }
+            ]
+          });
+          
+          await storage.updateESignatureFormEmailStatus(formRecord.id, recipientEmail);
+        } catch (emailError) {
+          console.error('Failed to send email:', emailError);
+          // Continue even if email fails
+        }
+      }
+      
+      res.json(newPatient);
+    } catch (error) {
+      console.error('Error creating patient:', error);
+      res.status(500).json({ error: 'Failed to create patient' });
+    }
+  });
+
+  // Get all patients
+  app.get('/api/patients', async (req, res) => {
+    try {
+      const patients = await storage.getAllPatients();
+      res.json(patients);
+    } catch (error) {
+      console.error('Error fetching patients:', error);
+      res.status(500).json({ error: 'Failed to fetch patients' });
+    }
+  });
+
+  // Get specific patient
+  app.get('/api/patients/:id', async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const patient = await storage.getPatient(patientId);
+      
+      if (!patient) {
+        return res.status(404).json({ error: 'Patient not found' });
+      }
+      
+      res.json(patient);
+    } catch (error) {
+      console.error('Error fetching patient:', error);
+      res.status(500).json({ error: 'Failed to fetch patient' });
+    }
+  });
+
+  // Update patient
+  app.patch('/api/patients/:id', async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const updates = req.body;
+      const updatedPatient = await storage.updatePatient(patientId, updates);
+      
+      if (!updatedPatient) {
+        return res.status(404).json({ error: 'Patient not found' });
+      }
+      
+      res.json(updatedPatient);
+    } catch (error) {
+      console.error('Error updating patient:', error);
+      res.status(500).json({ error: 'Failed to update patient' });
+    }
+  });
+
+  // Update patient status
+  app.patch('/api/patients/:id/status', async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const { status } = req.body;
+      const updatedPatient = await storage.updatePatientStatus(patientId, status);
+      
+      if (!updatedPatient) {
+        return res.status(404).json({ error: 'Patient not found' });
+      }
+      
+      res.json(updatedPatient);
+    } catch (error) {
+      console.error('Error updating patient status:', error);
+      res.status(500).json({ error: 'Failed to update patient status' });
+    }
+  });
+
+  // Get patient documents
+  app.get('/api/patients/:id/documents', async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const documents = await storage.getPatientDocuments(patientId);
+      res.json(documents);
+    } catch (error) {
+      console.error('Error fetching patient documents:', error);
+      res.status(500).json({ error: 'Failed to fetch patient documents' });
+    }
+  });
+
+  // Create patient document with OCR extraction
+  app.post('/api/patients/:id/documents', upload.single('file'), async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const { documentType } = req.body;
+      const file = req.file;
+      
+      if (!file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+      
+      let extractedData = '';
+      let metadata: any = {};
+      
+      // Use OpenAI to extract data from the document
+      if (documentType === 'insurance_screenshot' || documentType === 'epic_screenshot') {
+        const base64Image = file.buffer.toString('base64');
+        const mimeType = file.mimetype;
+        
+        try {
+          const extraction = await extractInsuranceCardData(base64Image);
+          extractedData = JSON.stringify(extraction);
+          metadata = extraction;
+        } catch (ocrError) {
+          console.error('OCR extraction failed:', ocrError);
+          // Continue without extraction
+        }
+      }
+      
+      // Save document record
+      const document = await storage.createPatientDocument({
+        patientId,
+        documentType,
+        fileName: file.originalname,
+        fileUrl: '', // In production, upload to cloud storage
+        extractedData,
+        metadata
+      });
+      
+      // If we have extracted insurance data, update the patient record
+      if (metadata.insurer && documentType === 'insurance_screenshot') {
+        const updates: any = {};
+        if (metadata.insurer.name) updates.primaryInsurance = metadata.insurer.name;
+        if (metadata.member.member_id) updates.primaryInsuranceNumber = metadata.member.member_id;
+        if (metadata.insurer.group_number) updates.primaryGroupId = metadata.insurer.group_number;
+        
+        if (Object.keys(updates).length > 0) {
+          await storage.updatePatient(patientId, updates);
+        }
+      }
+      
+      // Trigger AIGENTS chain if this is Epic data
+      if (documentType === 'epic_screenshot' && extractedData) {
+        try {
+          const patient = await storage.getPatient(patientId);
+          if (patient) {
+            const aigentsPayload = {
+              unique_id: `leqvio_${patient.id}_${Date.now()}`,
+              chain_name: 'leqvio',
+              patient_data: {
+                ...patient,
+                extracted_data: metadata
+              }
+            };
+            
+            // Call AIGENTS API
+            const aigentsResponse = await fetch('https://providerloop.free.beeceptor.com', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(aigentsPayload)
+            });
+            
+            console.log('AIGENTS chain triggered for patient:', patient.id);
+          }
+        } catch (aigentsError) {
+          console.error('Failed to trigger AIGENTS chain:', aigentsError);
+        }
+      }
+      
+      res.json({ document, extractedData: metadata });
+    } catch (error) {
+      console.error('Error creating patient document:', error);
+      res.status(500).json({ error: 'Failed to create patient document' });
+    }
+  });
 
   const httpServer = createServer(app);
 

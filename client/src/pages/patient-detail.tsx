@@ -1,0 +1,625 @@
+import { useState } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { useToast } from '@/hooks/use-toast'
+import { useParams, Link } from 'wouter'
+import { apiRequest, queryClient } from '@/lib/queryClient'
+import { 
+  ArrowLeft, 
+  Camera, 
+  FileText, 
+  Upload, 
+  Save, 
+  Loader2,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  Stethoscope,
+  Shield
+} from 'lucide-react'
+import { format } from 'date-fns'
+
+interface Patient {
+  id: number
+  firstName: string
+  lastName: string
+  dateOfBirth: string
+  orderingMD: string
+  diagnosis: string
+  status: string
+  phone?: string
+  email?: string
+  address?: string
+  primaryInsurance?: string
+  primaryPlan?: string
+  primaryInsuranceNumber?: string
+  primaryGroupId?: string
+  secondaryInsurance?: string
+  secondaryPlan?: string
+  secondaryInsuranceNumber?: string
+  secondaryGroupId?: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface PatientDocument {
+  id: number
+  documentType: string
+  fileName: string
+  extractedData?: string
+  metadata?: any
+  createdAt: string
+}
+
+export default function PatientDetail() {
+  const { toast } = useToast()
+  const params = useParams()
+  const patientId = parseInt(params.id as string)
+  
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedData, setEditedData] = useState<Partial<Patient>>({})
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [documentType, setDocumentType] = useState<string>('epic_screenshot')
+  const [clinicalNotes, setClinicalNotes] = useState('')
+
+  const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
+    queryKey: [`/api/patients/${patientId}`],
+    enabled: !!patientId
+  })
+
+  const { data: documents = [], isLoading: documentsLoading } = useQuery<PatientDocument[]>({
+    queryKey: [`/api/patients/${patientId}/documents`],
+    enabled: !!patientId
+  })
+
+  const updatePatientMutation = useMutation({
+    mutationFn: async (updates: Partial<Patient>) => {
+      return apiRequest(`/api/patients/${patientId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates)
+      })
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Patient information updated successfully"
+      })
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}`] })
+      setIsEditing(false)
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update patient",
+        variant: "destructive"
+      })
+    }
+  })
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async (status: string) => {
+      return apiRequest(`/api/patients/${patientId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status })
+      })
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Patient status updated"
+      })
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}`] })
+    }
+  })
+
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const response = await fetch(`/api/patients/${patientId}/documents`, {
+        method: 'POST',
+        body: formData
+      })
+      if (!response.ok) throw new Error('Failed to upload document')
+      return response.json()
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Success",
+        description: "Document uploaded and processed successfully"
+      })
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] })
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}`] })
+      setSelectedFile(null)
+      
+      // If insurance data was extracted, show it
+      if (data.extractedData && Object.keys(data.extractedData).length > 0) {
+        toast({
+          title: "Data Extracted",
+          description: "Insurance information has been extracted and saved"
+        })
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to upload document",
+        variant: "destructive"
+      })
+    }
+  })
+
+  const handleEdit = () => {
+    setEditedData(patient || {})
+    setIsEditing(true)
+  }
+
+  const handleSave = () => {
+    updatePatientMutation.mutate(editedData)
+  }
+
+  const handleCancel = () => {
+    setIsEditing(false)
+    setEditedData({})
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0])
+    }
+  }
+
+  const handleUpload = () => {
+    if (!selectedFile) return
+    
+    const formData = new FormData()
+    formData.append('file', selectedFile)
+    formData.append('documentType', documentType)
+    
+    uploadDocumentMutation.mutate(formData)
+  }
+
+  const handleAddClinicalNote = async () => {
+    if (!clinicalNotes.trim()) return
+    
+    const blob = new Blob([clinicalNotes], { type: 'text/plain' })
+    const file = new File([blob], 'clinical_note.txt', { type: 'text/plain' })
+    
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('documentType', 'clinical_note')
+    
+    uploadDocumentMutation.mutate(formData)
+    setClinicalNotes('')
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'started':
+        return 'bg-blue-100 text-blue-800'
+      case 'in_progress':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'completed':
+        return 'bg-green-100 text-green-800'
+      case 'cancelled':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  if (patientLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-gray-500">Loading patient information...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!patient) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-gray-500">Patient not found</p>
+            <Link href="/patients">
+              <Button variant="outline" className="mt-4">
+                Back to Patients
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="mb-8">
+        <Link href="/patients">
+          <Button variant="ghost" size="sm" className="mb-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Patients
+          </Button>
+        </Link>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {patient.lastName}, {patient.firstName}
+            </h1>
+            <p className="text-gray-600 mt-1">Patient ID: {patient.id}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge className={getStatusColor(patient.status)}>
+              {patient.status}
+            </Badge>
+            <select
+              value={patient.status}
+              onChange={(e) => updateStatusMutation.mutate(e.target.value)}
+              className="text-sm border rounded px-2 py-1"
+            >
+              <option value="started">Started</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6">
+        {/* Patient Information */}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle>Patient Information</CardTitle>
+              {!isEditing ? (
+                <Button onClick={handleEdit} variant="outline" size="sm">
+                  Edit
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleSave} 
+                    size="sm"
+                    disabled={updatePatientMutation.isPending}
+                  >
+                    {updatePatientMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                    Save
+                  </Button>
+                  <Button onClick={handleCancel} variant="outline" size="sm">
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <Label className="flex items-center gap-2 text-gray-600">
+                    <User className="h-4 w-4" />
+                    Personal Information
+                  </Label>
+                  <div className="mt-2 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Name:</span>
+                      <span>{patient.firstName} {patient.lastName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">DOB:</span>
+                      <span>{patient.dateOfBirth}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="flex items-center gap-2 text-gray-600">
+                    <Stethoscope className="h-4 w-4" />
+                    Medical Information
+                  </Label>
+                  <div className="mt-2 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Ordering MD:</span>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.orderingMD || ''}
+                          onChange={(e) => setEditedData({...editedData, orderingMD: e.target.value})}
+                          className="w-48"
+                        />
+                      ) : (
+                        <span>{patient.orderingMD}</span>
+                      )}
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Diagnosis:</span>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.diagnosis || ''}
+                          onChange={(e) => setEditedData({...editedData, diagnosis: e.target.value})}
+                          className="w-48"
+                        />
+                      ) : (
+                        <span>{patient.diagnosis}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label className="flex items-center gap-2 text-gray-600">
+                    <Phone className="h-4 w-4" />
+                    Contact Information
+                  </Label>
+                  <div className="mt-2 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Phone:</span>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.phone || ''}
+                          onChange={(e) => setEditedData({...editedData, phone: e.target.value})}
+                          className="w-48"
+                        />
+                      ) : (
+                        <span>{patient.phone || 'Not provided'}</span>
+                      )}
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Email:</span>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.email || ''}
+                          onChange={(e) => setEditedData({...editedData, email: e.target.value})}
+                          className="w-48"
+                        />
+                      ) : (
+                        <span>{patient.email || 'Not provided'}</span>
+                      )}
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Address:</span>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.address || ''}
+                          onChange={(e) => setEditedData({...editedData, address: e.target.value})}
+                          className="w-48"
+                        />
+                      ) : (
+                        <span>{patient.address || 'Not provided'}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Insurance Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Insurance Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium mb-2">Primary Insurance</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Provider:</span>
+                    {isEditing ? (
+                      <Input
+                        value={editedData.primaryInsurance || ''}
+                        onChange={(e) => setEditedData({...editedData, primaryInsurance: e.target.value})}
+                        className="w-48"
+                      />
+                    ) : (
+                      <span>{patient.primaryInsurance || 'Not provided'}</span>
+                    )}
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Plan:</span>
+                    {isEditing ? (
+                      <Input
+                        value={editedData.primaryPlan || ''}
+                        onChange={(e) => setEditedData({...editedData, primaryPlan: e.target.value})}
+                        className="w-48"
+                      />
+                    ) : (
+                      <span>{patient.primaryPlan || 'Not provided'}</span>
+                    )}
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Member ID:</span>
+                    {isEditing ? (
+                      <Input
+                        value={editedData.primaryInsuranceNumber || ''}
+                        onChange={(e) => setEditedData({...editedData, primaryInsuranceNumber: e.target.value})}
+                        className="w-48"
+                      />
+                    ) : (
+                      <span>{patient.primaryInsuranceNumber || 'Not provided'}</span>
+                    )}
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Group ID:</span>
+                    {isEditing ? (
+                      <Input
+                        value={editedData.primaryGroupId || ''}
+                        onChange={(e) => setEditedData({...editedData, primaryGroupId: e.target.value})}
+                        className="w-48"
+                      />
+                    ) : (
+                      <span>{patient.primaryGroupId || 'Not provided'}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Secondary Insurance</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Provider:</span>
+                    <span>{patient.secondaryInsurance || 'Not provided'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Plan:</span>
+                    <span>{patient.secondaryPlan || 'Not provided'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Member ID:</span>
+                    <span>{patient.secondaryInsuranceNumber || 'Not provided'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Group ID:</span>
+                    <span>{patient.secondaryGroupId || 'Not provided'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Document Upload */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Add Documents</CardTitle>
+            <CardDescription>Upload screenshots or add clinical notes</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Document Type</Label>
+              <select
+                value={documentType}
+                onChange={(e) => setDocumentType(e.target.value)}
+                className="w-full border rounded px-3 py-2 mt-1"
+              >
+                <option value="epic_screenshot">Epic Screenshot</option>
+                <option value="insurance_screenshot">Insurance Card Screenshot</option>
+                <option value="clinical_note">Clinical Note</option>
+              </select>
+            </div>
+
+            {documentType !== 'clinical_note' ? (
+              <div>
+                <Label>Upload File</Label>
+                <div className="mt-1 flex items-center gap-4">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                  />
+                  <Button 
+                    onClick={handleUpload}
+                    disabled={!selectedFile || uploadDocumentMutation.isPending}
+                  >
+                    {uploadDocumentMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <Label>Clinical Notes</Label>
+                <Textarea
+                  value={clinicalNotes}
+                  onChange={(e) => setClinicalNotes(e.target.value)}
+                  placeholder="Enter clinical notes..."
+                  className="mt-1 min-h-[120px]"
+                />
+                <Button 
+                  onClick={handleAddClinicalNote}
+                  disabled={!clinicalNotes.trim() || uploadDocumentMutation.isPending}
+                  className="mt-2"
+                >
+                  {uploadDocumentMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Add Clinical Note
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Documents List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Documents</CardTitle>
+            <CardDescription>All uploaded documents for this patient</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {documentsLoading ? (
+              <p className="text-gray-500">Loading documents...</p>
+            ) : documents.length === 0 ? (
+              <p className="text-gray-500">No documents uploaded yet</p>
+            ) : (
+              <div className="space-y-3">
+                {documents.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {doc.documentType === 'clinical_note' ? (
+                        <FileText className="h-5 w-5 text-gray-400" />
+                      ) : (
+                        <Camera className="h-5 w-5 text-gray-400" />
+                      )}
+                      <div>
+                        <p className="font-medium">{doc.fileName}</p>
+                        <p className="text-sm text-gray-500">
+                          {doc.documentType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} • 
+                          {' '}{format(new Date(doc.createdAt), 'MMM d, yyyy h:mm a')}
+                        </p>
+                        {doc.metadata && Object.keys(doc.metadata).length > 0 && (
+                          <p className="text-sm text-green-600 mt-1">
+                            ✓ Data extracted
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}

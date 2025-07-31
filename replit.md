@@ -16,15 +16,21 @@ Providerloop Chains is a patient data processing application designed to streaml
 - **Technology Stack**: React with TypeScript, Tailwind CSS for styling, TanStack React Query for data management, Wouter for routing.
 - **Access**: Direct access, no authentication required.
 - **Core Workflows**:
-    - **LEQVIO Form Processing**: Step-by-step workflow for uploading LEQVIO forms, reviewing extracted patient data, creating patient records, and viewing results.
-    - **Medical Database Screenshot Processing**: Comprehensive UX for extracting 25+ fields from medical database screenshots and triggering AIGENTS chains. Includes manual override for extracted fields.
-    - **Patient Intake System**: Multi-step workflow for comprehensive patient registration including ID card and insurance card scanning. Auto-generates Source IDs.
+    - **Patient Management System**: Complete patient lifecycle management with e-signature forms, patient list view, and detailed patient records.
+    - **E-Signature Form**: Web form that collects patient data with electronic signature, generates PDFs matching original LEQVIO forms, and sends via SendGrid.
+    - **Patient List View**: Searchable list of all patients with status tracking (started, in_progress, completed, cancelled).
+    - **Patient Detail View**: Comprehensive patient information management including demographics, insurance data, document uploads, and Epic screenshot processing.
+    - **Medical Database Screenshot Processing**: OCR extraction from Epic screenshots and insurance cards with automatic AIGENTS chain triggering for "leqvio" automation.
     - **Audio Transcription**: Interface for real-time audio recording and transcription using OpenAI Whisper.
 
 ### Backend
 - **Technology Stack**: Express.js server, PostgreSQL database with Drizzle ORM.
-- **Integrations**: OpenAI Vision API for OCR and data extraction; OpenAI Whisper API for speech-to-text; AIGENTS API for chain triggering.
-- **Data Management**: Stores automation logs, webhook payloads, and custom chain configurations.
+- **Database Schema**: 
+    - **patients**: Core patient demographics (firstName, lastName, DOB, orderingMD, diagnosis, status) with optional insurance fields
+    - **patient_documents**: Uploaded documents with OCR extraction data
+    - **e_signature_forms**: Form submissions with signature data and email tracking
+- **Integrations**: OpenAI Vision API for OCR and data extraction; OpenAI Whisper API for speech-to-text; AIGENTS API for chain triggering; SendGrid for email delivery.
+- **Data Management**: Complete CRUD operations for patient management, document storage, and automation tracking.
 - **API Analytics**: Real-time tracking of API usage.
 
 ### Technical Implementations

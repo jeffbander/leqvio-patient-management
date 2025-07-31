@@ -104,3 +104,107 @@ export type CustomChain = typeof customChains.$inferSelect;
 export type InsertCustomChain = z.infer<typeof insertCustomChainSchema>;
 export type ApiAnalytics = typeof apiAnalytics.$inferSelect;
 export type InsertApiAnalytics = z.infer<typeof insertApiAnalyticsSchema>;
+
+// LEQVIO Patient Management Tables
+
+export const patients = pgTable("patients", {
+  id: serial("id").primaryKey(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  dateOfBirth: text("date_of_birth").notNull(),
+  orderingMD: text("ordering_md").notNull(),
+  diagnosis: text("diagnosis").notNull(),
+  status: text("status").notNull().default("started"),
+  
+  // Primary Insurance (optional)
+  primaryInsurance: text("primary_insurance"),
+  primaryPlan: text("primary_plan"),
+  primaryInsuranceNumber: text("primary_insurance_number"),
+  primaryGroupId: text("primary_group_id"),
+  
+  // Secondary Insurance (optional)
+  secondaryInsurance: text("secondary_insurance"),
+  secondaryPlan: text("secondary_plan"),
+  secondaryInsuranceNumber: text("secondary_insurance_number"),
+  secondaryGroupId: text("secondary_group_id"),
+  
+  // Additional fields
+  phone: text("phone"),
+  email: text("email"),
+  address: text("address"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const patientDocuments = pgTable("patient_documents", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  documentType: text("document_type").notNull(), // 'clinical_note', 'insurance_screenshot', 'epic_screenshot'
+  fileName: text("file_name"),
+  fileUrl: text("file_url"),
+  extractedData: text("extracted_data"), // OCR extracted text
+  metadata: jsonb("metadata"), // Additional structured data from OCR
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const eSignatureForms = pgTable("e_signature_forms", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  formData: jsonb("form_data").notNull(),
+  signatureData: text("signature_data").notNull(), // Base64 encoded signature
+  pdfUrl: text("pdf_url"),
+  emailSent: boolean("email_sent").default(false),
+  emailSentTo: text("email_sent_to"),
+  emailSentAt: timestamp("email_sent_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations
+export const patientsRelations = relations(patients, ({ many }) => ({
+  documents: many(patientDocuments),
+  eSignatureForms: many(eSignatureForms),
+}));
+
+export const patientDocumentsRelations = relations(patientDocuments, ({ one }) => ({
+  patient: one(patients, {
+    fields: [patientDocuments.patientId],
+    references: [patients.id],
+  }),
+}));
+
+export const eSignatureFormsRelations = relations(eSignatureForms, ({ one }) => ({
+  patient: one(patients, {
+    fields: [eSignatureForms.patientId],
+    references: [patients.id],
+  }),
+}));
+
+// Insert schemas for new tables
+export const insertPatientSchema = createInsertSchema(patients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  status: z.string().default("started"),
+});
+
+export const insertPatientDocumentSchema = createInsertSchema(patientDocuments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertESignatureFormSchema = createInsertSchema(eSignatureForms).omit({
+  id: true,
+  createdAt: true,
+  emailSentAt: true,
+});
+
+// Types for new tables
+export type Patient = typeof patients.$inferSelect;
+export type InsertPatient = z.infer<typeof insertPatientSchema>;
+export type PatientDocument = typeof patientDocuments.$inferSelect;
+export type InsertPatientDocument = z.infer<typeof insertPatientDocumentSchema>;
+export type ESignatureForm = typeof eSignatureForms.$inferSelect;
+export type InsertESignatureForm = z.infer<typeof insertESignatureFormSchema>;
