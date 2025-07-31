@@ -820,6 +820,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         extractedData.signature_date = "01/15/2025";
         extractedData.confidence = 0.1; // Low confidence for sample data
         
+        console.log("Sample data applied, fields now contain:", {
+          firstName: extractedData.patient_first_name,
+          lastName: extractedData.patient_last_name,
+          sex: extractedData.patient_sex,
+          homePhone: extractedData.patient_home_phone,
+          cellPhone: extractedData.patient_cell_phone,
+          address: extractedData.patient_address,
+          provider: extractedData.provider_name,
+          signatureDate: extractedData.signature_date
+        });
+        
         const responseData = {
           extractedData: extractedData,
           processingTime_ms: 50,
