@@ -5,10 +5,32 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { apiRequest } from '@/lib/queryClient'
 import { FileText, Send, Loader2, Pen } from 'lucide-react'
 import { useLocation } from 'wouter'
+
+// ICD-10 Diagnosis Codes for LEQVIO
+const PRIMARY_DIAGNOSIS_CODES = [
+  { code: 'E78.0', description: 'Pure hypercholesterolemia (often used for familial hypercholesterolemia)' },
+  { code: 'E78.01', description: 'Familial hypercholesterolemia (very relevant for Leqvio)' },
+  { code: 'E78.2', description: 'Mixed hyperlipidemia' },
+  { code: 'E78.4', description: 'Other hyperlipidemia' },
+  { code: 'E78.5', description: 'Hyperlipidemia, unspecified' }
+]
+
+const SECONDARY_DIAGNOSIS_CODES = [
+  { code: 'I20.0-I25.9', description: 'Ischemic heart disease (includes angina, MI history, coronary artery disease)' },
+  { code: 'I63.9', description: 'Cerebral infarction, unspecified (stroke history)' },
+  { code: 'I70.2-I70.9', description: 'Atherosclerosis (e.g., of coronary, carotid, peripheral arteries)' },
+  { code: 'Z95.1', description: 'Presence of aortocoronary bypass graft' },
+  { code: 'Z95.5', description: 'Presence of coronary angioplasty implant and graft' },
+  { code: 'Z86.79', description: 'Personal history of other diseases of the circulatory system (e.g. prior stroke or MI)' },
+  { code: 'T46.6X5A', description: 'Adverse effect of antihyperlipidemic drugs (e.g., statins), initial encounter' },
+  { code: 'Z91.89', description: 'Other specified personal risk factors, not elsewhere classified (can support statin intolerance)' },
+  { code: 'Z79.899', description: 'Other long-term (current) drug therapy (if on ezetimibe or other non-statin therapy)' }
+]
 
 export default function ESignatureForm() {
   const { toast } = useToast()
@@ -23,7 +45,7 @@ export default function ESignatureForm() {
     lastName: '',
     dateOfBirth: '',
     orderingMD: '',
-    diagnosis: '',
+    diagnosis: [] as string[], // Changed to array for multiple selections
     phone: '',
     email: '',
     address: '',
@@ -62,6 +84,15 @@ export default function ESignatureForm() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleDiagnosisChange = (diagnosisCode: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      diagnosis: checked 
+        ? [...prev.diagnosis, diagnosisCode]
+        : prev.diagnosis.filter(code => code !== diagnosisCode)
+    }))
   }
 
   // Signature handling
@@ -127,6 +158,7 @@ export default function ESignatureForm() {
     
     createPatientMutation.mutate({
       ...formData,
+      diagnosis: formData.diagnosis.join(', '), // Convert array to comma-separated string for backend
       signatureData,
       status: 'started'
     })
@@ -228,15 +260,71 @@ export default function ESignatureForm() {
                   required
                 />
               </div>
-              <div>
-                <Label htmlFor="diagnosis">Diagnosis *</Label>
-                <Input
-                  id="diagnosis"
-                  name="diagnosis"
-                  value={formData.diagnosis}
-                  onChange={handleInputChange}
-                  required
-                />
+              <div className="col-span-2">
+                <Label>Diagnosis Codes *</Label>
+                <p className="text-sm text-gray-500 mb-3">Select one or more ICD-10 codes that apply to this patient</p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Primary Diagnosis Codes</h4>
+                    <div className="space-y-2">
+                      {PRIMARY_DIAGNOSIS_CODES.map((diagnosis) => (
+                        <div key={diagnosis.code} className="flex items-start space-x-2">
+                          <Checkbox
+                            id={diagnosis.code}
+                            checked={formData.diagnosis.includes(diagnosis.code)}
+                            onCheckedChange={(checked) => 
+                              handleDiagnosisChange(diagnosis.code, checked as boolean)
+                            }
+                          />
+                          <div className="grid gap-1.5 leading-none">
+                            <label
+                              htmlFor={diagnosis.code}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {diagnosis.code}
+                            </label>
+                            <p className="text-xs text-muted-foreground">
+                              {diagnosis.description}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Secondary Diagnosis Codes (for Cardiovascular Risk)</h4>
+                    <div className="space-y-2">
+                      {SECONDARY_DIAGNOSIS_CODES.map((diagnosis) => (
+                        <div key={diagnosis.code} className="flex items-start space-x-2">
+                          <Checkbox
+                            id={diagnosis.code}
+                            checked={formData.diagnosis.includes(diagnosis.code)}
+                            onCheckedChange={(checked) => 
+                              handleDiagnosisChange(diagnosis.code, checked as boolean)
+                            }
+                          />
+                          <div className="grid gap-1.5 leading-none">
+                            <label
+                              htmlFor={diagnosis.code}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {diagnosis.code}
+                            </label>
+                            <p className="text-xs text-muted-foreground">
+                              {diagnosis.description}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                
+                {formData.diagnosis.length === 0 && (
+                  <p className="text-red-500 text-sm mt-2">Please select at least one diagnosis code</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -347,7 +435,7 @@ export default function ESignatureForm() {
           </Button>
           <Button
             type="submit"
-            disabled={createPatientMutation.isPending || !hasSignature}
+            disabled={createPatientMutation.isPending || !hasSignature || formData.diagnosis.length === 0}
           >
             {createPatientMutation.isPending ? (
               <>
