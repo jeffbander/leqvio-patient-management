@@ -745,11 +745,14 @@ export default function MedicalDatabaseExtraction() {
                     <p className="text-sm text-blue-700">Patient identification, contact, and provider information</p>
                   </div>
                   
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Patient Information */}
-                    <div className="space-y-4">
-                      <h4 className="font-medium text-gray-800 border-b pb-2">Patient Information</h4>
-                      
+                  {/* Personal Information Section - First */}
+                  <div className="space-y-6">
+                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                      <h3 className="font-medium text-green-800 mb-2">Personal Information</h3>
+                      <p className="text-sm text-green-700">Patient identification and demographics</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-1">
                         <Label htmlFor="patient_first_name" className="text-sm font-medium text-gray-700">
                           First Name
@@ -789,11 +792,16 @@ export default function MedicalDatabaseExtraction() {
                         />
                       </div>
                     </div>
+                  </div>
+
+                  {/* Contact Information Section - Second */}
+                  <div className="space-y-6">
+                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <h3 className="font-medium text-purple-800 mb-2">Contact Information</h3>
+                      <p className="text-sm text-purple-700">Patient communication details</p>
+                    </div>
                     
-                    {/* Contact Information */}
-                    <div className="space-y-4">
-                      <h4 className="font-medium text-gray-800 border-b pb-2">Contact Information</h4>
-                      
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-1">
                         <Label htmlFor="patient_home_phone" className="text-sm font-medium text-gray-700">
                           Home Phone
@@ -833,11 +841,16 @@ export default function MedicalDatabaseExtraction() {
                         />
                       </div>
                     </div>
+                  </div>
+
+                  {/* Provider & Signature Section - Third */}
+                  <div className="space-y-6">
+                    <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                      <h3 className="font-medium text-orange-800 mb-2">Provider & Signature</h3>
+                      <p className="text-sm text-orange-700">Prescriber and authorization details</p>
+                    </div>
                     
-                    {/* Provider & Signature Information */}
-                    <div className="space-y-4">
-                      <h4 className="font-medium text-gray-800 border-b pb-2">Provider & Signature</h4>
-                      
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <Label htmlFor="provider_name" className="text-sm font-medium text-gray-700">
                           Provider Name
