@@ -40,10 +40,8 @@ export default function ESignatureForm() {
 
   const createPatientMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest('/api/patients', {
-        method: 'POST',
-        body: JSON.stringify(data)
-      })
+      const res = await apiRequest('POST', '/api/patients', data)
+      return res.json()
     },
     onSuccess: (patient) => {
       toast({
