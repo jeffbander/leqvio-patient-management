@@ -55,6 +55,15 @@ export default function MedicalDatabaseExtraction() {
   const [clinicalPreviewUrl, setClinicalPreviewUrl] = useState<string | null>(null)
   const [extractedClinicalData, setExtractedClinicalData] = useState<string>('')
 
+  // State for insurance information
+  const [insuranceMode, setInsuranceMode] = useState<'manual' | 'screenshot'>('manual')
+  const [insuranceFile, setInsuranceFile] = useState<File | null>(null)
+  const [insurancePreviewUrl, setInsurancePreviewUrl] = useState<string>('')
+  const [insuranceProvider, setInsuranceProvider] = useState<string>('')
+  const [insurancePolicyNumber, setInsurancePolicyNumber] = useState<string>('')
+  const [insuranceGroupNumber, setInsuranceGroupNumber] = useState<string>('')
+  const [insuranceNotes, setInsuranceNotes] = useState<string>('')
+
   // Extract clinical data from screenshot
   const extractClinicalDataMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -180,13 +189,17 @@ export default function MedicalDatabaseExtraction() {
           first_name: editableData.patient_first_name || '',
           last_name: editableData.patient_last_name || '',
           date_of_birth: editableData.patient_dob || '',
-          Patient_Primary_Insurance: editableData.insurance_provider || '',
-          Patient_Primary_Insurance_ID: editableData.insurance_id || '',
+          Patient_Primary_Insurance: insuranceProvider || editableData.insurance_provider || '',
+          Patient_Primary_Insurance_ID: insurancePolicyNumber || editableData.insurance_id || '',
           Patient_Secondary_Insurance: editableData.secondary_insurance || '',
           Patient_Secondary_Insurance_ID: editableData.secondary_insurance_id || '',
           Patient_Phone_Number: editableData.patient_phone || '',
           Patient_Email: editableData.patient_email || '',
-          clinical_notes: clinicalNotes || ''
+          clinical_notes: clinicalNotes || '',
+          insurance_provider: insuranceProvider || '',
+          insurance_policy_number: insurancePolicyNumber || '',
+          insurance_group_number: insuranceGroupNumber || '',
+          insurance_notes: insuranceNotes || ''
         }
       }
 
@@ -278,6 +291,80 @@ export default function MedicalDatabaseExtraction() {
   const handleExtractClinicalData = () => {
     if (clinicalFormFile) {
       extractClinicalDataMutation.mutate(clinicalFormFile)
+    }
+  }
+
+  const handleInsuranceFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setInsuranceFile(file)
+      
+      // Create preview URL for supported formats
+      if (file.type.startsWith('image/')) {
+        const url = URL.createObjectURL(file)
+        setInsurancePreviewUrl(url)
+      } else {
+        setInsurancePreviewUrl('')
+      }
+    }
+  }
+
+  // Extract insurance data from screenshot
+  const extractInsuranceDataMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append('photo', file)
+      formData.append('extractionType', 'insurance_card')
+      
+      const response = await fetch('/api/extract-patient-info', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to extract insurance data')
+      }
+      
+      return response.json()
+    },
+    onSuccess: (data) => {
+      const rawData = data.extractedData?.rawData || ''
+      
+      // Parse insurance information from extracted text
+      const providerMatch = rawData.match(/Insurance Provider:\s*([^\n]+)/i) ||
+                           rawData.match(/Plan Name:\s*([^\n]+)/i) ||
+                           rawData.match(/Company:\s*([^\n]+)/i)
+      
+      const policyMatch = rawData.match(/Policy Number:\s*([^\n]+)/i) ||
+                         rawData.match(/Member ID:\s*([^\n]+)/i) ||
+                         rawData.match(/ID:\s*([^\n]+)/i)
+      
+      const groupMatch = rawData.match(/Group Number:\s*([^\n]+)/i) ||
+                        rawData.match(/Group:\s*([^\n]+)/i)
+      
+      if (providerMatch) setInsuranceProvider(providerMatch[1].trim())
+      if (policyMatch) setInsurancePolicyNumber(policyMatch[1].trim())
+      if (groupMatch) setInsuranceGroupNumber(groupMatch[1].trim())
+      
+      setInsuranceNotes(rawData)
+      
+      toast({
+        title: "Insurance data extracted successfully",
+        description: "Review and edit the insurance information as needed."
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: "Extraction Failed",
+        description: error instanceof Error ? error.message : "Failed to extract insurance data",
+        variant: "destructive",
+      })
+    }
+  })
+
+  const handleExtractInsuranceData = () => {
+    if (insuranceFile) {
+      extractInsuranceDataMutation.mutate(insuranceFile)
     }
   }
 
@@ -487,7 +574,165 @@ export default function MedicalDatabaseExtraction() {
           </CardContent>
         </Card>
 
-        {/* Step 2: Review & Edit Patient Data */}
+        {/* Step 2: Insurance Information */}
+        {extractedClinicalData && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                Step 2: Insurance Information
+              </CardTitle>
+              <CardDescription>
+                Add insurance information manually or by uploading insurance card screenshots
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Button 
+                    variant={insuranceMode === 'manual' ? 'default' : 'outline'}
+                    onClick={() => setInsuranceMode('manual')}
+                    className="flex items-center gap-2"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Manual Entry
+                  </Button>
+                  <Button 
+                    variant={insuranceMode === 'screenshot' ? 'default' : 'outline'}
+                    onClick={() => setInsuranceMode('screenshot')}
+                    className="flex items-center gap-2"
+                  >
+                    <Camera className="h-4 w-4" />
+                    Upload Insurance Card
+                  </Button>
+                </div>
+                
+                {insuranceMode === 'manual' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="insurance-provider">Insurance Provider</Label>
+                        <Input
+                          id="insurance-provider"
+                          value={insuranceProvider}
+                          onChange={(e) => setInsuranceProvider(e.target.value)}
+                          placeholder="e.g., Blue Cross Blue Shield"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="policy-number">Policy/Member ID</Label>
+                        <Input
+                          id="policy-number"
+                          value={insurancePolicyNumber}
+                          onChange={(e) => setInsurancePolicyNumber(e.target.value)}
+                          placeholder="Policy or Member ID number"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="group-number">Group Number</Label>
+                        <Input
+                          id="group-number"
+                          value={insuranceGroupNumber}
+                          onChange={(e) => setInsuranceGroupNumber(e.target.value)}
+                          placeholder="Group number (if applicable)"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="insurance-notes">Additional Insurance Notes</Label>
+                      <Textarea
+                        id="insurance-notes"
+                        value={insuranceNotes}
+                        onChange={(e) => setInsuranceNotes(e.target.value)}
+                        placeholder="Any additional insurance information or notes..."
+                        className="min-h-[80px] mt-1"
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                {insuranceMode === 'screenshot' && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="insurance-card">Insurance Card Screenshot</Label>
+                      <Input
+                        id="insurance-card"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleInsuranceFileSelect}
+                        className="mt-1"
+                      />
+                      <p className="text-sm text-gray-500 mt-1">
+                        Upload a clear photo of the front and/or back of the insurance card
+                      </p>
+                    </div>
+                    
+                    {insurancePreviewUrl && (
+                      <div className="space-y-2">
+                        <Label>Preview</Label>
+                        <div className="border rounded-lg p-4 bg-gray-50">
+                          <img
+                            src={insurancePreviewUrl}
+                            alt="Insurance card preview"
+                            className="max-w-full h-auto max-h-64 object-contain mx-auto"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {insuranceFile && (
+                      <Button 
+                        onClick={handleExtractInsuranceData}
+                        disabled={extractInsuranceDataMutation.isPending}
+                        className="w-full"
+                      >
+                        {extractInsuranceDataMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Extracting Insurance Information...
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Extract Insurance Information
+                          </>
+                        )}
+                      </Button>
+                    )}
+
+                    {(insuranceProvider || insurancePolicyNumber || insuranceGroupNumber) && (
+                      <div className="space-y-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <Label className="text-blue-800">Extracted Insurance Information</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                          {insuranceProvider && (
+                            <div>
+                              <span className="font-medium">Provider:</span> {insuranceProvider}
+                            </div>
+                          )}
+                          {insurancePolicyNumber && (
+                            <div>
+                              <span className="font-medium">Policy ID:</span> {insurancePolicyNumber}
+                            </div>
+                          )}
+                          {insuranceGroupNumber && (
+                            <div>
+                              <span className="font-medium">Group:</span> {insuranceGroupNumber}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 3: Review & Edit Patient Data */}
         {extractedData && editableData && (
           <Card>
             <CardHeader>
@@ -567,7 +812,7 @@ export default function MedicalDatabaseExtraction() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Send className="h-5 w-5" />
-                Step 3: Create Patient Record
+                Step 4: Create Patient Record
               </CardTitle>
               <CardDescription>
                 Create a new patient record using the Screenshot Patient Creator automation
@@ -606,7 +851,7 @@ export default function MedicalDatabaseExtraction() {
           </Card>
         )}
 
-        {/* Step 4: Results */}
+        {/* Step 5: Results */}
         {chainRunId && (
           <Card className="border-green-200 bg-green-50">
             <CardHeader>
