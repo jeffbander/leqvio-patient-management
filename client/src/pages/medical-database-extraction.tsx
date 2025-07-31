@@ -44,7 +44,7 @@ export default function MedicalDatabaseExtraction() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [extractedData, setExtractedData] = useState<ExtractedPatientData | null>(null)
   const [editableData, setEditableData] = useState<ExtractedPatientData | null>(null)
-  const [selectedChain] = useState<string>('Screenshot_Patient_Creator')
+  const [selectedChain] = useState<string>('leqvio')
   const [sourceId, setSourceId] = useState<string>('')
   const [isManualSourceId, setIsManualSourceId] = useState<boolean>(false)
   const [additionalNotes] = useState<string>('')
@@ -453,10 +453,10 @@ export default function MedicalDatabaseExtraction() {
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="font-medium text-blue-800">Screenshot Patient Creator</span>
+                  <span className="font-medium text-blue-800">Leqvio</span>
                 </div>
                 <p className="text-sm text-blue-700">
-                  This automation will create a new patient record using the extracted information from your medical database screenshot.
+                  This automation will process the patient information using the Leqvio chain workflow.
                 </p>
               </div>
 
