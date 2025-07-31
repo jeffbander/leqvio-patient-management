@@ -809,7 +809,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // For testing with blank forms, add sample data if no fields were extracted
-        if (!extractedData.patient_first_name && !extractedData.patient_last_name && !extractedData.patient_sex) {
+        const hasNoData = !extractedData.patient_first_name && !extractedData.patient_last_name && 
+                          !extractedData.patient_sex && !extractedData.provider_name;
+        
+        console.log("Checking if sample data needed:", {
+          firstName: extractedData.patient_first_name,
+          lastName: extractedData.patient_last_name, 
+          sex: extractedData.patient_sex,
+          provider: extractedData.provider_name,
+          needsSampleData: hasNoData
+        });
+        
+        if (hasNoData) {
           console.log("No data extracted from PDF - adding sample data to demonstrate field mapping");
           extractedData.patient_first_name = "John";
           extractedData.patient_last_name = "Doe";
