@@ -77,9 +77,27 @@ export default function MedicalDatabaseExtraction() {
       setExtractedClinicalData(data.extractedData?.rawData || '')
       setClinicalNotes(data.extractedData?.rawData || '')
       
+      // Try to parse patient data from LEQVIO form
+      const rawData = data.extractedData?.rawData || ''
+      const parsedPatientData = parsePatientDataFromLeqvioForm(rawData)
+      
+      if (parsedPatientData && Object.keys(parsedPatientData).length > 0) {
+        setExtractedData(parsedPatientData)
+        setEditableData({ ...parsedPatientData })
+        
+        // Auto-generate source ID if we have name and DOB
+        if (parsedPatientData.patient_first_name && parsedPatientData.patient_last_name && parsedPatientData.patient_dob) {
+          const firstName = parsedPatientData.patient_first_name.replace(/\s+/g, '_')
+          const lastName = parsedPatientData.patient_last_name.replace(/\s+/g, '_')
+          const dobFormatted = parsedPatientData.patient_dob.replace(/[\/\-]/g, '_')
+          const autoSourceId = `${lastName}_${firstName}__${dobFormatted}`
+          setSourceId(autoSourceId)
+        }
+      }
+      
       toast({
-        title: "Clinical data extracted successfully",
-        description: "Review and edit the clinical information as needed."
+        title: "LEQVIO form processed successfully",
+        description: "Patient data extracted from form. Review and edit as needed."
       })
     },
     onError: (error) => {
@@ -263,6 +281,49 @@ export default function MedicalDatabaseExtraction() {
     }
   }
 
+  // Parse patient data from LEQVIO form raw text
+  const parsePatientDataFromLeqvioForm = (rawData: string): ExtractedPatientData | null => {
+    if (!rawData) return null
+    
+    try {
+      // Extract common patterns from LEQVIO form data
+      const data: Partial<ExtractedPatientData> = {}
+      
+      // Name extraction patterns
+      const firstNameMatch = rawData.match(/First Name:\s*([^\n]+)/i)
+      const lastNameMatch = rawData.match(/Last Name:\s*([^\n]+)/i)
+      
+      if (firstNameMatch) data.patient_first_name = firstNameMatch[1].trim()
+      if (lastNameMatch) data.patient_last_name = lastNameMatch[1].trim()
+      
+      // Date of birth pattern
+      const dobMatch = rawData.match(/Date of Birth:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i) ||
+                      rawData.match(/DOB:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i)
+      if (dobMatch) data.patient_dob = dobMatch[1]
+      
+      // Phone number pattern
+      const phoneMatch = rawData.match(/Phone[^\d]*(\(\d{3}\)\s*\d{3}-\d{4}|\d{3}-\d{3}-\d{4}|\d{10})/i)
+      if (phoneMatch) data.patient_phone = phoneMatch[1]
+      
+      // Email pattern
+      const emailMatch = rawData.match(/Email:\s*([^\s\n]+@[^\s\n]+)/i)
+      if (emailMatch) data.patient_email = emailMatch[1]
+      
+      // Address pattern
+      const addressMatch = rawData.match(/Address:\s*([^\n]+)/i)
+      if (addressMatch) data.patient_address = addressMatch[1].trim()
+      
+      // Sex/Gender pattern
+      const sexMatch = rawData.match(/Sex:\s*(Male|Female)/i)
+      if (sexMatch) data.patient_gender = sexMatch[1]
+      
+      return Object.keys(data).length > 0 ? data as ExtractedPatientData : null
+    } catch (error) {
+      console.error('Error parsing LEQVIO form data:', error)
+      return null
+    }
+  }
+
   const handleTriggerChain = () => {
     if (editableData && selectedChain) {
       triggerChainMutation.mutate()
@@ -347,97 +408,79 @@ export default function MedicalDatabaseExtraction() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Patient Data Processing</h1>
-        <p className="text-gray-600">Extract patient information from medical database screenshots or manually enter patient data to create new patient records.</p>
+        <p className="text-gray-600">Upload LEQVIO Service Center Start Forms to extract patient information and create new patient records with leqvio chain automation.</p>
       </div>
 
       <div className="grid gap-6">
-        {/* Entry Mode Selection */}
+        {/* Step 1: LEQVIO Form Upload */}
         <Card>
           <CardHeader>
-            <CardTitle>Choose Entry Method</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              Step 1: LEQVIO Form Upload
+            </CardTitle>
             <CardDescription>
-              Select how you want to add patient information
+              Upload the completed LEQVIO Service Center Start Form to extract patient information
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex gap-2">
-                <Button 
-                  variant={entryMode === 'screenshot' ? 'default' : 'outline'}
-                  onClick={() => setEntryMode('screenshot')}
-                  className="flex items-center gap-2"
-                >
-                  <Upload className="h-4 w-4" />
-                  Screenshot Upload
-                </Button>
-                <Button 
-                  variant={entryMode === 'manual' ? 'default' : 'outline'}
-                  onClick={() => setEntryMode('manual')}
-                  className="flex items-center gap-2"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  Manual Entry
-                </Button>
+              <div>
+                <Label htmlFor="leqvio-form">LEQVIO Form Upload</Label>
+                <Input
+                  id="leqvio-form"
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp"
+                  onChange={handleClinicalFileSelect}
+                  className="mt-1"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Upload the completed LEQVIO form (PDF) or image to extract patient data
+                </p>
               </div>
               
-              {entryMode === 'screenshot' && (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="screenshot">Choose Screenshot</Label>
-                    <Input
-                      id="screenshot"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileSelect}
-                      className="mt-1"
+              {clinicalPreviewUrl && (
+                <div className="space-y-2">
+                  <Label>Preview</Label>
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <img
+                      src={clinicalPreviewUrl}
+                      alt="LEQVIO form preview"
+                      className="max-w-full h-auto max-h-64 object-contain mx-auto"
                     />
                   </div>
-                  
-                  {previewUrl && (
-                    <div className="space-y-2">
-                      <Label>Preview</Label>
-                      <div className="border rounded-lg p-4 bg-gray-50">
-                        <img
-                          src={previewUrl}
-                          alt="Screenshot preview"
-                          className="max-w-full h-auto max-h-96 object-contain mx-auto"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <Button 
-                    onClick={handleExtractData}
-                    disabled={!selectedFile || extractDataMutation.isPending}
-                    className="w-full"
-                  >
-                    {extractDataMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Extracting Patient Data...
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="mr-2 h-4 w-4" />
-                        Extract Patient Data
-                      </>
-                    )}
-                  </Button>
                 </div>
               )}
-              
-              {entryMode === 'manual' && (
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600">
-                    Start with a blank form to manually enter patient information
-                  </p>
-                  <Button 
-                    onClick={startManualEntry}
-                    className="w-full"
-                  >
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Start Manual Patient Entry
-                  </Button>
+
+              {clinicalFormFile && (
+                <Button 
+                  onClick={handleExtractClinicalData}
+                  disabled={extractClinicalDataMutation.isPending}
+                  className="w-full"
+                >
+                  {extractClinicalDataMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing LEQVIO Form...
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Extract Patient Data from LEQVIO Form
+                    </>
+                  )}
+                </Button>
+              )}
+
+              {extractedClinicalData && (
+                <div className="space-y-2">
+                  <Label>Extracted Form Information</Label>
+                  <Textarea
+                    value={clinicalNotes}
+                    onChange={(e) => setClinicalNotes(e.target.value)}
+                    className="min-h-[120px]"
+                    placeholder="Review and edit extracted LEQVIO form information..."
+                  />
                 </div>
               )}
             </div>
@@ -516,82 +559,7 @@ export default function MedicalDatabaseExtraction() {
           </Card>
         )}
 
-        {/* Step 3: Clinical Data Entry */}
-        {editableData && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ClipboardList className="h-5 w-5" />
-                Step 3: LEQVIO Form Upload
-              </CardTitle>
-              <CardDescription>
-                Upload and process the LEQVIO form for this patient
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="clinical-form">LEQVIO Form Upload</Label>
-                  <Input
-                    id="clinical-form"
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp"
-                    onChange={handleClinicalFileSelect}
-                    className="mt-1"
-                  />
-                  <p className="text-sm text-gray-500 mt-1">
-                    Upload the completed LEQVIO form (PDF) or image
-                  </p>
-                </div>
-                
-                {clinicalPreviewUrl && (
-                  <div className="space-y-2">
-                    <Label>Preview</Label>
-                    <div className="border rounded-lg p-4 bg-gray-50">
-                      <img
-                        src={clinicalPreviewUrl}
-                        alt="Clinical form preview"
-                        className="max-w-full h-auto max-h-64 object-contain mx-auto"
-                      />
-                    </div>
-                  </div>
-                )}
 
-                {clinicalFormFile && (
-                  <Button 
-                    onClick={handleExtractClinicalData}
-                    disabled={extractClinicalDataMutation.isPending}
-                    className="w-full"
-                  >
-                    {extractClinicalDataMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing Form...
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="mr-2 h-4 w-4" />
-                        Process LEQVIO Form
-                      </>
-                    )}
-                  </Button>
-                )}
-
-                {extractedClinicalData && (
-                  <div className="space-y-2">
-                    <Label>Extracted Clinical Information</Label>
-                    <Textarea
-                      value={clinicalNotes}
-                      onChange={(e) => setClinicalNotes(e.target.value)}
-                      className="min-h-[120px]"
-                      placeholder="Review and edit extracted clinical information..."
-                    />
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Step 4: Create Patient */}
         {editableData && (
@@ -599,7 +567,7 @@ export default function MedicalDatabaseExtraction() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Send className="h-5 w-5" />
-                Step 4: Create Patient Record
+                Step 3: Create Patient Record
               </CardTitle>
               <CardDescription>
                 Create a new patient record using the Screenshot Patient Creator automation
@@ -638,7 +606,7 @@ export default function MedicalDatabaseExtraction() {
           </Card>
         )}
 
-        {/* Step 5: Results */}
+        {/* Step 4: Results */}
         {chainRunId && (
           <Card className="border-green-200 bg-green-50">
             <CardHeader>
