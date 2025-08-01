@@ -1304,30 +1304,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      // Prepare Clinical_json from clinical documents
+      // Prepare Clinical_json from clinical documents as plain text
       const clinicalDocuments = documents.filter(doc => 
         doc.documentType === 'epic_screenshot' || 
         doc.documentType === 'clinical_note' ||
         doc.documentType === 'leqvio_form'
       );
       
-      const Clinical_json = {
-        extractedData: clinicalDocuments.map(doc => ({
-          documentType: doc.documentType,
-          fileName: doc.fileName,
-          extractedData: doc.extractedData ? JSON.parse(doc.extractedData) : null,
-          metadata: doc.metadata,
-          uploadedAt: doc.createdAt
-        })),
-        patientInfo: {
-          firstName: patient.firstName,
-          lastName: patient.lastName,
-          dateOfBirth: patient.dateOfBirth,
-          orderingMD: patient.orderingMD,
-          diagnosis: patient.diagnosis,
-          status: patient.status
-        }
-      };
+      // Build clinical information as a readable text summary
+      let clinicalText = `Patient Clinical Information:\n`;
+      clinicalText += `Name: ${patient.firstName} ${patient.lastName}\n`;
+      clinicalText += `Date of Birth: ${patient.dateOfBirth}\n`;
+      clinicalText += `Ordering MD: ${patient.orderingMD}\n`;
+      clinicalText += `Diagnosis: ${patient.diagnosis}\n`;
+      clinicalText += `Status: ${patient.status}\n\n`;
+      
+      if (clinicalDocuments.length > 0) {
+        clinicalText += `Clinical Documents (${clinicalDocuments.length}):\n`;
+        clinicalDocuments.forEach((doc, index) => {
+          clinicalText += `${index + 1}. Document: ${doc.fileName}\n`;
+          clinicalText += `   Type: ${doc.documentType}\n`;
+          clinicalText += `   Uploaded: ${new Date(doc.createdAt).toLocaleDateString()}\n`;
+          
+          // Add extracted data if available
+          if (doc.extractedData) {
+            try {
+              const extracted = JSON.parse(doc.extractedData);
+              if (typeof extracted === 'object') {
+                clinicalText += `   Extracted Information:\n`;
+                Object.entries(extracted).forEach(([key, value]) => {
+                  if (value && typeof value === 'string' && value.trim()) {
+                    clinicalText += `     ${key}: ${value}\n`;
+                  }
+                });
+              } else if (typeof extracted === 'string') {
+                clinicalText += `   Content: ${extracted}\n`;
+              }
+            } catch (e) {
+              // If not JSON, treat as plain text
+              clinicalText += `   Content: ${doc.extractedData}\n`;
+            }
+          }
+          clinicalText += `\n`;
+        });
+      } else {
+        clinicalText += `No clinical documents uploaded.\n`;
+      }
+      
+      const Clinical_json = clinicalText;
 
       // Generate unique ID for tracking
       const uniqueId = `leqvio_app_${patient.id}_${Date.now()}`;
