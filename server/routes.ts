@@ -114,9 +114,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Production agent webhook endpoint
   app.post("/webhook/agents", async (req, res) => {
     try {
-      const { chainRunId, agentResponse, agentName, timestamp } = req.body;
+      const payload = req.body || {};
       
-      console.log('Agent webhook received:', { chainRunId, agentName, timestamp });
+      // Handle AIGENTS field names
+      const chainRunId = payload.chainRunId || payload["Chain Run ID"] || payload.ChainRun_ID;
+      const agentResponse = payload.agentResponse || payload.output || payload.response;
+      const agentName = payload.agentName || payload.agent_name || 'AIGENTS System';
+      
+      console.log('Agent webhook received:', { 
+        chainRunId, 
+        hasResponse: !!agentResponse,
+        agentName 
+      });
       
       if (!chainRunId) {
         return res.status(400).json({ error: "chainRunId is required" });
@@ -125,8 +134,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.updateAutomationLogWithAgentResponse(
         chainRunId,
         agentResponse || 'No response content',
-        agentName || 'Agent',
-        req.body
+        agentName,
+        payload
       );
 
       if (result) {
