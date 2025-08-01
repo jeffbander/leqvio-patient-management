@@ -1417,7 +1417,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate unique ID for tracking
       const uniqueId = `leqvio_app_${patient.id}_${Date.now()}`;
       
-      // Prepare AIGENTS payload - using the correct format from API documentation
+      // Extract primary insurance from documents to populate fields
+      let extractedPrimaryInsurance = patient.primaryInsurance || '';
+      let extractedPrimaryPlan = patient.primaryPlan || '';
+      let extractedPrimaryNumber = patient.primaryInsuranceNumber || '';
+      let extractedPrimaryGroupId = patient.primaryGroupId || '';
+      let extractedSecondaryInsurance = patient.secondaryInsurance || '';
+      let extractedSecondaryPlan = patient.secondaryPlan || '';
+      let extractedSecondaryNumber = patient.secondaryInsuranceNumber || '';
+      let extractedSecondaryGroupId = patient.secondaryGroupId || '';
+
+      // Check if we have extracted insurance data to use
+      if (insuranceDocuments.length > 0) {
+        for (const doc of insuranceDocuments) {
+          if (doc.extractedData) {
+            try {
+              const extracted = JSON.parse(doc.extractedData);
+              
+              // Handle Epic insurance screenshot format
+              if (extracted.primary) {
+                if (extracted.primary.payer && !extractedPrimaryInsurance) {
+                  extractedPrimaryInsurance = extracted.primary.payer;
+                }
+                if (extracted.primary.plan && !extractedPrimaryPlan) {
+                  extractedPrimaryPlan = extracted.primary.plan;
+                }
+                if (extracted.primary.subscriberId && !extractedPrimaryNumber) {
+                  extractedPrimaryNumber = extracted.primary.subscriberId;
+                }
+                if (extracted.primary.groupNumber && !extractedPrimaryGroupId) {
+                  extractedPrimaryGroupId = extracted.primary.groupNumber;
+                }
+                
+                // Secondary insurance if available
+                if (extracted.secondary && extracted.secondary.payer) {
+                  if (!extractedSecondaryInsurance) extractedSecondaryInsurance = extracted.secondary.payer;
+                  if (!extractedSecondaryPlan) extractedSecondaryPlan = extracted.secondary.plan || '';
+                  if (!extractedSecondaryNumber) extractedSecondaryNumber = extracted.secondary.subscriberId || '';
+                  if (!extractedSecondaryGroupId) extractedSecondaryGroupId = extracted.secondary.groupNumber || '';
+                }
+              }
+              // Handle insurance card format
+              else if (extracted.insurer) {
+                if (extracted.insurer.name && !extractedPrimaryInsurance) {
+                  extractedPrimaryInsurance = extracted.insurer.name;
+                }
+                if (extracted.insurer.plan_name && !extractedPrimaryPlan) {
+                  extractedPrimaryPlan = extracted.insurer.plan_name;
+                }
+                if (extracted.member.member_id && !extractedPrimaryNumber) {
+                  extractedPrimaryNumber = extracted.member.member_id;
+                }
+                if (extracted.insurer.group_number && !extractedPrimaryGroupId) {
+                  extractedPrimaryGroupId = extracted.insurer.group_number;
+                }
+              }
+            } catch (e) {
+              // Skip if can't parse JSON
+            }
+          }
+        }
+      }
+
+      // Combine clinical and insurance document information into clinical info text
+      let combinedClinicalInfo = `Patient Clinical Information:\n`;
+      combinedClinicalInfo += `Name: ${patient.firstName} ${patient.lastName}\n`;
+      combinedClinicalInfo += `Date of Birth: ${patient.dateOfBirth}\n`;
+      combinedClinicalInfo += `Ordering MD: ${patient.orderingMD}\n`;
+      combinedClinicalInfo += `Diagnosis: ${patient.diagnosis}\n`;
+      combinedClinicalInfo += `Status: ${patient.status}\n\n`;
+      
+      if (clinicalDocuments.length > 0) {
+        combinedClinicalInfo += `Clinical Documents (${clinicalDocuments.length}):\n`;
+        clinicalDocuments.forEach((doc, index) => {
+          combinedClinicalInfo += `${index + 1}. Document: ${doc.fileName}\n`;
+          combinedClinicalInfo += `   Type: ${doc.documentType}\n`;
+          combinedClinicalInfo += `   Uploaded: ${new Date(doc.createdAt).toLocaleDateString()}\n`;
+          
+          if (doc.extractedData) {
+            try {
+              const extracted = JSON.parse(doc.extractedData);
+              if (typeof extracted === 'object') {
+                combinedClinicalInfo += `   Extracted Information:\n`;
+                Object.entries(extracted).forEach(([key, value]) => {
+                  if (value && typeof value === 'string' && value.trim()) {
+                    combinedClinicalInfo += `     ${key}: ${value}\n`;
+                  }
+                });
+              } else if (typeof extracted === 'string') {
+                combinedClinicalInfo += `   Content: ${extracted}\n`;
+              }
+            } catch (e) {
+              combinedClinicalInfo += `   Content: ${doc.extractedData}\n`;
+            }
+          }
+          combinedClinicalInfo += `\n`;
+        });
+      }
+      
+      if (insuranceDocuments.length > 0) {
+        combinedClinicalInfo += `Insurance Documents (${insuranceDocuments.length}):\n`;
+        insuranceDocuments.forEach((doc, index) => {
+          combinedClinicalInfo += `${index + 1}. Document: ${doc.fileName}\n`;
+          combinedClinicalInfo += `   Type: ${doc.documentType}\n`;
+          combinedClinicalInfo += `   Uploaded: ${new Date(doc.createdAt).toLocaleDateString()}\n`;
+          
+          if (doc.extractedData) {
+            try {
+              const extracted = JSON.parse(doc.extractedData);
+              if (extracted.primary) {
+                combinedClinicalInfo += `   Extracted Primary Insurance:\n`;
+                if (extracted.primary.payer) combinedClinicalInfo += `     Payer: ${extracted.primary.payer}\n`;
+                if (extracted.primary.plan) combinedClinicalInfo += `     Plan: ${extracted.primary.plan}\n`;
+                if (extracted.primary.subscriberId) combinedClinicalInfo += `     Subscriber ID: ${extracted.primary.subscriberId}\n`;
+                if (extracted.primary.subscriberName) combinedClinicalInfo += `     Subscriber Name: ${extracted.primary.subscriberName}\n`;
+                if (extracted.primary.groupNumber) combinedClinicalInfo += `     Group Number: ${extracted.primary.groupNumber}\n`;
+                if (extracted.primary.subscriberAddress) combinedClinicalInfo += `     Address: ${extracted.primary.subscriberAddress}\n`;
+              } else if (extracted.insurer) {
+                combinedClinicalInfo += `   Extracted Insurance Card Data:\n`;
+                if (extracted.insurer.name) combinedClinicalInfo += `     Insurance Company: ${extracted.insurer.name}\n`;
+                if (extracted.insurer.plan_name) combinedClinicalInfo += `     Plan: ${extracted.insurer.plan_name}\n`;
+                if (extracted.member.member_id) combinedClinicalInfo += `     Member ID: ${extracted.member.member_id}\n`;
+                if (extracted.member.subscriber_name) combinedClinicalInfo += `     Subscriber: ${extracted.member.subscriber_name}\n`;
+              }
+            } catch (e) {
+              combinedClinicalInfo += `   Content: ${doc.extractedData}\n`;
+            }
+          }
+          combinedClinicalInfo += `\n`;
+        });
+      }
+
+      // Prepare simplified AIGENTS payload with extracted insurance data mapped to fields
       const aigentsPayload = {
         run_email: "jeffrey.Bander@providerloop.com",
         chain_to_run: "LEQVIO_app",
@@ -1425,14 +1556,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         source_id: `${patient.lastName}_${patient.firstName}__${patient.dateOfBirth?.replace(/-/g, '_')}`,
         first_step_user_input: "",
         starting_variables: {
-          patient_data: {
-            ...patient,
-            Insurance_JSON: Insurance_JSON,
-            Clinical_json: Clinical_json
-          },
-          patient_id: patient.id.toString(),
-          timestamp: new Date().toISOString(),
-          unique_id: uniqueId
+          Patient_ID: patient.id.toString(),
+          Patient_FirstName: patient.firstName,
+          Patient_LastName: patient.lastName,
+          Patient_DOB: patient.dateOfBirth,
+          Patient_Email: patient.email || '',
+          Patient_Home_Phone: '', // We don't distinguish between home/cell in current schema
+          Patient_Cell_Phone: patient.phone || '',
+          Patient_Address: patient.address || '',
+          Ordering_MD: patient.orderingMD,
+          Patient_Diagnosis: patient.diagnosis,
+          Patient_Primary_Insurance: extractedPrimaryInsurance,
+          Patient_Primary_Plan: extractedPrimaryPlan,
+          Patient_Primary_Insurance_Number: extractedPrimaryNumber,
+          Patient_Primary_Group_ID: extractedPrimaryGroupId,
+          Patient_Secondary_Insurance: extractedSecondaryInsurance,
+          Patient_Secondary_Plan: extractedSecondaryPlan,
+          Patient_Secondary_Insurance_Number: extractedSecondaryNumber,
+          Patient_Secondary_Group_ID: extractedSecondaryGroupId,
+          Patient_Clinical_Info: combinedClinicalInfo
         }
       };
 
