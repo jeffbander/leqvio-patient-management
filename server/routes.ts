@@ -131,8 +131,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Accept any payload and try to extract what we can
       const payload = req.body || {};
       
-      // Try multiple possible field names for chainRunId
-      const chainRunId = payload.chainRunId || payload.ChainRunId || payload.chainrun_id || payload.chain_run_id || payload['Chain Run ID'];
+      // Try multiple possible field names for chainRunId (including AIGENTS format)
+      const chainRunId = payload.chainRunId || payload.ChainRunId || payload.chainrun_id || 
+                        payload.chain_run_id || payload['Chain Run ID'] || payload.ChainRun_ID ||
+                        payload['ChainRun_ID'] || payload.chain_run_id;
       
       // Try multiple possible field names for response content
       const responseContent = payload.agentResponse || payload.summ || payload.response || payload.content || payload.message;
@@ -1358,14 +1360,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const aigentsResult = await aigentsResponse.json();
       console.log('AIGENTS Response Body:', JSON.stringify(aigentsResult, null, 2));
       
-      // Log the automation for tracking
+      // Extract the AIGENTS Chain Run ID from the response
+      let chainRunId = '';
+      if (aigentsResult.batchResults && aigentsResult.batchResults[0] && 
+          aigentsResult.batchResults[0].data && aigentsResult.batchResults[0].data.Rows && 
+          aigentsResult.batchResults[0].data.Rows[0]) {
+        chainRunId = aigentsResult.batchResults[0].data.Rows[0].ChainRun_ID || '';
+      }
+      
+      console.log('AIGENTS Chain Run ID:', chainRunId);
+      
+      // Log the automation for tracking with the AIGENTS chain run ID
       await storage.createAutomationLog({
         chainName: 'leqvio',
         email: patient.email || 'noemail@providerloop.com',
         status: 'triggered',
         response: JSON.stringify(aigentsResult),
         requestData: aigentsPayload,
-        uniqueId: uniqueId,
+        uniqueId: chainRunId || uniqueId, // Use AIGENTS chain run ID as the tracking ID
         timestamp: new Date()
       });
 
@@ -1374,6 +1386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         success: true, 
         message: 'Patient data processed and sent to AIGENTS',
+        chainRunId: chainRunId,
         uniqueId: uniqueId,
         documentsProcessed: {
           insurance: insuranceDocuments.length,
