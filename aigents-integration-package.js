@@ -18,10 +18,50 @@ const setupAIGENTSRoutes = (app, storage) => {
 
     try {
       const payload = req.body;
-      const chainRunId = payload["Chain Run ID"] || payload.chainRunId;
-      const agentResponse = payload.agentResponse || payload.summ || 
-                           payload["Pre Pre Chart V2"] || "Response received";
-      const agentName = payload.agentName || "AIGENTS System";
+      const chainRunId = payload["Chain Run ID"] || payload.chainRunId || payload.ChainRun_ID;
+      
+      // Enhanced response data extraction - try multiple common field names
+      let agentResponse = "Webhook received (no response content)";
+      const responseFields = [
+        'agentResponse', 'summ', 'summary', 'response', 'content', 'result', 'output',
+        'Pre Pre Chart V2', 'Pre_Pre_Chart_V2', 'chainOutput', 'automationResult',
+        'Chain_Output', 'Run_Output', 'Final_Output', 'Generated_Content',
+        'Patient_Summary', 'Clinical_Summary', 'Analysis_Result', 'Processing_Result'
+      ];
+      
+      // Try to find response data in any of these fields
+      for (const field of responseFields) {
+        if (payload[field] && payload[field].toString().trim() && 
+            payload[field] !== "null" && payload[field] !== "undefined") {
+          agentResponse = payload[field];
+          console.log(`[AIGENTS-WEBHOOK-${requestId}] Found response data in field: ${field}`);
+          break;
+        }
+      }
+      
+      // If still no response found, collect all non-empty string fields as potential responses
+      if (agentResponse === "Webhook received (no response content)") {
+        const potentialResponses = [];
+        Object.entries(payload).forEach(([key, value]) => {
+          if (typeof value === 'string' && value.trim() && value.length > 10 && 
+              !key.toLowerCase().includes('id') && !key.toLowerCase().includes('date') &&
+              !key.toLowerCase().includes('time') && !key.toLowerCase().includes('email')) {
+            potentialResponses.push(`${key}: ${value}`);
+          }
+        });
+        
+        if (potentialResponses.length > 0) {
+          agentResponse = potentialResponses.join('\n\n');
+          console.log(`[AIGENTS-WEBHOOK-${requestId}] Using combined response from ${potentialResponses.length} fields`);
+        }
+      }
+      
+      const agentName = payload.agentName || payload.Agent_Name || payload.agent || "AIGENTS System";
+      
+      // Log all received fields for debugging
+      console.log(`[AIGENTS-WEBHOOK-${requestId}] All received fields:`, Object.keys(payload));
+      console.log(`[AIGENTS-WEBHOOK-${requestId}] Chain Run ID: ${chainRunId}`);
+      console.log(`[AIGENTS-WEBHOOK-${requestId}] Agent Response Length: ${agentResponse.length} chars`);
 
       if (!chainRunId) {
         return res.status(400).json({ error: "Chain Run ID is required" });

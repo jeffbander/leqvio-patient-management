@@ -1,212 +1,104 @@
-# Webhook Examples and Testing
+# AIGENTS Webhook Configuration Guide
 
-## Testing Your Webhook
+## Current Issue
+Your AIGENTS chain is sending webhooks but without detailed response data. Here's how to configure it to include comprehensive results.
 
-### Using curl
-```bash
-# Test with research chain data
-curl -X POST "https://your-project.replit.app/webhook/agents" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "Chain Run ID": "test-123",
-    "summ": "This is a test research summary",
-    "Current ISO DateTime": "2025-06-23T02:00:00Z"
-  }'
+## Enhanced Webhook Handler
+✅ **Updated**: The webhook handler now tries to capture response data from these fields:
+- `agentResponse`, `summ`, `summary`, `response`, `content`, `result`, `output`
+- `Pre Pre Chart V2`, `Pre_Pre_Chart_V2`, `chainOutput`, `automationResult`  
+- `Chain_Output`, `Run_Output`, `Final_Output`, `Generated_Content`
+- `Patient_Summary`, `Clinical_Summary`, `Analysis_Result`, `Processing_Result`
 
-# Test with pre pre chart data
-curl -X POST "https://your-project.replit.app/webhook/agents" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "Chain Run ID": "chart-456",
-    "Pre Pre Chart V2": "Quality control feedback",
-    "Pre Pre Chart V3": "Final corrected chart",
-    "pre_pre_output": "Detailed patient summary",
-    "Current ISO DateTime": "2025-06-23T02:00:00Z"
-  }'
-```
+## AIGENTS Configuration Steps
 
-### Expected Response
-```json
-{
-  "message": "Agent response processed successfully",
-  "chainRunId": "test-123",
-  "status": "success",
-  "timestamp": "2025-06-23T02:00:00Z",
-  "receivedFields": ["Chain Run ID", "summ", "Current ISO DateTime"],
-  "receivedFields_0": "Chain Run ID",
-  "chain_run_id": "test-123",
-  "receivedFields_1": "summ", 
-  "summ": "This is a test research summary",
-  "receivedFields_2": "Current ISO DateTime",
-  "current_iso_datetime": "2025-06-23T02:00:00Z"
-}
-```
-
-## Example Payloads by Chain Type
-
-### Research Chain
-```json
-{
-  "Chain Run ID": "research-001",
-  "summ": "Comprehensive analysis of market trends shows 15% growth in Q4 with primary drivers being increased consumer spending and supply chain improvements.",
-  "Current ISO DateTime": "2025-06-23T14:30:00Z"
-}
-```
-
-### Pre Pre Chart Chain
-```json
-{
-  "Chain Run ID": "chart-002", 
-  "Pre Pre Chart V2": "Review needed: Medication dosage should be verified against patient weight. Consider drug interactions with current prescriptions.",
-  "Pre Pre Chart V3": "Patient: Smith, John (MRN: 123456)\n- Last visit: 2025-06-20\n- Current medications: Verified and updated\n- Next appointment: 2025-07-01",
-  "pre_pre_output": "Complete chart review completed. All medications verified, no contraindications found. Patient education provided regarding new treatment plan.",
-  "Current ISO DateTime": "2025-06-23T14:30:00Z"
-}
-```
-
-### Custom Business Process Chain
-```json
-{
-  "Chain Run ID": "process-003",
-  "approval_status": "approved",
-  "processed_documents": "Contract_v2.pdf, Amendment_A.pdf",
-  "final_output": "All documents reviewed and approved. Legal team sign-off complete. Ready for execution.",
-  "reviewer_notes": "Standard contract terms verified. Amendment addresses scope changes appropriately.",
-  "Current ISO DateTime": "2025-06-23T14:30:00Z"
-}
-```
-
-### Educational Content Chain
-```json
-{
-  "Chain Run ID": "edu-004",
-  "lesson_summary": "Introduction to Machine Learning concepts including supervised, unsupervised, and reinforcement learning paradigms.",
-  "key_concepts": "Neural networks, decision trees, clustering algorithms, feature engineering",
-  "assessment_ready": "true",
-  "content_level": "intermediate",
-  "Current ISO DateTime": "2025-06-23T14:30:00Z"
-}
-```
-
-## Integration Examples
-
-### Python Integration
-```python
-import requests
-import json
-from datetime import datetime
-
-def send_automation_result(chain_id, result_data):
-    webhook_url = "https://your-project.replit.app/webhook/agents"
-    
-    payload = {
-        "Chain Run ID": chain_id,
-        "Current ISO DateTime": datetime.now().isoformat() + "Z",
-        **result_data  # Add your custom fields
-    }
-    
-    response = requests.post(
-        webhook_url,
-        headers={"Content-Type": "application/json"},
-        data=json.dumps(payload)
-    )
-    
-    return response.json()
-
-# Usage example
-result = send_automation_result("py-test-001", {
-    "analysis_result": "Data processing complete",
-    "confidence_score": "0.95",
-    "recommendations": "Implement suggested changes"
-})
-```
-
-### JavaScript/Node.js Integration
-```javascript
-async function sendWebhookResult(chainId, resultData) {
-    const webhookUrl = "https://your-project.replit.app/webhook/agents";
-    
-    const payload = {
-        "Chain Run ID": chainId,
-        "Current ISO DateTime": new Date().toISOString(),
-        ...resultData
-    };
-    
-    const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-    });
-    
-    return await response.json();
-}
-
-// Usage example
-const result = await sendWebhookResult("js-test-001", {
-    processing_status: "completed",
-    output_file: "results_2025-06-23.csv", 
-    summary: "1,247 records processed successfully"
-});
-```
-
-### AppSheet Integration
-Set up AppSheet to call your webhook URL with automation results:
+### 1. Chain Output Configuration
+In your **LEQVIO_app** chain settings:
 
 ```
-Webhook URL: https://your-project.replit.app/webhook/agents
+Chain Settings → Output Configuration:
+☑️ Include Chain Output in Webhook
+☑️ Include Step Outputs in Webhook
+☑️ Include Variables in Webhook
+☑️ Include AI Generated Content in Webhook
+```
+
+### 2. Webhook URL Setup
+Set your webhook endpoint to:
+```
+https://your-replit-app.replit.app/webhook/agents
 Method: POST
-Headers: Content-Type: application/json
-Body Template:
+Content-Type: application/json
+```
+
+### 3. Response Field Mapping
+Configure AIGENTS to send response data in these fields:
+
+**Option A - Standard Fields:**
+```json
 {
-  "Chain Run ID": "<<ChainRunID>>",
-  "automation_result": "<<AutomationOutput>>",
-  "status": "<<ProcessingStatus>>",
-  "Current ISO DateTime": "<<UTCNOW()>>"
+  "Chain Run ID": "0f3aa4f4",
+  "agentResponse": "[Your AI generated content here]",
+  "summ": "[Summary of processing results]",
+  "Patient_Summary": "[Patient-specific results]"
 }
 ```
 
-## Troubleshooting Webhook Issues
+**Option B - Custom Output Variables:**
+Create output variables in your chain:
+- `Final_Output` - Main results
+- `Clinical_Summary` - Clinical findings  
+- `Processing_Result` - Automation outcome
+- `Generated_Content` - AI generated text
 
-### Common Problems
+### 4. Chain Step Configuration
+Make sure your final chain step:
+1. **Captures AI outputs** into variables
+2. **Includes output variables** in webhook payload
+3. **Sets webhook trigger** on completion
 
-1. **400 Bad Request**
-   - Check JSON formatting
-   - Ensure Content-Type header is set
-   - Verify required fields are present
+## Testing the Configuration
 
-2. **Field Not Appearing in UI**
-   - Check field names for special characters
-   - Verify JSON structure is valid
-   - Ensure webhook payload is being stored
+### 1. Run a Test Chain
+Trigger your LEQVIO_app chain with test data
 
-3. **Timeout Issues**
-   - Webhook endpoint has 30-second timeout
-   - For long-running processes, send results asynchronously
-   - Use chunked responses for large payloads
+### 2. Check Webhook Logs
+Look for these log messages:
+```
+[AIGENTS-WEBHOOK-xxx] Found response data in field: agentResponse
+[AIGENTS-WEBHOOK-xxx] All received fields: [field1, field2, ...]
+[AIGENTS-WEBHOOK-xxx] Agent Response Length: 1250 chars
+```
 
-### Debug Mode
-Enable debug logging by checking the browser console and server logs when sending webhooks.
+### 3. View Results
+- Go to patient detail page
+- Click "View AIGENTS Data" 
+- Check if detailed response appears in modal
 
-## Best Practices
+## Common AIGENTS Field Names
+The webhook handler will automatically detect these field patterns:
+- Any field containing "response", "output", "result", "summary"
+- Fields ending in "_Output", "_Result", "_Summary"  
+- AI-generated content fields
+- Chain step output variables
 
-### Field Naming
-- Use consistent naming conventions
-- Avoid special characters in field names  
-- Include descriptive field names for better UI display
+## Troubleshooting
 
-### Payload Size
-- Keep payloads under 1MB for optimal performance
-- For large content, consider splitting into multiple requests
-- Use compression for text-heavy payloads
+### If Still Getting "No Response Content":
+1. **Check AIGENTS logs** - Is the chain actually completing?
+2. **Verify webhook URL** - Is AIGENTS sending to the right endpoint?
+3. **Check field names** - Are output variables being created?
+4. **Enable debug mode** - Turn on detailed AIGENTS logging
 
-### Error Handling
-- Always check webhook response status
-- Implement retry logic for failed requests
-- Log webhook attempts for debugging
+### If Getting Partial Data:
+1. **Check field mapping** - Are all outputs included in webhook?
+2. **Review chain steps** - Are variables being passed between steps?
+3. **Test output variables** - Manually check variable values in AIGENTS
 
-### Security
-- Use HTTPS for all webhook communications
-- Consider adding API key authentication if needed
-- Validate payload structure before processing
+## Next Steps
+1. Configure AIGENTS chain output settings
+2. Run a test patient through the chain
+3. Check webhook logs for detailed response data
+4. View results in patient detail page
+
+The enhanced webhook handler will now capture much more detailed response data automatically!
