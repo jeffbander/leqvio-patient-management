@@ -1356,6 +1356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const aigentsResult = await aigentsResponse.json();
+      console.log('AIGENTS Response Body:', JSON.stringify(aigentsResult, null, 2));
       
       // Log the automation for tracking
       await storage.createAutomationLog({
