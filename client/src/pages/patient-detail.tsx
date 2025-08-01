@@ -64,7 +64,7 @@ export default function PatientDetail() {
   const patientId = parseInt(params.id as string)
   
   const [isEditing, setIsEditing] = useState(false)
-  const [editedData, setEditedData] = useState<Partial<Patient>>({})
+  const [editedData, setEditedData] = useState<any>({})
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [documentType, setDocumentType] = useState<string>('epic_insurance_screenshot')
   const [clinicalNotes, setClinicalNotes] = useState('')
@@ -181,7 +181,7 @@ export default function PatientDetail() {
 
   const handleSave = () => {
     // Only send fields that can be updated
-    const updateData = {
+    const updateData: any = {
       firstName: editedData.firstName,
       lastName: editedData.lastName,
       dateOfBirth: editedData.dateOfBirth,
@@ -190,6 +190,7 @@ export default function PatientDetail() {
       phone: editedData.phone,
       email: editedData.email,
       address: editedData.address,
+      mrn: editedData.mrn,
       primaryInsurance: editedData.primaryInsurance,
       primaryPlan: editedData.primaryPlan,
       primaryInsuranceNumber: editedData.primaryInsuranceNumber,
@@ -372,6 +373,19 @@ export default function PatientDetail() {
                       <span className="font-medium">DOB:</span>
                       <span>{patient.dateOfBirth}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">MRN:</span>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.mrn || ''}
+                          onChange={(e) => setEditedData({...editedData, mrn: e.target.value})}
+                          className="w-48"
+                          placeholder="Medical Record Number"
+                        />
+                      ) : (
+                        <span>{patient.mrn || 'Not provided'}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -528,19 +542,51 @@ export default function PatientDetail() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Provider:</span>
-                    <span>{patient.secondaryInsurance || 'Not provided'}</span>
+                    {isEditing ? (
+                      <Input
+                        value={editedData.secondaryInsurance || ''}
+                        onChange={(e) => setEditedData({...editedData, secondaryInsurance: e.target.value})}
+                        className="w-48"
+                      />
+                    ) : (
+                      <span>{patient.secondaryInsurance || 'Not provided'}</span>
+                    )}
                   </div>
                   <div className="flex justify-between">
                     <span>Plan:</span>
-                    <span>{patient.secondaryPlan || 'Not provided'}</span>
+                    {isEditing ? (
+                      <Input
+                        value={editedData.secondaryPlan || ''}
+                        onChange={(e) => setEditedData({...editedData, secondaryPlan: e.target.value})}
+                        className="w-48"
+                      />
+                    ) : (
+                      <span>{patient.secondaryPlan || 'Not provided'}</span>
+                    )}
                   </div>
                   <div className="flex justify-between">
                     <span>Member ID:</span>
-                    <span>{patient.secondaryInsuranceNumber || 'Not provided'}</span>
+                    {isEditing ? (
+                      <Input
+                        value={editedData.secondaryInsuranceNumber || ''}
+                        onChange={(e) => setEditedData({...editedData, secondaryInsuranceNumber: e.target.value})}
+                        className="w-48"
+                      />
+                    ) : (
+                      <span>{patient.secondaryInsuranceNumber || 'Not provided'}</span>
+                    )}
                   </div>
                   <div className="flex justify-between">
                     <span>Group ID:</span>
-                    <span>{patient.secondaryGroupId || 'Not provided'}</span>
+                    {isEditing ? (
+                      <Input
+                        value={editedData.secondaryGroupId || ''}
+                        onChange={(e) => setEditedData({...editedData, secondaryGroupId: e.target.value})}
+                        className="w-48"
+                      />
+                    ) : (
+                      <span>{patient.secondaryGroupId || 'Not provided'}</span>
+                    )}
                   </div>
                 </div>
               </div>

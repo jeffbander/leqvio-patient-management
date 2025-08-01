@@ -51,6 +51,7 @@ export default function ESignatureForm() {
     cellPhone: '',
     email: '',
     address: '',
+    mrn: '', // Medical Record Number
     primaryInsurance: '',
     primaryPlan: '',
     primaryInsuranceNumber: '',
@@ -318,6 +319,16 @@ export default function ESignatureForm() {
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
+                />
+              </div>
+              <div>
+                <Label htmlFor="mrn">MRN (Medical Record Number)</Label>
+                <Input
+                  id="mrn"
+                  name="mrn"
+                  value={formData.mrn}
+                  onChange={handleInputChange}
+                  placeholder="Optional"
                 />
               </div>
               <div>

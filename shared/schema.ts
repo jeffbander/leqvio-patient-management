@@ -132,6 +132,7 @@ export const patients = pgTable("patients", {
   phone: text("phone"),
   email: text("email"),
   address: text("address"),
+  mrn: text("mrn"), // Medical Record Number (optional)
   
   // Metadata
   createdAt: timestamp("created_at").defaultNow().notNull(),
