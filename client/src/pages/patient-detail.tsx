@@ -148,11 +148,6 @@ export default function PatientDetail() {
     }
   }
 
-  // Get latest AIGENTS analysis
-  const latestAnalysis = automationLogs.length > 0 && automationLogs[0].agentresponse 
-    ? parseAigentsResponse(automationLogs[0].agentresponse)
-    : null
-
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: [`/api/patients/${patientId}`],
     enabled: !!patientId
@@ -167,6 +162,11 @@ export default function PatientDetail() {
     queryKey: [`/api/patients/${patientId}/automation-logs`],
     enabled: !!patientId
   })
+
+  // Get latest AIGENTS analysis - moved after automationLogs query
+  const latestAnalysis = automationLogs.length > 0 && automationLogs[0].agentresponse 
+    ? parseAigentsResponse(automationLogs[0].agentresponse)
+    : null
 
   const updatePatientMutation = useMutation({
     mutationFn: async (updates: Partial<Patient>) => {
