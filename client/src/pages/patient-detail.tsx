@@ -70,6 +70,7 @@ export default function PatientDetail() {
   const [documentType, setDocumentType] = useState<string>('epic_insurance_screenshot')
   const [clinicalNotes, setClinicalNotes] = useState('')
   const [processResult, setProcessResult] = useState<any>(null)
+  const [showAigentsData, setShowAigentsData] = useState(false)
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: [`/api/patients/${patientId}`],
@@ -627,11 +628,21 @@ export default function PatientDetail() {
                       Status: Completed {automationLogs[0].agentresponse ? '✓' : '- Processing'}
                     </p>
                   )}
-                  {automationLogs.length > 1 && (
-                    <p className="text-xs text-blue-600 mt-1">
-                      Total processes: {automationLogs.length}
-                    </p>
-                  )}
+                  <div className="flex items-center justify-between mt-2">
+                    {automationLogs.length > 1 && (
+                      <p className="text-xs text-blue-600">
+                        Total processes: {automationLogs.length}
+                      </p>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAigentsData(true)}
+                      className="text-xs"
+                    >
+                      View AIGENTS Data
+                    </Button>
+                  </div>
                 </div>
               )}
               
@@ -803,6 +814,51 @@ export default function PatientDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AIGENTS Data Modal */}
+      {showAigentsData && automationLogs.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="p-6 border-b">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Last AIGENTS Message</h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAigentsData(false)}
+                >
+                  Close
+                </Button>
+              </div>
+              <p className="text-sm text-gray-600 mt-1">
+                Sent: {new Date(automationLogs[0].timestamp || automationLogs[0].createdat).toLocaleString()}
+              </p>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              {automationLogs[0].requestdata ? (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold mb-2">Request Data Sent to AIGENTS:</h3>
+                    <pre className="bg-gray-100 p-4 rounded overflow-x-auto text-sm">
+                      {JSON.stringify(automationLogs[0].requestdata, null, 2)}
+                    </pre>
+                  </div>
+                  {automationLogs[0].agentresponse && (
+                    <div>
+                      <h3 className="font-semibold mb-2">AIGENTS Response:</h3>
+                      <div className="bg-blue-50 p-4 rounded">
+                        <p className="text-sm">{automationLogs[0].agentresponse}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-gray-500">No request data available</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
