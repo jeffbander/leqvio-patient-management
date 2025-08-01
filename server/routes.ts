@@ -1338,14 +1338,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Call AIGENTS API
+      console.log('Sending to AIGENTS:', 'https://start-chain-run-943506065004.us-central1.run.app');
+      console.log('Payload:', JSON.stringify(aigentsPayload, null, 2));
+      
       const aigentsResponse = await fetch('https://start-chain-run-943506065004.us-central1.run.app', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(aigentsPayload)
       });
 
+      console.log('AIGENTS Response Status:', aigentsResponse.status, aigentsResponse.statusText);
+      
       if (!aigentsResponse.ok) {
-        throw new Error(`AIGENTS API error: ${aigentsResponse.statusText}`);
+        const errorText = await aigentsResponse.text();
+        console.error('AIGENTS Error Response:', errorText);
+        throw new Error(`AIGENTS API error: ${aigentsResponse.statusText} - ${errorText}`);
       }
 
       const aigentsResult = await aigentsResponse.json();
