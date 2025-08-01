@@ -1346,7 +1346,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'triggered',
         response: JSON.stringify(aigentsResult),
         requestData: aigentsPayload,
-        uniqueId: aigentsPayload.unique_id
+        uniqueId: aigentsPayload.unique_id,
+        timestamp: new Date()
       });
 
       console.log('AIGENTS chain triggered for patient:', patient.id);

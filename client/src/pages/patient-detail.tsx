@@ -103,10 +103,7 @@ export default function PatientDetail() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async (status: string) => {
-      return apiRequest(`/api/patients/${patientId}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status })
-      })
+      return apiRequest('PATCH', `/api/patients/${patientId}/status`, { status })
     },
     onSuccess: () => {
       toast({

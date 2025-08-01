@@ -697,6 +697,7 @@ interface EpicInsuranceData {
     sponsorCode: string;
     groupNumber: string;
     groupName: string;
+    subscriberId: string;
     subscriberName: string;
     subscriberSSN: string;
     subscriberAddress: string;
@@ -707,6 +708,7 @@ interface EpicInsuranceData {
     sponsorCode: string;
     groupNumber: string;
     groupName: string;
+    subscriberId: string;
     subscriberName: string;
     subscriberSSN: string;
     subscriberAddress: string;
@@ -737,6 +739,7 @@ Return JSON with this exact structure:
     "sponsorCode": "Sponsor/Plan code (e.g., M87, H422)",
     "groupNumber": "Group ID number (e.g., 030500)",
     "groupName": "Group name description",
+    "subscriberId": "Primary insurance member/subscriber ID (e.g., 4YW4RC9AW92)",
     "subscriberName": "Primary subscriber full name",
     "subscriberSSN": "Subscriber Social Security Number (format: XXX-XX-XXXX)",
     "subscriberAddress": "Complete subscriber address"
@@ -747,6 +750,7 @@ Return JSON with this exact structure:
     "sponsorCode": "Secondary sponsor/plan code",
     "groupNumber": "Secondary group ID number",
     "groupName": "Secondary group name description",
+    "subscriberId": "Secondary insurance member/subscriber ID (e.g., 890598658)",
     "subscriberName": "Secondary subscriber full name",
     "subscriberSSN": "Secondary subscriber SSN",
     "subscriberAddress": "Secondary subscriber address"
@@ -760,12 +764,13 @@ Return JSON with this exact structure:
 
 EXTRACTION RULES:
 - Look for "Primary Visit Coverage" and "Secondary Visit Coverage" sections
-- Extract ALL visible insurance data from both sections
+- Extract ALL visible insurance data from both sections including subscriber IDs
+- CRITICAL: Find and extract "ID" fields for both primary and secondary coverage (e.g., ID 4YW4RC9AW92, ID 890598658)
 - Use exact text as it appears in Epic
 - Empty string "" for missing fields in either primary or secondary
 - Include complete subscriber names, addresses, and SSNs
 - Capture payer names exactly (MEDICARE, UNITED HEALTHCARE COMMERCIAL, etc.)
-- Extract plan details, sponsor codes, and group information
+- Extract plan details, sponsor codes, group information, and subscriber IDs
 - Set confidence score based on data clarity (0.0-1.0)
 - Include all visible text in rawText field
 - Focus on structured Epic insurance data format`
@@ -800,6 +805,7 @@ EXTRACTION RULES:
         sponsorCode: result.primary?.sponsorCode || "",
         groupNumber: result.primary?.groupNumber || "",
         groupName: result.primary?.groupName || "",
+        subscriberId: result.primary?.subscriberId || "",
         subscriberName: result.primary?.subscriberName || "",
         subscriberSSN: result.primary?.subscriberSSN || "",
         subscriberAddress: result.primary?.subscriberAddress || ""
@@ -810,6 +816,7 @@ EXTRACTION RULES:
         sponsorCode: result.secondary?.sponsorCode || "",
         groupNumber: result.secondary?.groupNumber || "",
         groupName: result.secondary?.groupName || "",
+        subscriberId: result.secondary?.subscriberId || "",
         subscriberName: result.secondary?.subscriberName || "",
         subscriberSSN: result.secondary?.subscriberSSN || "",
         subscriberAddress: result.secondary?.subscriberAddress || ""
