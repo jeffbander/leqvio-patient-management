@@ -173,29 +173,23 @@ export default function ESignatureForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validation checks
-    if (formData.diagnosis.length === 0) {
+    // Comprehensive validation with specific error messages
+    const errors: string[] = []
+    
+    if (!formData.firstName.trim()) errors.push("First Name")
+    if (!formData.lastName.trim()) errors.push("Last Name")
+    if (!formData.dateOfBirth.trim()) errors.push("Date of Birth")
+    if (!formData.gender.trim()) errors.push("Gender")
+    if (!formData.orderingMD.trim()) errors.push("Ordering MD")
+    if (!formData.cellPhone.trim()) errors.push("Cell Phone")
+    if (formData.diagnosis.length === 0) errors.push("Diagnosis (select at least one)")
+    if (!formData.recipientEmail.trim()) errors.push("Email to send PDF")
+    if (!hasSignature) errors.push("Patient signature")
+    
+    if (errors.length > 0) {
       toast({
-        title: "Diagnosis Required",
-        description: "Please select at least one diagnosis code",
-        variant: "destructive"
-      })
-      return
-    }
-
-    if (!hasSignature) {
-      toast({
-        title: "Signature Required",
-        description: "Please provide your signature before submitting",
-        variant: "destructive"
-      })
-      return
-    }
-
-    if (!formData.recipientEmail) {
-      toast({
-        title: "Email Required",
-        description: "Please enter an email address to send the PDF",
+        title: "Required Fields Missing",
+        description: `Please complete the following: ${errors.join(", ")}`,
         variant: "destructive"
       })
       return
@@ -237,7 +231,11 @@ export default function ESignatureForm() {
                   value={formData.firstName}
                   onChange={handleInputChange}
                   required
+                  className={!formData.firstName.trim() ? 'border-red-300 focus:border-red-500' : ''}
                 />
+                {!formData.firstName.trim() && (
+                  <p className="text-sm text-red-600 mt-1">First name is required</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="lastName">Last Name *</Label>
@@ -247,7 +245,11 @@ export default function ESignatureForm() {
                   value={formData.lastName}
                   onChange={handleInputChange}
                   required
+                  className={!formData.lastName.trim() ? 'border-red-300 focus:border-red-500' : ''}
                 />
+                {!formData.lastName.trim() && (
+                  <p className="text-sm text-red-600 mt-1">Last name is required</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="dateOfBirth">Date of Birth *</Label>
@@ -258,7 +260,11 @@ export default function ESignatureForm() {
                   value={formData.dateOfBirth}
                   onChange={handleInputChange}
                   required
+                  className={!formData.dateOfBirth.trim() ? 'border-red-300 focus:border-red-500' : ''}
                 />
+                {!formData.dateOfBirth.trim() && (
+                  <p className="text-sm text-red-600 mt-1">Date of birth is required</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="gender">Gender *</Label>
@@ -267,7 +273,7 @@ export default function ESignatureForm() {
                   name="gender"
                   value={formData.gender}
                   onChange={handleInputChange}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${!formData.gender.trim() ? 'border-red-300 focus:border-red-500' : ''}`}
                   required
                 >
                   <option value="">Select gender</option>
@@ -275,6 +281,9 @@ export default function ESignatureForm() {
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
                 </select>
+                {!formData.gender.trim() && (
+                  <p className="text-sm text-red-600 mt-1">Gender is required</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="phone">Home Phone</Label>
@@ -295,7 +304,11 @@ export default function ESignatureForm() {
                   value={formData.cellPhone}
                   onChange={handleInputChange}
                   required
+                  className={!formData.cellPhone.trim() ? 'border-red-300 focus:border-red-500' : ''}
                 />
+                {!formData.cellPhone.trim() && (
+                  <p className="text-sm text-red-600 mt-1">Cell phone is required</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="email">Email (Optional)</Label>
@@ -335,11 +348,18 @@ export default function ESignatureForm() {
                   value={formData.orderingMD}
                   onChange={handleInputChange}
                   required
+                  className={!formData.orderingMD.trim() ? 'border-red-300 focus:border-red-500' : ''}
                 />
+                {!formData.orderingMD.trim() && (
+                  <p className="text-sm text-red-600 mt-1">Ordering MD is required</p>
+                )}
               </div>
               <div className="col-span-2">
                 <Label>Diagnosis Codes *</Label>
                 <p className="text-sm text-gray-500 mb-3">Select one or more ICD-10 codes that apply to this patient</p>
+                {formData.diagnosis.length === 0 && (
+                  <p className="text-sm text-red-600 mb-2">At least one diagnosis code is required</p>
+                )}
                 
                 <div className="space-y-4">
                   <div>
@@ -491,6 +511,9 @@ export default function ESignatureForm() {
                   Clear
                 </Button>
               </div>
+              {!hasSignature && (
+                <p className="text-sm text-red-600 mt-1">Patient signature is required</p>
+              )}
             </div>
 
             <div>
@@ -503,7 +526,11 @@ export default function ESignatureForm() {
                 onChange={handleInputChange}
                 placeholder="recipient@example.com"
                 required
+                className={!formData.recipientEmail.trim() ? 'border-red-300 focus:border-red-500' : ''}
               />
+              {!formData.recipientEmail.trim() && (
+                <p className="text-sm text-red-600 mt-1">Email address is required</p>
+              )}
               <p className="text-sm text-gray-500 mt-1">
                 The signed form will be sent to this email address
               </p>
@@ -563,7 +590,7 @@ export default function ESignatureForm() {
           </Button>
           <Button
             type="submit"
-            disabled={createPatientMutation.isPending || !hasSignature || formData.diagnosis.length === 0 || !formData.recipientEmail}
+            disabled={createPatientMutation.isPending}
           >
             {createPatientMutation.isPending ? (
               <>
