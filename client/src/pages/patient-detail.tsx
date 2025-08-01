@@ -68,6 +68,7 @@ export default function PatientDetail() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [documentType, setDocumentType] = useState<string>('epic_insurance_screenshot')
   const [clinicalNotes, setClinicalNotes] = useState('')
+  const [processResult, setProcessResult] = useState<any>(null)
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: [`/api/patients/${patientId}`],
@@ -81,10 +82,7 @@ export default function PatientDetail() {
 
   const updatePatientMutation = useMutation({
     mutationFn: async (updates: Partial<Patient>) => {
-      return apiRequest(`/api/patients/${patientId}`, {
-        method: 'PATCH',
-        body: JSON.stringify(updates)
-      })
+      return apiRequest('PATCH', `/api/patients/${patientId}`, updates)
     },
     onSuccess: () => {
       toast({
@@ -149,6 +147,31 @@ export default function PatientDetail() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to upload document",
+        variant: "destructive"
+      })
+    }
+  })
+
+  const processDataMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/patients/${patientId}/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (!response.ok) throw new Error('Failed to process patient data')
+      return response.json()
+    },
+    onSuccess: (data) => {
+      setProcessResult(data)
+      toast({
+        title: "Success",
+        description: `Data processed successfully. ${data.documentsProcessed.insurance} insurance and ${data.documentsProcessed.clinical} clinical documents sent to AIGENTS.`
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to process patient data",
         variant: "destructive"
       })
     }
@@ -501,6 +524,61 @@ export default function PatientDetail() {
           </CardContent>
         </Card>
 
+        {/* Process Data */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Process Patient Data</CardTitle>
+            <CardDescription>Send insurance and clinical information to AIGENTS for processing</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Ready to Process</p>
+                  <p className="text-sm text-gray-500">
+                    {documents.filter(d => d.documentType === 'epic_insurance_screenshot' || d.documentType === 'insurance_screenshot').length} insurance documents, {' '}
+                    {documents.filter(d => d.documentType === 'epic_screenshot' || d.documentType === 'clinical_note').length} clinical documents
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => processDataMutation.mutate()}
+                  disabled={processDataMutation.isPending || documents.length === 0}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {processDataMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Process Data
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {processResult && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center">
+                    <Shield className="mr-2 h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-800">
+                      Data Processed Successfully
+                    </span>
+                  </div>
+                  <p className="text-sm text-green-700 mt-1">
+                    Unique ID: {processResult.uniqueId}
+                  </p>
+                  <p className="text-sm text-green-700">
+                    {processResult.documentsProcessed.insurance} insurance and {processResult.documentsProcessed.clinical} clinical documents sent to AIGENTS
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Document Upload */}
         <Card>
           <CardHeader>
@@ -515,10 +593,11 @@ export default function PatientDetail() {
                 onChange={(e) => setDocumentType(e.target.value)}
                 className="w-full border rounded px-3 py-2 mt-1"
               >
-                <option value="epic_screenshot">Epic Patient Screenshot</option>
                 <option value="epic_insurance_screenshot">Epic Insurance Coverage Screenshot</option>
+                <option value="epic_screenshot">Epic Patient Screenshot</option>
                 <option value="insurance_screenshot">Insurance Card Screenshot</option>
                 <option value="clinical_note">Clinical Note</option>
+                <option value="leqvio_form">LEQVIO Form</option>
               </select>
             </div>
 

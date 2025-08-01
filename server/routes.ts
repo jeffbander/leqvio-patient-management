@@ -176,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[WEBHOOK-AGENT-${requestId}] Successfully updated automation log ID: ${result.id}`);
         
         // Create response with all received fields as variables
-        const successResponse = {
+        const successResponse: any = {
           message: "Agent response processed successfully",
           chainRunId: chainRunId,
           status: "success",
@@ -196,7 +196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Add receivedFields as array
-        successResponse.receivedFields_array = fieldNames;
+        successResponse.receivedFields = fieldNames;
         
         console.log(`[WEBHOOK-AGENT-${requestId}] Complete response object keys:`, Object.keys(successResponse));
         
@@ -229,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const errorResponse = { 
         error: "Internal server error processing agent response",
-        details: error.message 
+        details: (error as Error).message 
       };
       
       console.log(`\n=== API RESPONSE TO AGENTS SYSTEM ===`);
@@ -1238,38 +1238,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Trigger AIGENTS chain if this is Epic data
-      if ((documentType === 'epic_screenshot' || documentType === 'epic_insurance_screenshot') && extractedData) {
-        try {
-          const patient = await storage.getPatient(patientId);
-          if (patient) {
-            const aigentsPayload = {
-              unique_id: `leqvio_${patient.id}_${Date.now()}`,
-              chain_name: 'leqvio',
-              patient_data: {
-                ...patient,
-                extracted_data: metadata
-              }
-            };
-            
-            // Call AIGENTS API
-            const aigentsResponse = await fetch('https://providerloop.free.beeceptor.com', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(aigentsPayload)
-            });
-            
-            console.log('AIGENTS chain triggered for patient:', patient.id);
-          }
-        } catch (aigentsError) {
-          console.error('Failed to trigger AIGENTS chain:', aigentsError);
-        }
-      }
+      // Save extracted data for later processing - don't trigger AIGENTS automatically
       
       res.json({ document, extractedData: metadata });
     } catch (error) {
       console.error('Error creating patient document:', error);
       res.status(500).json({ error: 'Failed to create patient document' });
+    }
+  });
+
+  // Process patient data and send to AIGENTS
+  app.post('/api/patients/:id/process', async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const patient = await storage.getPatient(patientId);
+      
+      if (!patient) {
+        return res.status(404).json({ error: 'Patient not found' });
+      }
+
+      // Get all documents for this patient
+      const documents = await storage.getPatientDocuments(patientId);
+      
+      // Prepare Insurance_JSON from insurance-related documents
+      const insuranceDocuments = documents.filter(doc => 
+        doc.documentType === 'epic_insurance_screenshot' || 
+        doc.documentType === 'insurance_screenshot'
+      );
+      
+      const Insurance_JSON = {
+        extractedData: insuranceDocuments.map(doc => ({
+          documentType: doc.documentType,
+          fileName: doc.fileName,
+          extractedData: doc.extractedData ? JSON.parse(doc.extractedData) : null,
+          metadata: doc.metadata,
+          uploadedAt: doc.createdAt
+        })),
+        currentInsuranceInfo: {
+          primary: {
+            insurance: patient.primaryInsurance,
+            plan: patient.primaryPlan,
+            memberNumber: patient.primaryInsuranceNumber,
+            groupId: patient.primaryGroupId
+          },
+          secondary: {
+            insurance: patient.secondaryInsurance,
+            plan: patient.secondaryPlan,
+            memberNumber: patient.secondaryInsuranceNumber,
+            groupId: patient.secondaryGroupId
+          }
+        }
+      };
+
+      // Prepare Clinical_json from clinical documents
+      const clinicalDocuments = documents.filter(doc => 
+        doc.documentType === 'epic_screenshot' || 
+        doc.documentType === 'clinical_note' ||
+        doc.documentType === 'leqvio_form'
+      );
+      
+      const Clinical_json = {
+        extractedData: clinicalDocuments.map(doc => ({
+          documentType: doc.documentType,
+          fileName: doc.fileName,
+          extractedData: doc.extractedData ? JSON.parse(doc.extractedData) : null,
+          metadata: doc.metadata,
+          uploadedAt: doc.createdAt
+        })),
+        patientInfo: {
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          dateOfBirth: patient.dateOfBirth,
+          orderingMD: patient.orderingMD,
+          diagnosis: patient.diagnosis,
+          status: patient.status
+        }
+      };
+
+      // Prepare AIGENTS payload
+      const aigentsPayload = {
+        unique_id: `leqvio_${patient.id}_${Date.now()}`,
+        chain_name: 'leqvio',
+        patient_data: {
+          ...patient,
+          Insurance_JSON: Insurance_JSON,
+          Clinical_json: Clinical_json
+        }
+      };
+
+      // Call AIGENTS API
+      const aigentsResponse = await fetch('https://providerloop.free.beeceptor.com', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(aigentsPayload)
+      });
+
+      if (!aigentsResponse.ok) {
+        throw new Error(`AIGENTS API error: ${aigentsResponse.statusText}`);
+      }
+
+      const aigentsResult = await aigentsResponse.json();
+      
+      // Log the automation for tracking
+      await storage.createAutomationLog({
+        chainName: 'leqvio',
+        email: patient.email || 'noemail@providerloop.com',
+        status: 'triggered',
+        response: JSON.stringify(aigentsResult),
+        requestData: aigentsPayload,
+        uniqueId: aigentsPayload.unique_id
+      });
+
+      console.log('AIGENTS chain triggered for patient:', patient.id);
+      
+      res.json({ 
+        success: true, 
+        message: 'Patient data processed and sent to AIGENTS',
+        uniqueId: aigentsPayload.unique_id,
+        documentsProcessed: {
+          insurance: insuranceDocuments.length,
+          clinical: clinicalDocuments.length
+        }
+      });
+      
+    } catch (error) {
+      console.error('Failed to process patient data:', error);
+      res.status(500).json({ 
+        error: 'Failed to process patient data',
+        details: (error as Error).message 
+      });
     }
   });
 
