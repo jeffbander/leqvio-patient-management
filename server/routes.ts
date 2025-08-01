@@ -1119,6 +1119,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Epic screenshot extraction failed:', ocrError);
           // Continue without extraction
         }
+      } else if (documentType === 'clinical_note') {
+        // For clinical notes, store the text content directly
+        try {
+          const textContent = file.buffer.toString('utf-8');
+          extractedData = textContent; // Store as plain text, not JSON
+          metadata = { 
+            contentType: 'clinical_text',
+            wordCount: textContent.split(/\s+/).length,
+            timestamp: new Date().toISOString()
+          };
+        } catch (error) {
+          console.error('Clinical note processing failed:', error);
+          // Continue without extraction
+        }
       }
       
       // Save document record
@@ -1412,6 +1426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // For clinical notes and forms, send the full extracted content directly
               combinedClinicalInfo += `   Clinical Content:\n`;
               try {
+                // Try to parse as JSON first (for backwards compatibility)
                 const extracted = JSON.parse(doc.extractedData);
                 if (typeof extracted === 'string') {
                   combinedClinicalInfo += `${extracted}\n`;
@@ -1428,7 +1443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   });
                 }
               } catch (e) {
-                // If not JSON, treat as plain clinical text content
+                // If not JSON, treat as plain clinical text content (new format)
                 combinedClinicalInfo += `${doc.extractedData}\n`;
               }
             } else {
