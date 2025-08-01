@@ -1150,7 +1150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patients/:id/automation-logs', async (req, res) => {
     try {
       const patientId = parseInt(req.params.id);
-      const logs = await storage.getAutomationLogsForPatient(patientId);
+      const logs = await storage.getPatientAutomationLogs(patientId);
       res.json(logs);
     } catch (error) {
       console.error('Error fetching patient automation logs:', error);
@@ -1617,6 +1617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         response: JSON.stringify(aigentsResult),
         requestData: aigentsPayload,
         uniqueId: chainRunId || uniqueId, // Use AIGENTS chain run ID as the tracking ID
+        patientId: patientId, // Link to patient record
         timestamp: new Date()
       });
 

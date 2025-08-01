@@ -43,6 +43,7 @@ export interface IStorage {
   // Automation logs
   createAutomationLog(log: InsertAutomationLog): Promise<AutomationLog>;
   getAutomationLogs(limit?: number, dateFilter?: Date | null): Promise<AutomationLog[]>;
+  getPatientAutomationLogs(patientId: number): Promise<AutomationLog[]>;
   clearAutomationLogs(): Promise<void>;
   updateAutomationLogWithEmailResponse(uniqueId: string, emailResponse: string): Promise<AutomationLog | null>;
   updateAutomationLogWithAgentResponse(uniqueId: string, agentResponse: string, agentName: string, webhookPayload?: any): Promise<AutomationLog | null>;
@@ -179,30 +180,17 @@ export class DatabaseStorage implements IStorage {
     await db.delete(automationLogs);
   }
 
-  async getAutomationLogsForPatient(patientId: number): Promise<any[]> {
-    // Get all automation logs with chainName 'leqvio_app'
+  async getPatientAutomationLogs(patientId: number): Promise<any[]> {
+    // Get automation logs for this specific patient using the new patient_id column
     const logs = await db
       .select()
       .from(automationLogs)
-      .where(eq(automationLogs.chainName, 'leqvio_app'))
+      .where(eq(automationLogs.patientId, patientId))
       .orderBy(desc(automationLogs.createdAt))
       .limit(10);
     
-    // Filter logs that contain this patient ID in the requestData
-    const patientLogs = logs.filter(log => {
-      try {
-        const requestData = log.requestData as any;
-        if (requestData && requestData.starting_variables && requestData.starting_variables.patient_id) {
-          return parseInt(requestData.starting_variables.patient_id) === patientId;
-        }
-        return false;
-      } catch (e) {
-        return false;
-      }
-    });
-    
     // Transform field names to match frontend expectations
-    return patientLogs.map(log => ({
+    return logs.map(log => ({
       id: log.id,
       chainname: log.chainName,
       status: log.status,
@@ -211,7 +199,9 @@ export class DatabaseStorage implements IStorage {
       iscompleted: log.isCompleted,
       createdat: log.createdAt,
       agentresponse: log.agentResponse,
-      agentname: log.agentName
+      agentname: log.agentName,
+      requestdata: log.requestData,
+      webhookpayload: log.webhookPayload
     }));
   }
 

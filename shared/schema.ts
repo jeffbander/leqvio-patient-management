@@ -36,6 +36,7 @@ export const automationLogs = pgTable("automation_logs", {
   webhookPayload: jsonb("webhook_payload"), // Store complete webhook payload from agents system
   chainType: text("chain_type"), // Type of chain (research, pre_pre_chart, etc.)
   isCompleted: boolean("is_completed").default(false), // Mark when chain processing is complete
+  patientId: integer("patient_id"), // Link to patient record
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
