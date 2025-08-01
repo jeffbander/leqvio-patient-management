@@ -1315,10 +1315,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
+      // Generate unique ID for tracking
+      const uniqueId = `leqvio_${patient.id}_${Date.now()}`;
+      
       // Prepare AIGENTS payload - using the correct format from API documentation
       const aigentsPayload = {
         run_email: "jeffrey.Bander@providerloop.com",
-        chain_to_run: "leqvio",
+        chain_to_run: "LEQVIO",
         human_readable_record: `LEQVIO processing for patient ${patient.firstName} ${patient.lastName}`,
         source_id: `${patient.lastName}_${patient.firstName}__${patient.dateOfBirth?.replace(/-/g, '_')}`,
         first_step_user_input: "",
@@ -1329,7 +1332,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             Clinical_json: Clinical_json
           },
           patient_id: patient.id.toString(),
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          unique_id: uniqueId
         }
       };
 
@@ -1353,7 +1357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'triggered',
         response: JSON.stringify(aigentsResult),
         requestData: aigentsPayload,
-        uniqueId: aigentsPayload.unique_id,
+        uniqueId: uniqueId,
         timestamp: new Date()
       });
 
@@ -1362,7 +1366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         success: true, 
         message: 'Patient data processed and sent to AIGENTS',
-        uniqueId: aigentsPayload.unique_id,
+        uniqueId: uniqueId,
         documentsProcessed: {
           insurance: insuranceDocuments.length,
           clinical: clinicalDocuments.length
