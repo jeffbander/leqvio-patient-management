@@ -1315,19 +1315,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      // Prepare AIGENTS payload
+      // Prepare AIGENTS payload - using the correct format from API documentation
       const aigentsPayload = {
-        unique_id: `leqvio_${patient.id}_${Date.now()}`,
-        chain_name: 'leqvio',
-        patient_data: {
-          ...patient,
-          Insurance_JSON: Insurance_JSON,
-          Clinical_json: Clinical_json
+        run_email: "jeffrey.Bander@providerloop.com",
+        chain_to_run: "leqvio",
+        human_readable_record: `LEQVIO processing for patient ${patient.firstName} ${patient.lastName}`,
+        source_id: `${patient.lastName}_${patient.firstName}__${patient.dateOfBirth?.replace(/-/g, '_')}`,
+        first_step_user_input: "",
+        starting_variables: {
+          patient_data: {
+            ...patient,
+            Insurance_JSON: Insurance_JSON,
+            Clinical_json: Clinical_json
+          },
+          patient_id: patient.id.toString(),
+          timestamp: new Date().toISOString()
         }
       };
 
       // Call AIGENTS API
-      const aigentsResponse = await fetch('https://providerloop.free.beeceptor.com', {
+      const aigentsResponse = await fetch('https://start-chain-run-943506065004.us-central1.run.app', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(aigentsPayload)
