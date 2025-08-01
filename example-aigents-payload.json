@@ -24,50 +24,7 @@
       "secondaryPlan": "[secondary_plan]",
       "secondaryInsuranceNumber": "[secondary_member_id]",
       "secondaryGroupId": "[secondary_group]",
-      "Insurance_JSON": {
-        "extractedData": [
-          {
-            "documentType": "epic_insurance_screenshot",
-            "fileName": "insurance_screenshot.png",
-            "extractedData": {
-              "primary": {
-                "plan": "ANTHEM BC/BS HEALTHPLUS",
-                "payer": "EMPIRE BC/BS MEDICARE",
-                "groupName": "NY MEDICARE",
-                "groupNumber": "NYMCRWP0",
-                "sponsorCode": "M179",
-                "subscriberId": "Y8E055W08345",
-                "subscriberName": "PATIENT NAME",
-                "subscriberAddress": "123 Main St, City, ST 12345"
-              },
-              "secondary": {
-                "plan": "",
-                "payer": "",
-                "groupName": "",
-                "groupNumber": "",
-                "subscriberId": "",
-                "subscriberName": "",
-                "subscriberAddress": ""
-              }
-            },
-            "uploadedAt": "2025-08-01T14:08:09.417Z"
-          }
-        ],
-        "currentInsuranceInfo": {
-          "primary": {
-            "insurance": "EMPIRE BC/BS MEDICARE",
-            "plan": "ANTHEM BC/BS HEALTHPLUS FULL DUAL ADVANTAGE",
-            "memberNumber": "Y8E055W08345",
-            "groupId": "NYMCRWP0"
-          },
-          "secondary": {
-            "insurance": "",
-            "plan": "",
-            "memberNumber": "",
-            "groupId": ""
-          }
-        }
-      },
+      "Insurance_JSON": "Patient Insurance Information:\n\nPrimary Insurance:\n  Insurance Company: EMPIRE BC/BS MEDICARE\n  Plan: ANTHEM BC/BS HEALTHPLUS FULL DUAL ADVANTAGE\n  Member Number: Y8E055W08345\n  Group ID: NYMCRWP0\n\nSecondary Insurance: None\n\nInsurance Documents (1):\n1. Document: insurance_screenshot.png\n   Type: epic_insurance_screenshot\n   Uploaded: 8/1/2025\n   Extracted Primary Insurance:\n     Payer: EMPIRE BC/BS MEDICARE\n     Plan: ANTHEM BC/BS HEALTHPLUS\n     Subscriber ID: Y8E055W08345\n     Subscriber Name: PATIENT NAME\n     Group Number: NYMCRWP0\n     Group Name: NY MEDICARE\n     Sponsor Code: M179\n     Address: 123 Main St, City, ST 12345\n\n",
       "Clinical_json": "Patient Clinical Information:\nName: [FirstName] [LastName]\nDate of Birth: [YYYY-MM-DD]\nOrdering MD: [Doctor Name]\nDiagnosis: [ICD10 Codes]\nStatus: [patient_status]\n\nClinical Documents (1):\n1. Document: clinical_note.txt\n   Type: clinical_note\n   Uploaded: 8/1/2025\n   Content: [extracted_clinical_text_content]\n\n"
     },
     "patient_id": "[patient_id_string]",

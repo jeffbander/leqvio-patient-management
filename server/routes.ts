@@ -1274,35 +1274,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all documents for this patient
       const documents = await storage.getPatientDocuments(patientId);
       
-      // Prepare Insurance_JSON from insurance-related documents
+      // Prepare Insurance_JSON from insurance-related documents as plain text
       const insuranceDocuments = documents.filter(doc => 
         doc.documentType === 'epic_insurance_screenshot' || 
         doc.documentType === 'insurance_screenshot'
       );
       
-      const Insurance_JSON = {
-        extractedData: insuranceDocuments.map(doc => ({
-          documentType: doc.documentType,
-          fileName: doc.fileName,
-          extractedData: doc.extractedData ? JSON.parse(doc.extractedData) : null,
-          metadata: doc.metadata,
-          uploadedAt: doc.createdAt
-        })),
-        currentInsuranceInfo: {
-          primary: {
-            insurance: patient.primaryInsurance,
-            plan: patient.primaryPlan,
-            memberNumber: patient.primaryInsuranceNumber,
-            groupId: patient.primaryGroupId
-          },
-          secondary: {
-            insurance: patient.secondaryInsurance,
-            plan: patient.secondaryPlan,
-            memberNumber: patient.secondaryInsuranceNumber,
-            groupId: patient.secondaryGroupId
+      // Build insurance information as a readable text summary
+      let insuranceText = `Patient Insurance Information:\n\n`;
+      
+      // Current insurance info from patient record
+      insuranceText += `Primary Insurance:\n`;
+      insuranceText += `  Insurance Company: ${patient.primaryInsurance || 'Not specified'}\n`;
+      insuranceText += `  Plan: ${patient.primaryPlan || 'Not specified'}\n`;
+      insuranceText += `  Member Number: ${patient.primaryInsuranceNumber || 'Not specified'}\n`;
+      insuranceText += `  Group ID: ${patient.primaryGroupId || 'Not specified'}\n\n`;
+      
+      if (patient.secondaryInsurance || patient.secondaryPlan || patient.secondaryInsuranceNumber) {
+        insuranceText += `Secondary Insurance:\n`;
+        insuranceText += `  Insurance Company: ${patient.secondaryInsurance || 'Not specified'}\n`;
+        insuranceText += `  Plan: ${patient.secondaryPlan || 'Not specified'}\n`;
+        insuranceText += `  Member Number: ${patient.secondaryInsuranceNumber || 'Not specified'}\n`;
+        insuranceText += `  Group ID: ${patient.secondaryGroupId || 'Not specified'}\n\n`;
+      } else {
+        insuranceText += `Secondary Insurance: None\n\n`;
+      }
+      
+      // Add extracted insurance documents
+      if (insuranceDocuments.length > 0) {
+        insuranceText += `Insurance Documents (${insuranceDocuments.length}):\n`;
+        insuranceDocuments.forEach((doc, index) => {
+          insuranceText += `${index + 1}. Document: ${doc.fileName}\n`;
+          insuranceText += `   Type: ${doc.documentType}\n`;
+          insuranceText += `   Uploaded: ${new Date(doc.createdAt).toLocaleDateString()}\n`;
+          
+          // Add extracted insurance data if available
+          if (doc.extractedData) {
+            try {
+              const extracted = JSON.parse(doc.extractedData);
+              
+              // Handle Epic insurance screenshot format
+              if (extracted.primary) {
+                insuranceText += `   Extracted Primary Insurance:\n`;
+                if (extracted.primary.payer) insuranceText += `     Payer: ${extracted.primary.payer}\n`;
+                if (extracted.primary.plan) insuranceText += `     Plan: ${extracted.primary.plan}\n`;
+                if (extracted.primary.subscriberId) insuranceText += `     Subscriber ID: ${extracted.primary.subscriberId}\n`;
+                if (extracted.primary.subscriberName) insuranceText += `     Subscriber Name: ${extracted.primary.subscriberName}\n`;
+                if (extracted.primary.groupNumber) insuranceText += `     Group Number: ${extracted.primary.groupNumber}\n`;
+                if (extracted.primary.groupName) insuranceText += `     Group Name: ${extracted.primary.groupName}\n`;
+                if (extracted.primary.sponsorCode) insuranceText += `     Sponsor Code: ${extracted.primary.sponsorCode}\n`;
+                if (extracted.primary.subscriberAddress) insuranceText += `     Address: ${extracted.primary.subscriberAddress}\n`;
+                
+                if (extracted.secondary && (extracted.secondary.payer || extracted.secondary.plan)) {
+                  insuranceText += `   Extracted Secondary Insurance:\n`;
+                  if (extracted.secondary.payer) insuranceText += `     Payer: ${extracted.secondary.payer}\n`;
+                  if (extracted.secondary.plan) insuranceText += `     Plan: ${extracted.secondary.plan}\n`;
+                  if (extracted.secondary.subscriberId) insuranceText += `     Subscriber ID: ${extracted.secondary.subscriberId}\n`;
+                }
+              }
+              // Handle insurance card format
+              else if (extracted.insurer) {
+                insuranceText += `   Extracted Insurance Card Data:\n`;
+                if (extracted.insurer.name) insuranceText += `     Insurance Company: ${extracted.insurer.name}\n`;
+                if (extracted.insurer.plan_name) insuranceText += `     Plan: ${extracted.insurer.plan_name}\n`;
+                if (extracted.insurer.group_number) insuranceText += `     Group Number: ${extracted.insurer.group_number}\n`;
+                if (extracted.member.member_id) insuranceText += `     Member ID: ${extracted.member.member_id}\n`;
+                if (extracted.member.subscriber_name) insuranceText += `     Subscriber: ${extracted.member.subscriber_name}\n`;
+                if (extracted.pharmacy.bin) insuranceText += `     Pharmacy BIN: ${extracted.pharmacy.bin}\n`;
+                if (extracted.pharmacy.pcn) insuranceText += `     Pharmacy PCN: ${extracted.pharmacy.pcn}\n`;
+              }
+              // Handle other formats
+              else {
+                insuranceText += `   Extracted Information:\n`;
+                Object.entries(extracted).forEach(([key, value]) => {
+                  if (value && typeof value === 'string' && value.trim()) {
+                    insuranceText += `     ${key}: ${value}\n`;
+                  }
+                });
+              }
+            } catch (e) {
+              // If not JSON, treat as plain text
+              insuranceText += `   Content: ${doc.extractedData}\n`;
+            }
           }
-        }
-      };
+          insuranceText += `\n`;
+        });
+      } else {
+        insuranceText += `No insurance documents uploaded.\n`;
+      }
+      
+      const Insurance_JSON = insuranceText;
 
       // Prepare Clinical_json from clinical documents as plain text
       const clinicalDocuments = documents.filter(doc => 
