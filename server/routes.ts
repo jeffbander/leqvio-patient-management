@@ -1318,13 +1318,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Generate unique ID for tracking
-      const uniqueId = `leqvio_${patient.id}_${Date.now()}`;
+      const uniqueId = `leqvio_app_${patient.id}_${Date.now()}`;
       
       // Prepare AIGENTS payload - using the correct format from API documentation
       const aigentsPayload = {
         run_email: "jeffrey.Bander@providerloop.com",
-        chain_to_run: "LEQVIO",
-        human_readable_record: `LEQVIO processing for patient ${patient.firstName} ${patient.lastName}`,
+        chain_to_run: "LEQVIO_app",
+        human_readable_record: `LEQVIO_app processing for patient ${patient.firstName} ${patient.lastName}`,
         source_id: `${patient.lastName}_${patient.firstName}__${patient.dateOfBirth?.replace(/-/g, '_')}`,
         first_step_user_input: "",
         starting_variables: {
@@ -1372,7 +1372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Log the automation for tracking with the AIGENTS chain run ID
       await storage.createAutomationLog({
-        chainName: 'leqvio',
+        chainName: 'leqvio_app',
         email: patient.email || 'noemail@providerloop.com',
         status: 'triggered',
         response: JSON.stringify(aigentsResult),
