@@ -180,7 +180,34 @@ export default function PatientDetail() {
   }
 
   const handleSave = () => {
-    updatePatientMutation.mutate(editedData)
+    // Only send fields that can be updated
+    const updateData = {
+      firstName: editedData.firstName,
+      lastName: editedData.lastName,
+      dateOfBirth: editedData.dateOfBirth,
+      orderingMD: editedData.orderingMD,
+      diagnosis: editedData.diagnosis,
+      phone: editedData.phone,
+      email: editedData.email,
+      address: editedData.address,
+      primaryInsurance: editedData.primaryInsurance,
+      primaryPlan: editedData.primaryPlan,
+      primaryInsuranceNumber: editedData.primaryInsuranceNumber,
+      primaryGroupId: editedData.primaryGroupId,
+      secondaryInsurance: editedData.secondaryInsurance,
+      secondaryPlan: editedData.secondaryPlan,
+      secondaryInsuranceNumber: editedData.secondaryInsuranceNumber,
+      secondaryGroupId: editedData.secondaryGroupId
+    }
+    
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key]
+      }
+    })
+    
+    updatePatientMutation.mutate(updateData)
   }
 
   const handleCancel = () => {
