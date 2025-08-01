@@ -1212,13 +1212,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update primary insurance fields
         if (metadata.primary.payer) updates.primaryInsurance = metadata.primary.payer;
         if (metadata.primary.plan) updates.primaryPlan = metadata.primary.plan;
-        if (metadata.primary.groupNumber) updates.primaryInsuranceNumber = metadata.primary.groupNumber;
+        if (metadata.primary.subscriberId) updates.primaryInsuranceNumber = metadata.primary.subscriberId;
         if (metadata.primary.groupNumber) updates.primaryGroupId = metadata.primary.groupNumber;
         
         // Update secondary insurance fields  
         if (metadata.secondary.payer) updates.secondaryInsurance = metadata.secondary.payer;
         if (metadata.secondary.plan) updates.secondaryPlan = metadata.secondary.plan;
-        if (metadata.secondary.groupNumber) updates.secondaryInsuranceNumber = metadata.secondary.groupNumber;
+        if (metadata.secondary.subscriberId) updates.secondaryInsuranceNumber = metadata.secondary.subscriberId;
         if (metadata.secondary.groupNumber) updates.secondaryGroupId = metadata.secondary.groupNumber;
         
         if (Object.keys(updates).length > 0) {
