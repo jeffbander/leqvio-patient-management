@@ -22,7 +22,8 @@ import {
   MapPin,
   Calendar,
   Stethoscope,
-  Shield
+  Shield,
+  History
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -77,6 +78,11 @@ export default function PatientDetail() {
 
   const { data: documents = [], isLoading: documentsLoading } = useQuery<PatientDocument[]>({
     queryKey: [`/api/patients/${patientId}/documents`],
+    enabled: !!patientId
+  })
+
+  const { data: automationLogs = [] } = useQuery({
+    queryKey: [`/api/patients/${patientId}/automation-logs`],
     enabled: !!patientId
   })
 
@@ -164,6 +170,8 @@ export default function PatientDetail() {
         title: "Success",
         description: `Data processed successfully. ${data.documentsProcessed.insurance} insurance and ${data.documentsProcessed.clinical} clinical documents sent to AIGENTS.`
       })
+      // Refresh automation logs to show the new process event
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/automation-logs`] })
     },
     onError: (error) => {
       toast({
@@ -602,6 +610,31 @@ export default function PatientDetail() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {/* Process History */}
+              {automationLogs.length > 0 && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <History className="mr-2 h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">Last Processed</span>
+                    </div>
+                    <span className="text-sm text-blue-700">
+                      {new Date(automationLogs[0].timestamp || automationLogs[0].createdat).toLocaleString()}
+                    </span>
+                  </div>
+                  {automationLogs[0].iscompleted && (
+                    <p className="text-sm text-blue-700 mt-1">
+                      Status: Completed {automationLogs[0].agentresponse ? '✓' : '- Processing'}
+                    </p>
+                  )}
+                  {automationLogs.length > 1 && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Total processes: {automationLogs.length}
+                    </p>
+                  )}
+                </div>
+              )}
+              
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Ready to Process</p>

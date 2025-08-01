@@ -1146,6 +1146,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get automation logs for a specific patient
+  app.get('/api/patients/:id/automation-logs', async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const logs = await storage.getAutomationLogsForPatient(patientId);
+      res.json(logs);
+    } catch (error) {
+      console.error('Error fetching patient automation logs:', error);
+      res.status(500).json({ error: 'Failed to fetch patient automation logs' });
+    }
+  });
+
   // Create patient document with OCR extraction
   app.post('/api/patients/:id/documents', upload.single('file'), async (req, res) => {
     try {

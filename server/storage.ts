@@ -179,6 +179,42 @@ export class DatabaseStorage implements IStorage {
     await db.delete(automationLogs);
   }
 
+  async getAutomationLogsForPatient(patientId: number): Promise<any[]> {
+    // Get all automation logs with chainName 'leqvio_app'
+    const logs = await db
+      .select()
+      .from(automationLogs)
+      .where(eq(automationLogs.chainName, 'leqvio_app'))
+      .orderBy(desc(automationLogs.createdAt))
+      .limit(10);
+    
+    // Filter logs that contain this patient ID in the requestData
+    const patientLogs = logs.filter(log => {
+      try {
+        const requestData = log.requestData as any;
+        if (requestData && requestData.starting_variables && requestData.starting_variables.patient_id) {
+          return parseInt(requestData.starting_variables.patient_id) === patientId;
+        }
+        return false;
+      } catch (e) {
+        return false;
+      }
+    });
+    
+    // Transform field names to match frontend expectations
+    return patientLogs.map(log => ({
+      id: log.id,
+      chainname: log.chainName,
+      status: log.status,
+      timestamp: log.timestamp,
+      uniqueid: log.uniqueId,
+      iscompleted: log.isCompleted,
+      createdat: log.createdAt,
+      agentresponse: log.agentResponse,
+      agentname: log.agentName
+    }));
+  }
+
   async createCustomChain(chain: InsertCustomChain): Promise<CustomChain> {
     const [newChain] = await db
       .insert(customChains)
