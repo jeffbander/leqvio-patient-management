@@ -1,0 +1,77 @@
+{
+  "run_email": "jeffrey.Bander@providerloop.com",
+  "chain_to_run": "LEQVIO_app",
+  "human_readable_record": "LEQVIO_app processing for patient [FirstName] [LastName]",
+  "source_id": "[LastName]_[FirstName]__[DateOfBirth_formatted]",
+  "first_step_user_input": "",
+  "starting_variables": {
+    "patient_data": {
+      "id": "[patient_id]",
+      "firstName": "[patient_first_name]",
+      "lastName": "[patient_last_name]",
+      "dateOfBirth": "[YYYY-MM-DD]",
+      "email": "[patient_email]",
+      "phone": "[patient_phone]",
+      "address": "[patient_address]",
+      "orderingMD": "[doctor_name]",
+      "diagnosis": "[ICD10_codes]",
+      "status": "[patient_status]",
+      "primaryInsurance": "[insurance_company]",
+      "primaryPlan": "[insurance_plan]",
+      "primaryInsuranceNumber": "[member_id]",
+      "primaryGroupId": "[group_number]",
+      "secondaryInsurance": "[secondary_insurance]",
+      "secondaryPlan": "[secondary_plan]",
+      "secondaryInsuranceNumber": "[secondary_member_id]",
+      "secondaryGroupId": "[secondary_group]",
+      "Insurance_JSON": {
+        "extractedData": [
+          {
+            "documentType": "epic_insurance_screenshot",
+            "fileName": "insurance_screenshot.png",
+            "extractedData": {
+              "primary": {
+                "plan": "ANTHEM BC/BS HEALTHPLUS",
+                "payer": "EMPIRE BC/BS MEDICARE",
+                "groupName": "NY MEDICARE",
+                "groupNumber": "NYMCRWP0",
+                "sponsorCode": "M179",
+                "subscriberId": "Y8E055W08345",
+                "subscriberName": "PATIENT NAME",
+                "subscriberAddress": "123 Main St, City, ST 12345"
+              },
+              "secondary": {
+                "plan": "",
+                "payer": "",
+                "groupName": "",
+                "groupNumber": "",
+                "subscriberId": "",
+                "subscriberName": "",
+                "subscriberAddress": ""
+              }
+            },
+            "uploadedAt": "2025-08-01T14:08:09.417Z"
+          }
+        ],
+        "currentInsuranceInfo": {
+          "primary": {
+            "insurance": "EMPIRE BC/BS MEDICARE",
+            "plan": "ANTHEM BC/BS HEALTHPLUS FULL DUAL ADVANTAGE",
+            "memberNumber": "Y8E055W08345",
+            "groupId": "NYMCRWP0"
+          },
+          "secondary": {
+            "insurance": "",
+            "plan": "",
+            "memberNumber": "",
+            "groupId": ""
+          }
+        }
+      },
+      "Clinical_json": "Patient Clinical Information:\nName: [FirstName] [LastName]\nDate of Birth: [YYYY-MM-DD]\nOrdering MD: [Doctor Name]\nDiagnosis: [ICD10 Codes]\nStatus: [patient_status]\n\nClinical Documents (1):\n1. Document: clinical_note.txt\n   Type: clinical_note\n   Uploaded: 8/1/2025\n   Content: [extracted_clinical_text_content]\n\n"
+    },
+    "patient_id": "[patient_id_string]",
+    "timestamp": "2025-08-01T14:08:58.266Z",
+    "unique_id": "leqvio_app_[patient_id]_[timestamp]"
+  }
+}
