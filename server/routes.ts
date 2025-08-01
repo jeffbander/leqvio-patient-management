@@ -113,134 +113,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Production agent webhook endpoint
   app.post("/webhook/agents", async (req, res) => {
-    const requestId = Date.now();
-    console.log(`\n=== AGENT API MESSAGE RECEIVED ===`);
-    console.log(`[WEBHOOK-AGENT-${requestId}] Timestamp: ${new Date().toISOString()}`);
-    console.log(`[WEBHOOK-AGENT-${requestId}] Source IP: ${req.ip || req.connection.remoteAddress}`);
-    console.log(`[WEBHOOK-AGENT-${requestId}] User-Agent: ${req.headers['user-agent']}`);
-    console.log(`[WEBHOOK-AGENT-${requestId}] Content-Type: ${req.headers['content-type']}`);
-    console.log(`[WEBHOOK-AGENT-${requestId}] Content-Length: ${req.headers['content-length']}`);
-    console.log(`\n[WEBHOOK-AGENT-${requestId}] === RAW API MESSAGE ===`);
-    console.log(`[WEBHOOK-AGENT-${requestId}]`, JSON.stringify(req.body, null, 2));
-    console.log(`[WEBHOOK-AGENT-${requestId}] === END RAW MESSAGE ===\n`);
-    console.log(`[WEBHOOK-AGENT-${requestId}] Message Type: ${typeof req.body}`);
-    console.log(`[WEBHOOK-AGENT-${requestId}] Field Count: ${Object.keys(req.body || {}).length}`);
-    console.log(`[WEBHOOK-AGENT-${requestId}] Available Fields: [${Object.keys(req.body || {}).join(', ')}]`);
-
     try {
-      // Accept any payload and try to extract what we can
-      const payload = req.body || {};
+      const { chainRunId, agentResponse, agentName, timestamp } = req.body;
       
-      // Try multiple possible field names for chainRunId (including AIGENTS format)
-      const chainRunId = payload.chainRunId || payload.ChainRunId || payload.chainrun_id || 
-                        payload.chain_run_id || payload['Chain Run ID'] || payload.ChainRun_ID ||
-                        payload['ChainRun_ID'] || payload.chain_run_id;
+      console.log('Agent webhook received:', { chainRunId, agentName, timestamp });
       
-      // Try multiple possible field names for response content
-      const responseContent = payload.agentResponse || payload.summ || payload.response || payload.content || payload.message;
-      
-      // Try multiple possible field names for agent name
-      const agentName = payload.agentName || payload.agent_name || payload.name || 'Agents System';
-      
-      // Try multiple possible field names for timestamp
-      const timestamp = payload.timestamp || payload['Current ISO DateTime'] || payload.datetime || payload.time;
-
-      console.log(`[WEBHOOK-AGENT-${requestId}] Extracted values:`);
-      console.log(`[WEBHOOK-AGENT-${requestId}] - chainRunId: ${chainRunId}`);
-      console.log(`[WEBHOOK-AGENT-${requestId}] - responseContent: ${responseContent ? String(responseContent).substring(0, 100) + '...' : 'null'}`);
-      console.log(`[WEBHOOK-AGENT-${requestId}] - agentName: ${agentName}`);
-      console.log(`[WEBHOOK-AGENT-${requestId}] - timestamp: ${timestamp}`);
-
-      // Only require chainRunId - make everything else optional
       if (!chainRunId) {
-        console.log(`[WEBHOOK-AGENT-${requestId}] Missing chainRunId - tried: chainRunId, ChainRunId, chainrun_id, chain_run_id`);
-        return res.status(400).json({ 
-          error: "chainRunId is required",
-          details: "Provide chainRunId, ChainRunId, chainrun_id, or chain_run_id field",
-          receivedKeys: Object.keys(payload),
-          receivedPayload: payload
-        });
+        return res.status(400).json({ error: "chainRunId is required" });
       }
-
-      // Process even if no response content - just log the webhook received
-      const finalResponseContent = responseContent || 'Webhook received (no response content)';
-
-      console.log(`[WEBHOOK-AGENT-${requestId}] Processing agent response for chain: ${chainRunId}`);
 
       const result = await storage.updateAutomationLogWithAgentResponse(
         chainRunId,
-        finalResponseContent,
-        agentName,
-        payload
+        agentResponse || 'No response content',
+        agentName || 'Agent',
+        req.body
       );
 
       if (result) {
-        console.log(`[WEBHOOK-AGENT-${requestId}] Successfully updated automation log ID: ${result.id}`);
-        
-        // Create response with all received fields as variables
-        const successResponse: any = {
+        res.json({ 
           message: "Agent response processed successfully",
-          chainRunId: chainRunId,
-          status: "success",
-          timestamp: new Date().toISOString(),
-          receivedFields: Object.keys(payload)
-        };
-
-        // Add each received field as a separate variable for agents system
-        const fieldNames = Object.keys(payload);
-        console.log(`[WEBHOOK-AGENT-${requestId}] Adding ${fieldNames.length} fields to response:`);
-        
-        fieldNames.forEach((fieldName, index) => {
-          const cleanFieldName = fieldName.replace(/\s+/g, '_').toLowerCase();
-          successResponse[`receivedFields_${index}`] = fieldName;
-          successResponse[cleanFieldName] = payload[fieldName];
-          console.log(`[WEBHOOK-AGENT-${requestId}] - Field ${index}: "${fieldName}" -> "${cleanFieldName}" = "${payload[fieldName]}"`);
+          chainRunId: chainRunId 
         });
-        
-        // Add receivedFields as array
-        successResponse.receivedFields = fieldNames;
-        
-        console.log(`[WEBHOOK-AGENT-${requestId}] Complete response object keys:`, Object.keys(successResponse));
-        
-        console.log(`\n=== API RESPONSE TO AGENTS SYSTEM ===`);
-        console.log(`[WEBHOOK-AGENT-${requestId}] Status: 200 OK`);
-        console.log(`[WEBHOOK-AGENT-${requestId}] Response Body:`);
-        console.log(`[WEBHOOK-AGENT-${requestId}]`, JSON.stringify(successResponse, null, 2));
-        console.log(`[WEBHOOK-AGENT-${requestId}] === END RESPONSE ===\n`);
-        
-        res.json(successResponse);
       } else {
-        console.log(`[WEBHOOK-AGENT-${requestId}] No automation found for chainRunId: ${chainRunId}`);
-        
-        const errorResponse = { 
-          error: "No automation found with the provided chainRunId",
-          chainRunId: chainRunId,
-          availableChains: "Check your automation logs for valid chainRunIds"
-        };
-        
-        console.log(`\n=== API RESPONSE TO AGENTS SYSTEM ===`);
-        console.log(`[WEBHOOK-AGENT-${requestId}] Status: 404 Not Found`);
-        console.log(`[WEBHOOK-AGENT-${requestId}] Response Body:`);
-        console.log(`[WEBHOOK-AGENT-${requestId}]`, JSON.stringify(errorResponse, null, 2));
-        console.log(`[WEBHOOK-AGENT-${requestId}] === END RESPONSE ===\n`);
-        
-        res.status(404).json(errorResponse);
+        res.status(404).json({ 
+          error: "No automation found with the provided chainRunId" 
+        });
       }
     } catch (error) {
-      console.error(`[WEBHOOK-AGENT-${requestId}] Error processing agent webhook:`, error);
-      
-      const errorResponse = { 
-        error: "Internal server error processing agent response",
-        details: (error as Error).message 
-      };
-      
-      console.log(`\n=== API RESPONSE TO AGENTS SYSTEM ===`);
-      console.log(`[WEBHOOK-AGENT-${requestId}] Status: 500 Internal Server Error`);
-      console.log(`[WEBHOOK-AGENT-${requestId}] Response Body:`);
-      console.log(`[WEBHOOK-AGENT-${requestId}]`, JSON.stringify(errorResponse, null, 2));
-      console.log(`[WEBHOOK-AGENT-${requestId}] === END RESPONSE ===\n`);
-      
-      res.status(500).json(errorResponse);
+      console.error('Error processing agent webhook:', error);
+      res.status(500).json({ 
+        error: "Internal server error processing agent response" 
+      });
     }
   });
 
