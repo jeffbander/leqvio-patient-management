@@ -66,7 +66,7 @@ export default function PatientDetail() {
   const [isEditing, setIsEditing] = useState(false)
   const [editedData, setEditedData] = useState<Partial<Patient>>({})
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [documentType, setDocumentType] = useState<string>('epic_screenshot')
+  const [documentType, setDocumentType] = useState<string>('epic_insurance_screenshot')
   const [clinicalNotes, setClinicalNotes] = useState('')
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
@@ -515,7 +515,8 @@ export default function PatientDetail() {
                 onChange={(e) => setDocumentType(e.target.value)}
                 className="w-full border rounded px-3 py-2 mt-1"
               >
-                <option value="epic_screenshot">Epic Screenshot</option>
+                <option value="epic_screenshot">Epic Patient Screenshot</option>
+                <option value="epic_insurance_screenshot">Epic Insurance Coverage Screenshot</option>
                 <option value="insurance_screenshot">Insurance Card Screenshot</option>
                 <option value="clinical_note">Clinical Note</option>
               </select>

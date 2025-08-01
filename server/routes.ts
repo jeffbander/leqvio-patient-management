@@ -1023,12 +1023,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
           const pdfBuffer = await generateLEQVIOPDF(pdfData);
           
-          const { MailService } = await import('@sendgrid/mail');
-          const mailService = new MailService();
-          mailService.setApiKey(process.env.SENDGRID_API_KEY!);
+          const sgMail = (await import('@sendgrid/mail')).default;
+          sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
           
           // Send email with PDF attachment
-          await mailService.send({
+          await sgMail.send({
             to: recipientEmail,
             from: 'noreply@providerloop.com', // Replace with your verified sender
             subject: 'LEQVIO Patient Registration Form',
@@ -1160,16 +1159,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let metadata: any = {};
       
       // Use OpenAI to extract data from the document
-      if (documentType === 'insurance_screenshot' || documentType === 'epic_screenshot') {
+      if (documentType === 'epic_insurance_screenshot') {
         const base64Image = file.buffer.toString('base64');
-        const mimeType = file.mimetype;
+        
+        try {
+          const { extractEpicInsuranceData } = await import('./openai-service');
+          const extraction = await extractEpicInsuranceData(base64Image);
+          extractedData = JSON.stringify(extraction);
+          metadata = extraction;
+        } catch (ocrError) {
+          console.error('Epic insurance extraction failed:', ocrError);
+          // Continue without extraction
+        }
+      } else if (documentType === 'insurance_screenshot') {
+        const base64Image = file.buffer.toString('base64');
         
         try {
           const extraction = await extractInsuranceCardData(base64Image);
           extractedData = JSON.stringify(extraction);
           metadata = extraction;
         } catch (ocrError) {
-          console.error('OCR extraction failed:', ocrError);
+          console.error('Insurance card extraction failed:', ocrError);
+          // Continue without extraction
+        }
+      } else if (documentType === 'epic_screenshot') {
+        const base64Image = file.buffer.toString('base64');
+        
+        try {
+          const extraction = await extractPatientInfoFromScreenshot(base64Image);
+          extractedData = JSON.stringify(extraction);
+          metadata = extraction;
+        } catch (ocrError) {
+          console.error('Epic screenshot extraction failed:', ocrError);
           // Continue without extraction
         }
       }
@@ -1184,8 +1205,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata
       });
       
-      // If we have extracted insurance data, update the patient record
-      if (metadata.insurer && documentType === 'insurance_screenshot') {
+      // If we have extracted Epic insurance data, update the patient record with both primary and secondary
+      if (metadata.primary && documentType === 'epic_insurance_screenshot') {
+        const updates: any = {};
+        
+        // Update primary insurance fields
+        if (metadata.primary.payer) updates.primaryInsurance = metadata.primary.payer;
+        if (metadata.primary.plan) updates.primaryPlan = metadata.primary.plan;
+        if (metadata.primary.groupNumber) updates.primaryInsuranceNumber = metadata.primary.groupNumber;
+        if (metadata.primary.groupNumber) updates.primaryGroupId = metadata.primary.groupNumber;
+        
+        // Update secondary insurance fields  
+        if (metadata.secondary.payer) updates.secondaryInsurance = metadata.secondary.payer;
+        if (metadata.secondary.plan) updates.secondaryPlan = metadata.secondary.plan;
+        if (metadata.secondary.groupNumber) updates.secondaryInsuranceNumber = metadata.secondary.groupNumber;
+        if (metadata.secondary.groupNumber) updates.secondaryGroupId = metadata.secondary.groupNumber;
+        
+        if (Object.keys(updates).length > 0) {
+          await storage.updatePatient(patientId, updates);
+        }
+      }
+      
+      // If we have extracted regular insurance card data, update the patient record
+      else if (metadata.insurer && documentType === 'insurance_screenshot') {
         const updates: any = {};
         if (metadata.insurer.name) updates.primaryInsurance = metadata.insurer.name;
         if (metadata.member.member_id) updates.primaryInsuranceNumber = metadata.member.member_id;
@@ -1197,7 +1239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Trigger AIGENTS chain if this is Epic data
-      if (documentType === 'epic_screenshot' && extractedData) {
+      if ((documentType === 'epic_screenshot' || documentType === 'epic_insurance_screenshot') && extractedData) {
         try {
           const patient = await storage.getPatient(patientId);
           if (patient) {

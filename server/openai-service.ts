@@ -689,3 +689,141 @@ Look for patterns like:
     return undefined;
   }
 }
+
+interface EpicInsuranceData {
+  primary: {
+    payer: string;
+    plan: string;
+    sponsorCode: string;
+    groupNumber: string;
+    groupName: string;
+    subscriberName: string;
+    subscriberSSN: string;
+    subscriberAddress: string;
+  };
+  secondary: {
+    payer: string;
+    plan: string;
+    sponsorCode: string;
+    groupNumber: string;
+    groupName: string;
+    subscriberName: string;
+    subscriberSSN: string;
+    subscriberAddress: string;
+  };
+  metadata: {
+    extractionConfidence: number;
+    rawText: string;
+    timestamp: string;
+  };
+}
+
+export async function extractEpicInsuranceData(base64Image: string): Promise<EpicInsuranceData> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: `You are an Epic EMR specialist expert at extracting insurance coverage data from Epic screenshots and insurance reports.
+
+Extract insurance information from Epic insurance coverage reports that show Primary and Secondary coverage sections.
+
+Return JSON with this exact structure:
+{
+  "primary": {
+    "payer": "Primary insurance payer name (e.g., MEDICARE, UNITED HEALTHCARE COMMERCIAL)",
+    "plan": "Plan name/type (e.g., MEDICARE A & B, UNITED HEALTHCARE EMPIRE PLAN)",
+    "sponsorCode": "Sponsor/Plan code (e.g., M87, H422)",
+    "groupNumber": "Group ID number (e.g., 030500)",
+    "groupName": "Group name description",
+    "subscriberName": "Primary subscriber full name",
+    "subscriberSSN": "Subscriber Social Security Number (format: XXX-XX-XXXX)",
+    "subscriberAddress": "Complete subscriber address"
+  },
+  "secondary": {
+    "payer": "Secondary insurance payer name",
+    "plan": "Secondary plan name/type", 
+    "sponsorCode": "Secondary sponsor/plan code",
+    "groupNumber": "Secondary group ID number",
+    "groupName": "Secondary group name description",
+    "subscriberName": "Secondary subscriber full name",
+    "subscriberSSN": "Secondary subscriber SSN",
+    "subscriberAddress": "Secondary subscriber address"
+  },
+  "metadata": {
+    "extractionConfidence": 0.95,
+    "rawText": "Complete text extracted from the image",
+    "timestamp": "ISO timestamp"
+  }
+}
+
+EXTRACTION RULES:
+- Look for "Primary Visit Coverage" and "Secondary Visit Coverage" sections
+- Extract ALL visible insurance data from both sections
+- Use exact text as it appears in Epic
+- Empty string "" for missing fields in either primary or secondary
+- Include complete subscriber names, addresses, and SSNs
+- Capture payer names exactly (MEDICARE, UNITED HEALTHCARE COMMERCIAL, etc.)
+- Extract plan details, sponsor codes, and group information
+- Set confidence score based on data clarity (0.0-1.0)
+- Include all visible text in rawText field
+- Focus on structured Epic insurance data format`
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Extract primary and secondary insurance coverage data from this Epic insurance report. Capture all payer information, subscriber details, plan codes, and group data."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`
+              }
+            }
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 2000,
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || "{}");
+    
+    // Ensure all required fields exist with defaults
+    const extractedData: EpicInsuranceData = {
+      primary: {
+        payer: result.primary?.payer || "",
+        plan: result.primary?.plan || "",
+        sponsorCode: result.primary?.sponsorCode || "",
+        groupNumber: result.primary?.groupNumber || "",
+        groupName: result.primary?.groupName || "",
+        subscriberName: result.primary?.subscriberName || "",
+        subscriberSSN: result.primary?.subscriberSSN || "",
+        subscriberAddress: result.primary?.subscriberAddress || ""
+      },
+      secondary: {
+        payer: result.secondary?.payer || "",
+        plan: result.secondary?.plan || "",
+        sponsorCode: result.secondary?.sponsorCode || "",
+        groupNumber: result.secondary?.groupNumber || "",
+        groupName: result.secondary?.groupName || "",
+        subscriberName: result.secondary?.subscriberName || "",
+        subscriberSSN: result.secondary?.subscriberSSN || "",
+        subscriberAddress: result.secondary?.subscriberAddress || ""
+      },
+      metadata: {
+        extractionConfidence: Math.max(0, Math.min(1, result.metadata?.extractionConfidence || 0.8)),
+        rawText: result.metadata?.rawText || "",
+        timestamp: new Date().toISOString()
+      }
+    };
+
+    return extractedData;
+  } catch (error) {
+    console.error("OpenAI Epic insurance extraction error:", error);
+    throw new Error("Failed to extract Epic insurance data: " + (error as Error).message);
+  }
+}
