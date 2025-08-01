@@ -1406,21 +1406,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
           combinedClinicalInfo += `   Type: ${doc.documentType}\n`;
           combinedClinicalInfo += `   Uploaded: ${new Date(doc.createdAt).toLocaleDateString()}\n`;
           
+          // For clinical documents, prioritize sending actual content over structured data
           if (doc.extractedData) {
-            try {
-              const extracted = JSON.parse(doc.extractedData);
-              if (typeof extracted === 'object') {
-                combinedClinicalInfo += `   Extracted Information:\n`;
-                Object.entries(extracted).forEach(([key, value]) => {
-                  if (value && typeof value === 'string' && value.trim()) {
-                    combinedClinicalInfo += `     ${key}: ${value}\n`;
-                  }
-                });
-              } else if (typeof extracted === 'string') {
-                combinedClinicalInfo += `   Content: ${extracted}\n`;
+            if (doc.documentType === 'clinical_note' || doc.documentType === 'leqvio_form') {
+              // For clinical notes and forms, send the full extracted content directly
+              combinedClinicalInfo += `   Clinical Content:\n`;
+              try {
+                const extracted = JSON.parse(doc.extractedData);
+                if (typeof extracted === 'string') {
+                  combinedClinicalInfo += `${extracted}\n`;
+                } else if (extracted.rawText || extracted.content || extracted.text) {
+                  // Look for common text fields in structured data
+                  const textContent = extracted.rawText || extracted.content || extracted.text;
+                  combinedClinicalInfo += `${textContent}\n`;
+                } else {
+                  // If structured, still include all relevant clinical information
+                  Object.entries(extracted).forEach(([key, value]) => {
+                    if (value && typeof value === 'string' && value.trim()) {
+                      combinedClinicalInfo += `${key}: ${value}\n`;
+                    }
+                  });
+                }
+              } catch (e) {
+                // If not JSON, treat as plain clinical text content
+                combinedClinicalInfo += `${doc.extractedData}\n`;
               }
-            } catch (e) {
-              combinedClinicalInfo += `   Content: ${doc.extractedData}\n`;
+            } else {
+              // For other clinical documents (like epic_screenshot), use existing structured approach
+              try {
+                const extracted = JSON.parse(doc.extractedData);
+                if (typeof extracted === 'object') {
+                  combinedClinicalInfo += `   Extracted Information:\n`;
+                  Object.entries(extracted).forEach(([key, value]) => {
+                    if (value && typeof value === 'string' && value.trim()) {
+                      combinedClinicalInfo += `     ${key}: ${value}\n`;
+                    }
+                  });
+                } else if (typeof extracted === 'string') {
+                  combinedClinicalInfo += `   Content: ${extracted}\n`;
+                }
+              } catch (e) {
+                combinedClinicalInfo += `   Content: ${doc.extractedData}\n`;
+              }
             }
           }
           combinedClinicalInfo += `\n`;
