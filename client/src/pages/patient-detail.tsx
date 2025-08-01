@@ -23,7 +23,11 @@ import {
   Calendar,
   Stethoscope,
   Shield,
-  History
+  History,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Target
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -71,6 +75,83 @@ export default function PatientDetail() {
   const [clinicalNotes, setClinicalNotes] = useState('')
   const [processResult, setProcessResult] = useState<any>(null)
   const [showAigentsData, setShowAigentsData] = useState(false)
+
+  // Helper function to parse AIGENTS response
+  const parseAigentsResponse = (response: string) => {
+    if (!response || response === 'No response content' || response === 'Webhook received (no response content)') {
+      return null
+    }
+
+    try {
+      const lines = response.split('\n')
+      let approvalLikelihood = ''
+      let criteriaItems: Array<{text: string, status: 'passed' | 'failed' | 'unknown'}> = []
+      let documentationGaps: string[] = []
+      let recommendations: string[] = []
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim()
+        
+        // Extract approval likelihood
+        if (line.includes('APPROVAL LIKELIHOOD:')) {
+          approvalLikelihood = line.replace('APPROVAL LIKELIHOOD:', '').trim()
+        }
+        
+        // Extract criteria assessment
+        if (line.includes('CRITERIA ASSESSMENT')) {
+          for (let j = i + 1; j < lines.length && !lines[j].includes('DOCUMENTATION GAPS'); j++) {
+            const criteriaLine = lines[j].trim()
+            if (criteriaLine.includes('✓')) {
+              criteriaItems.push({
+                text: criteriaLine.replace('✓', '').replace('•', '').trim(),
+                status: 'passed'
+              })
+            } else if (criteriaLine.includes('✗')) {
+              criteriaItems.push({
+                text: criteriaLine.replace('✗', '').replace('•', '').trim(),
+                status: 'failed'
+              })
+            }
+          }
+        }
+        
+        // Extract documentation gaps
+        if (line.includes('DOCUMENTATION GAPS:')) {
+          for (let j = i + 1; j < lines.length && !lines[j].includes('RECOMMENDATIONS'); j++) {
+            const gapLine = lines[j].trim()
+            if (gapLine.startsWith('–') || gapLine.startsWith('-')) {
+              documentationGaps.push(gapLine.replace(/^[–-]/, '').trim())
+            }
+          }
+        }
+        
+        // Extract recommendations
+        if (line.includes('RECOMMENDATIONS:')) {
+          for (let j = i + 1; j < lines.length && !lines[j].includes('ALTERNATIVE STRATEGIES'); j++) {
+            const recLine = lines[j].trim()
+            if (recLine.match(/^\d+\./)) {
+              recommendations.push(recLine.replace(/^\d+\./, '').trim())
+            }
+          }
+        }
+      }
+
+      return {
+        approvalLikelihood,
+        criteriaItems,
+        documentationGaps,
+        recommendations
+      }
+    } catch (error) {
+      console.error('Error parsing AIGENTS response:', error)
+      return null
+    }
+  }
+
+  // Get latest AIGENTS analysis
+  const latestAnalysis = automationLogs.length > 0 && automationLogs[0].agentresponse 
+    ? parseAigentsResponse(automationLogs[0].agentresponse)
+    : null
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: [`/api/patients/${patientId}`],
@@ -602,6 +683,139 @@ export default function PatientDetail() {
             </div>
           </CardContent>
         </Card>
+
+        {/* LEQVIO Approval Analysis */}
+        {latestAnalysis && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                LEQVIO Approval Analysis
+              </CardTitle>
+              <CardDescription>
+                Latest analysis from AIGENTS based on patient data and insurance criteria
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Approval Likelihood */}
+                {latestAnalysis.approvalLikelihood && (
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="h-4 w-4" />
+                      <h4 className="font-medium">Approval Likelihood</h4>
+                    </div>
+                    <div className="text-lg font-semibold">
+                      {latestAnalysis.approvalLikelihood.includes('Low') && (
+                        <Badge variant="destructive" className="text-base px-3 py-1">
+                          {latestAnalysis.approvalLikelihood}
+                        </Badge>
+                      )}
+                      {latestAnalysis.approvalLikelihood.includes('Medium') && (
+                        <Badge variant="secondary" className="text-base px-3 py-1 bg-yellow-100 text-yellow-800">
+                          {latestAnalysis.approvalLikelihood}
+                        </Badge>
+                      )}
+                      {latestAnalysis.approvalLikelihood.includes('High') && (
+                        <Badge variant="default" className="text-base px-3 py-1 bg-green-100 text-green-800">
+                          {latestAnalysis.approvalLikelihood}
+                        </Badge>
+                      )}
+                      {!latestAnalysis.approvalLikelihood.includes('Low') && 
+                       !latestAnalysis.approvalLikelihood.includes('Medium') && 
+                       !latestAnalysis.approvalLikelihood.includes('High') && (
+                        <Badge variant="outline" className="text-base px-3 py-1">
+                          {latestAnalysis.approvalLikelihood}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Criteria Assessment */}
+                {latestAnalysis.criteriaItems.length > 0 && (
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle className="h-4 w-4" />
+                      <h4 className="font-medium">Criteria Assessment</h4>
+                    </div>
+                    <div className="space-y-2">
+                      {latestAnalysis.criteriaItems.map((item, index) => (
+                        <div key={index} className="flex items-start gap-2">
+                          {item.status === 'passed' && (
+                            <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          )}
+                          {item.status === 'failed' && (
+                            <XCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                          )}
+                          {item.status === 'unknown' && (
+                            <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                          )}
+                          <span className="text-sm">{item.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Documentation Gaps */}
+                {latestAnalysis.documentationGaps.length > 0 && (
+                  <div className="p-4 border rounded-lg bg-yellow-50 border-yellow-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                      <h4 className="font-medium text-yellow-800">Documentation Gaps</h4>
+                    </div>
+                    <div className="space-y-2">
+                      {latestAnalysis.documentationGaps.map((gap, index) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <div className="w-1.5 h-1.5 bg-yellow-600 rounded-full mt-2 flex-shrink-0"></div>
+                          <span className="text-sm text-yellow-800">{gap}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recommendations */}
+                {latestAnalysis.recommendations.length > 0 && (
+                  <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="h-4 w-4 text-blue-600" />
+                      <h4 className="font-medium text-blue-800">Recommendations</h4>
+                    </div>
+                    <div className="space-y-2">
+                      {latestAnalysis.recommendations.map((rec, index) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <span className="text-sm font-medium text-blue-600 mt-0.5 flex-shrink-0">
+                            {index + 1}.
+                          </span>
+                          <span className="text-sm text-blue-800">{rec}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Analysis Timestamp */}
+                {automationLogs.length > 0 && (
+                  <div className="flex justify-between items-center text-xs text-gray-500 pt-2 border-t">
+                    <span>
+                      Analysis completed: {new Date(automationLogs[0].timestamp || automationLogs[0].createdat).toLocaleString()}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAigentsData(true)}
+                      className="text-xs"
+                    >
+                      View Full Analysis
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Process Data */}
         <Card>
