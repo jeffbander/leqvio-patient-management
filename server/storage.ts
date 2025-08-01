@@ -332,8 +332,8 @@ export class DatabaseStorage implements IStorage {
       ? Math.round(analytics.reduce((sum, a) => sum + a.responseTime, 0) / analytics.length)
       : 0;
     
-    const uniqueEndpoints = [...new Set(analytics.map(a => a.endpoint))];
-    const chainTypes = [...new Set(analytics.filter(a => a.chainType).map(a => a.chainType))];
+    const uniqueEndpoints = Array.from(new Set(analytics.map(a => a.endpoint)));
+    const chainTypes = Array.from(new Set(analytics.filter(a => a.chainType).map(a => a.chainType)));
     
     return {
       totalRequests,
