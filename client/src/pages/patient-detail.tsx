@@ -1234,7 +1234,14 @@ export default function PatientDetail() {
                   <div>
                     <h3 className="font-semibold mb-2">Extracted Data:</h3>
                     <pre className="bg-gray-100 p-4 rounded overflow-x-auto text-sm">
-                      {JSON.stringify(JSON.parse(viewedDocument.extractedData), null, 2)}
+                      {(() => {
+                        try {
+                          return JSON.stringify(JSON.parse(viewedDocument.extractedData), null, 2)
+                        } catch (e) {
+                          // If it's not valid JSON, display as plain text
+                          return viewedDocument.extractedData
+                        }
+                      })()}
                     </pre>
                   </div>
                   {viewedDocument.metadata && Object.keys(viewedDocument.metadata).length > 0 && (
