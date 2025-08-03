@@ -13,7 +13,8 @@ import {
   ArrowLeft, 
   Camera, 
   Eye,
-  FileText, 
+  FileText,
+  FileSearch,
   Upload, 
   Save, 
   Loader2,
@@ -172,6 +173,14 @@ export default function PatientDetail() {
   const latestAnalysis = automationLogs.length > 0 && automationLogs[0].agentresponse 
     ? parseAigentsResponse(automationLogs[0].agentresponse)
     : null
+    
+  // Extract additional webhook variables
+  const latestWebhookData = automationLogs.length > 0 && automationLogs[0].webhookpayload
+    ? automationLogs[0].webhookpayload
+    : null
+    
+  const furtherAnalysis = latestWebhookData?.websearch || latestWebhookData?.webSearch || latestWebhookData?.web_search || null
+  const letterOfMedicalNecessity = latestWebhookData?.letofneed || latestWebhookData?.letterOfNeed || latestWebhookData?.letter_of_need || null
 
   const updatePatientMutation = useMutation({
     mutationFn: async (updates: Partial<Patient>) => {
@@ -924,6 +933,50 @@ export default function PatientDetail() {
                     </Button>
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Further Analysis */}
+        {furtherAnalysis && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileSearch className="h-5 w-5" />
+                Further Analysis
+              </CardTitle>
+              <CardDescription>
+                Additional research and findings from web search
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-sm max-w-none">
+                <div className="whitespace-pre-wrap bg-gray-50 p-4 rounded-lg text-sm">
+                  {furtherAnalysis}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Letter of Medical Necessity */}
+        {letterOfMedicalNecessity && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Letter of Medical Necessity
+              </CardTitle>
+              <CardDescription>
+                Generated letter for insurance authorization
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-sm max-w-none">
+                <div className="whitespace-pre-wrap bg-blue-50 p-4 rounded-lg text-sm font-mono">
+                  {letterOfMedicalNecessity}
+                </div>
               </div>
             </CardContent>
           </Card>
