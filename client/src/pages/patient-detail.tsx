@@ -502,7 +502,6 @@ export default function PatientDetail() {
           </div>
         </div>
       </div>
-
       <div className="grid gap-6">
         {/* Patient Information */}
         <Card>
@@ -1074,7 +1073,7 @@ export default function PatientDetail() {
         <Card>
           <CardHeader>
             <CardTitle>Process Patient Data</CardTitle>
-            <CardDescription>Send insurance and clinical information to AIGENTS for processing</CardDescription>
+            <CardDescription>Send insurance and clinical information to  see if LEQVIO can be approved</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -1160,7 +1159,6 @@ export default function PatientDetail() {
           </CardContent>
         </Card>
       </div>
-
       {/* AIGENTS Data Modal */}
       {showAigentsData && automationLogs.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1205,7 +1203,6 @@ export default function PatientDetail() {
           </div>
         </div>
       )}
-
       {/* Document View Modal */}
       {viewedDocument && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1261,5 +1258,5 @@ export default function PatientDetail() {
         </div>
       )}
     </div>
-  )
+  );
 }
