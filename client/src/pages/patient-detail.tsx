@@ -691,7 +691,7 @@ export default function PatientDetail() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Provider:</span>
-                    {isEditingInsuranceInsurance ? (
+                    {isEditingInsurance ? (
                       <Input
                         value={editedData.primaryInsurance || ''}
                         onChange={(e) => setEditedData({...editedData, primaryInsurance: e.target.value})}

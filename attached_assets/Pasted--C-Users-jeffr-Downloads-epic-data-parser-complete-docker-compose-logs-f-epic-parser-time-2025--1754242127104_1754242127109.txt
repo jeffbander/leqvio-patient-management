@@ -1,0 +1,31 @@
+
+C:\Users\jeffr\Downloads\epic_data_parser_complete>docker-compose logs -f epic-parser
+time="2025-08-03T13:26:28-04:00" level=warning msg="C:\\Users\\jeffr\\Downloads\\epic_data_parser_complete\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+epic-data-parser  | Traceback (most recent call last):
+epic-data-parser  |   File "/app/src/main.py", line 10, in <module>
+epic-data-parser  |     from src.routes.user import user_bp
+epic-data-parser  | ModuleNotFoundError: No module named 'src'
+epic-data-parser  | Traceback (most recent call last):
+epic-data-parser  |   File "/app/src/main.py", line 10, in <module>
+epic-data-parser  |     from src.routes.user import user_bp
+epic-data-parser  | ModuleNotFoundError: No module named 'src'
+epic-data-parser  | Traceback (most recent call last):
+epic-data-parser  |   File "/app/src/main.py", line 10, in <module>
+epic-data-parser  |     from src.routes.user import user_bp
+epic-data-parser  | ModuleNotFoundError: No module named 'src'
+epic-data-parser  | Traceback (most recent call last):
+epic-data-parser  |   File "/app/src/main.py", line 10, in <module>
+epic-data-parser  |     from src.routes.user import user_bp
+epic-data-parser  | ModuleNotFoundError: No module named 'src'
+epic-data-parser  | Traceback (most recent call last):
+epic-data-parser  |   File "/app/src/main.py", line 10, in <module>
+epic-data-parser  |     from src.routes.user import user_bp
+epic-data-parser  | ModuleNotFoundError: No module named 'src'
+epic-data-parser  | Traceback (most recent call last):
+epic-data-parser  |   File "/app/src/main.py", line 10, in <module>
+epic-data-parser  |     from src.routes.user import user_bp
+epic-data-parser  | ModuleNotFoundError: No module named 'src'
+epic-data-parser  | Traceback (most recent call last):
+epic-data-parser  |   File "/app/src/main.py", line 10, in <module>
+epic-data-parser  |     from src.routes.user import user_bp
+epic-data-parser  | ModuleNotFoundError: No module named 'src'
