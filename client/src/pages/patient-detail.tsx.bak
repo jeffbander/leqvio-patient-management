@@ -12,7 +12,6 @@ import { apiRequest, queryClient } from '@/lib/queryClient'
 import { 
   ArrowLeft, 
   Camera, 
-  Eye,
   FileText, 
   Upload, 
   Save, 
@@ -28,9 +27,7 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Target,
-  Trash2,
-  X
+  Target
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -79,7 +76,6 @@ export default function PatientDetail() {
   const [clinicalNotes, setClinicalNotes] = useState('')
   const [processResult, setProcessResult] = useState<any>(null)
   const [showAigentsData, setShowAigentsData] = useState(false)
-  const [viewedDocument, setViewedDocument] = useState<PatientDocument | null>(null)
 
   // Helper function to parse AIGENTS response
   const parseAigentsResponse = (response: string) => {
@@ -270,30 +266,6 @@ export default function PatientDetail() {
     }
   })
 
-  const deleteDocumentMutation = useMutation({
-    mutationFn: async (documentId: number) => {
-      const response = await fetch(`/api/patients/${patientId}/documents/${documentId}`, {
-        method: 'DELETE'
-      })
-      if (!response.ok) throw new Error('Failed to delete document')
-      return response.json()
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Document deleted successfully"
-      })
-      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] })
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete document",
-        variant: "destructive"
-      })
-    }
-  })
-
   const handleEdit = () => {
     setEditedData({
       phone: patient.phone || '',
@@ -412,16 +384,6 @@ export default function PatientDetail() {
     
     uploadDocumentMutation.mutate(formData)
     setClinicalNotes('')
-  }
-
-  const handleViewDocument = (doc: PatientDocument) => {
-    setViewedDocument(doc)
-  }
-
-  const handleDeleteDocument = (documentId: number) => {
-    if (confirm('Are you sure you want to delete this document?')) {
-      deleteDocumentMutation.mutate(documentId)
-    }
   }
 
   const getStatusColor = (status: string) => {
@@ -691,7 +653,7 @@ export default function PatientDetail() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Provider:</span>
-                    {isEditingInsuranceInsurance ? (
+                    {isEditingInsurance ? (
                       <Input
                         value={editedData.primaryInsurance || ''}
                         onChange={(e) => setEditedData({...editedData, primaryInsurance: e.target.value})}
@@ -703,7 +665,7 @@ export default function PatientDetail() {
                   </div>
                   <div className="flex justify-between">
                     <span>Plan:</span>
-                    {isEditingInsurance ? (
+                    {isEditing ? (
                       <Input
                         value={editedData.primaryPlan || ''}
                         onChange={(e) => setEditedData({...editedData, primaryPlan: e.target.value})}
@@ -715,7 +677,7 @@ export default function PatientDetail() {
                   </div>
                   <div className="flex justify-between">
                     <span>Member ID:</span>
-                    {isEditingInsurance ? (
+                    {isEditing ? (
                       <Input
                         value={editedData.primaryInsuranceNumber || ''}
                         onChange={(e) => setEditedData({...editedData, primaryInsuranceNumber: e.target.value})}
@@ -727,7 +689,7 @@ export default function PatientDetail() {
                   </div>
                   <div className="flex justify-between">
                     <span>Group ID:</span>
-                    {isEditingInsurance ? (
+                    {isEditing ? (
                       <Input
                         value={editedData.primaryGroupId || ''}
                         onChange={(e) => setEditedData({...editedData, primaryGroupId: e.target.value})}
@@ -745,7 +707,7 @@ export default function PatientDetail() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Provider:</span>
-                    {isEditingInsurance ? (
+                    {isEditing ? (
                       <Input
                         value={editedData.secondaryInsurance || ''}
                         onChange={(e) => setEditedData({...editedData, secondaryInsurance: e.target.value})}
@@ -757,7 +719,7 @@ export default function PatientDetail() {
                   </div>
                   <div className="flex justify-between">
                     <span>Plan:</span>
-                    {isEditingInsurance ? (
+                    {isEditing ? (
                       <Input
                         value={editedData.secondaryPlan || ''}
                         onChange={(e) => setEditedData({...editedData, secondaryPlan: e.target.value})}
@@ -769,7 +731,7 @@ export default function PatientDetail() {
                   </div>
                   <div className="flex justify-between">
                     <span>Member ID:</span>
-                    {isEditingInsurance ? (
+                    {isEditing ? (
                       <Input
                         value={editedData.secondaryInsuranceNumber || ''}
                         onChange={(e) => setEditedData({...editedData, secondaryInsuranceNumber: e.target.value})}
@@ -1134,25 +1096,6 @@ export default function PatientDetail() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleViewDocument(doc)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeleteDocument(doc.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Delete
-                      </Button>
-                    </div>
                   </div>
                 ))}
               </div>
@@ -1200,54 +1143,6 @@ export default function PatientDetail() {
                 </div>
               ) : (
                 <p className="text-gray-500">No request data available</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Document View Modal */}
-      {viewedDocument && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold">{viewedDocument.fileName}</h2>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setViewedDocument(null)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="text-sm text-gray-600 mt-1">
-                {viewedDocument.documentType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} • 
-                {' '}{format(new Date(viewedDocument.createdAt), 'MMM d, yyyy h:mm a')}
-              </p>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              {viewedDocument.documentType === 'clinical_note' && viewedDocument.metadata?.content ? (
-                <div className="whitespace-pre-wrap text-sm">{viewedDocument.metadata.content}</div>
-              ) : viewedDocument.extractedData ? (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold mb-2">Extracted Data:</h3>
-                    <pre className="bg-gray-100 p-4 rounded overflow-x-auto text-sm">
-                      {JSON.stringify(JSON.parse(viewedDocument.extractedData), null, 2)}
-                    </pre>
-                  </div>
-                  {viewedDocument.metadata && Object.keys(viewedDocument.metadata).length > 0 && (
-                    <div>
-                      <h3 className="font-semibold mb-2">Additional Metadata:</h3>
-                      <pre className="bg-gray-100 p-4 rounded overflow-x-auto text-sm">
-                        {JSON.stringify(viewedDocument.metadata, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-gray-500">No extracted data available for this document.</p>
               )}
             </div>
           </div>

@@ -1070,6 +1070,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete patient document
+  app.delete('/api/patients/:id/documents/:documentId', async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const documentId = parseInt(req.params.documentId);
+      
+      // Verify the document belongs to the patient
+      const documents = await storage.getPatientDocuments(patientId);
+      const document = documents.find(doc => doc.id === documentId);
+      
+      if (!document) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+      
+      // Delete the document
+      const deleted = await storage.deletePatientDocument(documentId);
+      
+      if (!deleted) {
+        return res.status(500).json({ error: 'Failed to delete document' });
+      }
+      
+      res.json({ success: true, message: 'Document deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting patient document:', error);
+      res.status(500).json({ error: 'Failed to delete patient document' });
+    }
+  });
+
   // Create patient document with OCR extraction
   app.post('/api/patients/:id/documents', upload.single('file'), async (req, res) => {
     try {

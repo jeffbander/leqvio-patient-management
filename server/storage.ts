@@ -71,6 +71,7 @@ export interface IStorage {
   // Patient Documents
   createPatientDocument(document: InsertPatientDocument): Promise<PatientDocument>;
   getPatientDocuments(patientId: number): Promise<PatientDocument[]>;
+  deletePatientDocument(documentId: number): Promise<boolean>;
   
   // E-Signature Forms
   createESignatureForm(form: InsertESignatureForm): Promise<ESignatureForm>;
@@ -495,6 +496,16 @@ export class DatabaseStorage implements IStorage {
       .from(patientDocuments)
       .where(eq(patientDocuments.patientId, patientId))
       .orderBy(desc(patientDocuments.createdAt));
+  }
+
+  async deletePatientDocument(documentId: number): Promise<boolean> {
+    try {
+      await db.delete(patientDocuments).where(eq(patientDocuments.id, documentId));
+      return true;
+    } catch (error) {
+      console.error('Error deleting patient document:', error);
+      return false;
+    }
   }
 
   // E-Signature Forms methods
