@@ -1072,7 +1072,7 @@ export default function PatientDetail() {
         {/* Process Data */}
         <Card>
           <CardHeader>
-            <CardTitle>Process Patient Data</CardTitle>
+            <CardTitle>LEQVIO AI agent</CardTitle>
             <CardDescription>Send insurance and clinical information to  see if LEQVIO can be approved</CardDescription>
           </CardHeader>
           <CardContent>
