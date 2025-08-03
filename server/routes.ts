@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
 import session from "express-session";
+import fetch from "node-fetch";
 import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
