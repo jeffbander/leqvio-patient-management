@@ -930,96 +930,6 @@ export default function PatientDetail() {
           </Card>
         )}
 
-        {/* Process Data */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Process Patient Data</CardTitle>
-            <CardDescription>Send insurance and clinical information to AIGENTS for processing</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Process History */}
-              {automationLogs.length > 0 && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <History className="mr-2 h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-800">Last Processed</span>
-                    </div>
-                    <span className="text-sm text-blue-700">
-                      {new Date(automationLogs[0].timestamp || automationLogs[0].createdat).toLocaleString()}
-                    </span>
-                  </div>
-                  {automationLogs[0].iscompleted && (
-                    <p className="text-sm text-blue-700 mt-1">
-                      Status: Completed {automationLogs[0].agentresponse ? '✓' : '- Processing'}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between mt-2">
-                    {automationLogs.length > 1 && (
-                      <p className="text-xs text-blue-600">
-                        Total processes: {automationLogs.length}
-                      </p>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowAigentsData(true)}
-                      className="text-xs"
-                    >
-                      View AIGENTS Data
-                    </Button>
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Ready to Process</p>
-                  <p className="text-sm text-gray-500">
-                    {documents.filter(d => d.documentType === 'epic_insurance_screenshot' || d.documentType === 'insurance_screenshot').length} insurance documents, {' '}
-                    {documents.filter(d => d.documentType === 'epic_screenshot' || d.documentType === 'clinical_note').length} clinical documents
-                  </p>
-                </div>
-                <Button 
-                  onClick={() => processDataMutation.mutate()}
-                  disabled={processDataMutation.isPending || documents.length === 0}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {processDataMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Process Data
-                    </>
-                  )}
-                </Button>
-              </div>
-              
-              {processResult && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center">
-                    <Shield className="mr-2 h-4 w-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-800">
-                      Data Processed Successfully
-                    </span>
-                  </div>
-                  <p className="text-sm text-green-700 mt-1">
-                    Unique ID: {processResult.uniqueId}
-                  </p>
-                  <p className="text-sm text-green-700">
-                    {processResult.documentsProcessed.insurance} insurance and {processResult.documentsProcessed.clinical} clinical documents sent to AIGENTS
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Document Upload */}
         <Card>
           <CardHeader>
@@ -1157,6 +1067,96 @@ export default function PatientDetail() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Process Data */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Process Patient Data</CardTitle>
+            <CardDescription>Send insurance and clinical information to AIGENTS for processing</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Process History */}
+              {automationLogs.length > 0 && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <History className="mr-2 h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">Last Processed</span>
+                    </div>
+                    <span className="text-sm text-blue-700">
+                      {new Date(automationLogs[0].timestamp || automationLogs[0].createdat).toLocaleString()}
+                    </span>
+                  </div>
+                  {automationLogs[0].iscompleted && (
+                    <p className="text-sm text-blue-700 mt-1">
+                      Status: Completed {automationLogs[0].agentresponse ? '✓' : '- Processing'}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between mt-2">
+                    {automationLogs.length > 1 && (
+                      <p className="text-xs text-blue-600">
+                        Total processes: {automationLogs.length}
+                      </p>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAigentsData(true)}
+                      className="text-xs"
+                    >
+                      View AIGENTS Data
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Ready to Process</p>
+                  <p className="text-sm text-gray-500">
+                    {documents.filter(d => d.documentType === 'epic_insurance_screenshot' || d.documentType === 'insurance_screenshot').length} insurance documents, {' '}
+                    {documents.filter(d => d.documentType === 'epic_screenshot' || d.documentType === 'clinical_note').length} clinical documents
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => processDataMutation.mutate()}
+                  disabled={processDataMutation.isPending || documents.length === 0}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {processDataMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Process Data
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {processResult && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center">
+                    <Shield className="mr-2 h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-800">
+                      Data Processed Successfully
+                    </span>
+                  </div>
+                  <p className="text-sm text-green-700 mt-1">
+                    Unique ID: {processResult.uniqueId}
+                  </p>
+                  <p className="text-sm text-green-700">
+                    {processResult.documentsProcessed.insurance} insurance and {processResult.documentsProcessed.clinical} clinical documents sent to AIGENTS
+                  </p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
