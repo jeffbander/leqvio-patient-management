@@ -8,7 +8,7 @@ import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/sche
 import { sendMagicLink, verifyLoginToken } from "./auth";
 import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio, extractPatientInfoFromScreenshot } from "./openai-service";
 import { generateLEQVIOPDF } from "./pdf-generator";
-import { googleSheetsService } from "./googleSheets";
+import { googleSheetsService } from "./google-sheets-service";
 import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
 
 
@@ -278,6 +278,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('CSV export error:', error);
       res.status(500).json({ error: 'Failed to export CSV' });
+    }
+  });
+
+  // Google Sheets sync endpoints
+  app.post('/api/google-sheets/sync', async (req, res) => {
+    try {
+      const result = await googleSheetsService.syncPatients();
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error) {
+      console.error('Google Sheets sync error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Internal server error during sync' 
+      });
+    }
+  });
+
+  app.get('/api/google-sheets/status', async (req, res) => {
+    try {
+      const status = await googleSheetsService.getStatus();
+      res.json(status);
+    } catch (error) {
+      console.error('Google Sheets status error:', error);
+      res.status(500).json({ 
+        configured: false, 
+        hasCredentials: false, 
+        error: 'Failed to check status' 
+      });
     }
   });
 
@@ -1075,13 +1107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Automatically add new patient to Google Sheets (if configured)
-      try {
-        await googleSheetsService.addPatientToSheet(newPatient);
-      } catch (sheetsError) {
-        console.error('Failed to add patient to Google Sheets (non-blocking):', sheetsError);
-        // Continue - this shouldn't prevent patient creation
-      }
+      // Note: Google Sheets sync happens on-demand via /api/google-sheets/sync endpoint
       
       res.json(newPatient);
     } catch (error) {
@@ -1101,42 +1127,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sync all patients to Google Sheets
+  // Legacy endpoint - redirects to new Google Sheets sync
   app.post('/api/patients/sync-to-sheets', async (req, res) => {
     try {
-      if (!await googleSheetsService.isConfigured()) {
-        return res.status(400).json({ 
-          error: 'Google Sheets not configured. Please set GOOGLE_SERVICE_ACCOUNT_KEY and GOOGLE_SHEET_ID environment variables.' 
-        });
-      }
-
-      const patients = await storage.getAllPatients();
-      await googleSheetsService.syncPatientsToSheet(patients);
-      
-      res.json({ 
-        message: `Successfully synced ${patients.length} patients to Google Sheets`,
-        count: patients.length 
-      });
+      const result = await googleSheetsService.syncPatients();
+      res.json(result);
     } catch (error) {
       console.error('Error syncing to Google Sheets:', error);
       res.status(500).json({ error: 'Failed to sync to Google Sheets' });
     }
   });
 
-  // Check Google Sheets configuration status
-  app.get('/api/google-sheets/status', async (req, res) => {
-    try {
-      const isConfigured = await googleSheetsService.isConfigured();
-      res.json({ 
-        configured: isConfigured,
-        hasCredentials: !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY,
-        hasSheetId: !!process.env.GOOGLE_SHEET_ID
-      });
-    } catch (error) {
-      console.error('Error checking Google Sheets status:', error);
-      res.status(500).json({ error: 'Failed to check Google Sheets status' });
-    }
-  });
+  // Legacy status endpoint - use /api/google-sheets/status instead
 
   // Helper function to parse AIGENTS response (same as frontend)
   const parseAigentsResponse = (response: string) => {
