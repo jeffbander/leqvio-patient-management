@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { Link } from 'wouter'
 import { Badge } from '@/components/ui/badge'
-import { UserPlus, Search, Eye, FileSpreadsheet } from 'lucide-react'
+import { UserPlus, Search, Eye, FileSpreadsheet, Download } from 'lucide-react'
 import { format } from 'date-fns'
 import { queryClient } from '@/lib/queryClient'
 
@@ -61,6 +61,36 @@ export default function PatientList() {
     }
   })
 
+  const handleDownloadCSV = async () => {
+    try {
+      const response = await fetch('/api/patients/export/csv')
+      if (!response.ok) {
+        throw new Error('Failed to download CSV')
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `patients_export_${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      
+      toast({
+        title: "Success",
+        description: "Patient data exported successfully"
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to export patient data",
+        variant: "destructive"
+      })
+    }
+  }
+
   const filteredPatients = patients.filter(patient => {
     const search = searchTerm.toLowerCase()
     return (
@@ -106,6 +136,14 @@ export default function PatientList() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button 
+            onClick={handleDownloadCSV}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
           {sheetsStatus?.configured && (
             <Button 
               onClick={() => syncToSheetsMutation.mutate()}
