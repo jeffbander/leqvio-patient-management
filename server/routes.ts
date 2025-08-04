@@ -187,6 +187,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // CSV export for AppSheet setup - SIMPLE URL
+  app.get('/api/patients-csv', async (req, res) => {
+    try {
+      const patients = await storage.getAllPatients();
+      
+      if (patients.length === 0) {
+        return res.status(404).json({ error: 'No patients found' });
+      }
+
+      // Get automation logs for AI analysis data
+      const patientsWithAnalysis = await Promise.all(
+        patients.map(async (patient) => {
+          const automationLogs = await storage.getPatientAutomationLogs(patient.id);
+          const latestWebhookData = automationLogs.length > 0 && automationLogs[0].webhookPayload
+            ? automationLogs[0].webhookPayload
+            : null;
+          
+          const furtherAnalysis = latestWebhookData?.websearch || latestWebhookData?.webSearch || latestWebhookData?.web_search || '';
+          const letterOfMedicalNecessity = latestWebhookData?.lettofneed || latestWebhookData?.letterOfNeed || latestWebhookData?.letter_of_need || '';
+          
+          const latestAnalysis = automationLogs.length > 0 && automationLogs[0].agentResponse 
+            ? parseAigentsResponse(automationLogs[0].agentResponse)
+            : null;
+
+          return {
+            ...patient,
+            furtherAnalysis,
+            letterOfMedicalNecessity,
+            approvalLikelihood: latestAnalysis?.approvalLikelihood || '',
+            criteriaAssessment: latestAnalysis?.criteriaItems.map(item => 
+              `${item.status === 'passed' ? '✓' : item.status === 'failed' ? '✗' : '?'} ${item.text}`
+            ).join('; ') || '',
+            documentationGaps: latestAnalysis?.documentationGaps.join('; ') || '',
+            recommendations: latestAnalysis?.recommendations.join('; ') || ''
+          };
+        })
+      );
+
+      // Create CSV headers
+      const headers = [
+        'ID', 'FirstName', 'LastName', 'DateOfBirth', 'Phone', 'Email', 'Address', 'MRN',
+        'OrderingMD', 'Diagnosis', 'Status', 'PrimaryInsurance', 'PrimaryPlan', 
+        'PrimaryInsuranceNumber', 'PrimaryGroupId', 'SecondaryInsurance', 'SecondaryPlan',
+        'SecondaryInsuranceNumber', 'SecondaryGroupId', 'FurtherAnalysis', 
+        'LetterOfMedicalNecessity', 'ApprovalLikelihood', 'CriteriaAssessment',
+        'DocumentationGaps', 'Recommendations', 'CreatedAt', 'UpdatedAt'
+      ];
+
+      // Create CSV content
+      let csvContent = headers.join(',') + '\n';
+      
+      patientsWithAnalysis.forEach(patient => {
+        const row = [
+          patient.id,
+          `"${patient.firstName || ''}"`,
+          `"${patient.lastName || ''}"`,
+          patient.dateOfBirth || '',
+          `"${patient.phone || ''}"`,
+          `"${patient.email || ''}"`,
+          `"${(patient.address || '').replace(/"/g, '""')}"`,  
+          `"${patient.mrn || ''}"`,
+          `"${(patient.orderingMD || '').replace(/"/g, '""')}"`,
+          `"${patient.diagnosis || ''}"`,
+          patient.status || '',
+          `"${patient.primaryInsurance || ''}"`,
+          `"${patient.primaryPlan || ''}"`,
+          `"${patient.primaryInsuranceNumber || ''}"`,
+          `"${patient.primaryGroupId || ''}"`,
+          `"${patient.secondaryInsurance || ''}"`,
+          `"${patient.secondaryPlan || ''}"`,
+          `"${patient.secondaryInsuranceNumber || ''}"`,
+          `"${patient.secondaryGroupId || ''}"`,
+          `"${(patient.furtherAnalysis || '').replace(/"/g, '""')}"`,
+          `"${(patient.letterOfMedicalNecessity || '').replace(/"/g, '""')}"`,
+          `"${patient.approvalLikelihood || ''}"`,
+          `"${(patient.criteriaAssessment || '').replace(/"/g, '""')}"`,
+          `"${(patient.documentationGaps || '').replace(/"/g, '""')}"`,
+          `"${(patient.recommendations || '').replace(/"/g, '""')}"`,
+          patient.createdAt || '',
+          patient.updatedAt || ''
+        ];
+        csvContent += row.join(',') + '\n';
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="patients.csv"');
+      res.send(csvContent);
+
+    } catch (error) {
+      console.error('CSV export error:', error);
+      res.status(500).json({ error: 'Failed to export CSV' });
+    }
+  });
+
   // Webhook health check
   app.get("/webhook/agents/health", (req, res) => {
     console.log(`[WEBHOOK-HEALTH] Agent webhook health check at ${new Date().toISOString()}`);
