@@ -1045,17 +1045,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const patients = await storage.getAllPatients();
       
-      // CSV headers
+      // Get automation logs for all patients to include AI analysis
+      const patientsWithAnalysis = await Promise.all(
+        patients.map(async (patient) => {
+          const automationLogs = await storage.getPatientAutomationLogs(patient.id);
+          const latestWebhookData = automationLogs.length > 0 && automationLogs[0].webhookpayload
+            ? automationLogs[0].webhookpayload
+            : null;
+          
+          const furtherAnalysis = latestWebhookData?.websearch || latestWebhookData?.webSearch || latestWebhookData?.web_search || '';
+          const letterOfMedicalNecessity = latestWebhookData?.lettofneed || latestWebhookData?.letterOfNeed || latestWebhookData?.letter_of_need || '';
+          
+          return {
+            ...patient,
+            furtherAnalysis,
+            letterOfMedicalNecessity
+          };
+        })
+      );
+      
+      // CSV headers - now including AI analysis fields
       const headers = [
         'ID', 'First Name', 'Last Name', 'Date of Birth', 'Phone', 'Email', 'Address', 'MRN',
         'Ordering MD', 'Diagnosis', 'Status',
         'Primary Insurance', 'Primary Plan', 'Primary Insurance Number', 'Primary Group ID',
         'Secondary Insurance', 'Secondary Plan', 'Secondary Insurance Number', 'Secondary Group ID',
+        'Further Analysis', 'Letter of Medical Necessity',
         'Created At', 'Updated At'
       ];
       
-      // Convert patients to CSV rows
-      const csvRows = patients.map(patient => [
+      // Convert patients to CSV rows with AI analysis
+      const csvRows = patientsWithAnalysis.map(patient => [
         patient.id,
         patient.firstName,
         patient.lastName,
@@ -1075,18 +1095,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         patient.secondaryPlan || '',
         patient.secondaryInsuranceNumber || '',
         patient.secondaryGroupId || '',
+        patient.furtherAnalysis || '',
+        patient.letterOfMedicalNecessity || '',
         new Date(patient.createdAt).toLocaleDateString(),
         new Date(patient.updatedAt).toLocaleDateString()
       ]);
       
       // Combine headers and rows
       const csvContent = [headers, ...csvRows]
-        .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+        .map(row => row.map(field => {
+          // Clean up field content for CSV (replace newlines and escape quotes)
+          const cleanField = String(field)
+            .replace(/\n/g, ' ')
+            .replace(/\r/g, ' ')
+            .replace(/"/g, '""');
+          return `"${cleanField}"`;
+        }).join(','))
         .join('\n');
       
       // Set headers for CSV download
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="patients_export_${new Date().toISOString().split('T')[0]}.csv"`);
+      res.setHeader('Content-Disposition', `attachment; filename="patients_with_analysis_${new Date().toISOString().split('T')[0]}.csv"`);
       
       res.send(csvContent);
     } catch (error) {
