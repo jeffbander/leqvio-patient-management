@@ -1040,7 +1040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Export patients as CSV
+  // Export patients as CSV (MUST be before /:id route)
   app.get('/api/patients/export/csv', async (req, res) => {
     try {
       const patients = await storage.getAllPatients();
