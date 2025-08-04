@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { Link } from 'wouter'
 import { Badge } from '@/components/ui/badge'
-import { UserPlus, Search, Eye } from 'lucide-react'
+import { UserPlus, Search, Eye, FileSpreadsheet } from 'lucide-react'
 import { format } from 'date-fns'
+import { queryClient } from '@/lib/queryClient'
 
 interface Patient {
   id: number
@@ -27,6 +28,37 @@ export default function PatientList() {
 
   const { data: patients = [], isLoading } = useQuery<Patient[]>({
     queryKey: ['/api/patients'],
+  })
+
+  const { data: sheetsStatus } = useQuery({
+    queryKey: ['/api/google-sheets/status'],
+  })
+
+  const syncToSheetsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/patients/sync-to-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to sync to Google Sheets')
+      }
+      return response.json()
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Success",
+        description: data.message || "Patients synced to Google Sheets successfully"
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      })
+    }
   })
 
   const filteredPatients = patients.filter(patient => {
@@ -73,12 +105,25 @@ export default function PatientList() {
             />
           </div>
         </div>
-        <Link href="/patient/new">
-          <Button className="flex items-center gap-2">
-            <UserPlus className="h-4 w-4" />
-            New Patient
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          {sheetsStatus?.configured && (
+            <Button 
+              onClick={() => syncToSheetsMutation.mutate()}
+              disabled={syncToSheetsMutation.isPending}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              {syncToSheetsMutation.isPending ? 'Syncing...' : 'Sync to Sheets'}
+            </Button>
+          )}
+          <Link href="/patient/new">
+            <Button className="flex items-center gap-2">
+              <UserPlus className="h-4 w-4" />
+              New Patient
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {isLoading ? (
