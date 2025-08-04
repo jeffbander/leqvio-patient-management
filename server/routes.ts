@@ -1040,6 +1040,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to parse AIGENTS response (same as frontend)
+  const parseAigentsResponse = (response: string) => {
+    if (!response || response === 'No response content' || response === 'Webhook received (no response content)') {
+      return null;
+    }
+
+    try {
+      const lines = response.split('\n');
+      let approvalLikelihood = '';
+      let criteriaItems: Array<{text: string, status: 'passed' | 'failed' | 'unknown'}> = [];
+      let documentationGaps: string[] = [];
+      let recommendations: string[] = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        // Extract approval likelihood
+        if (line.includes('APPROVAL LIKELIHOOD:')) {
+          approvalLikelihood = line.replace('APPROVAL LIKELIHOOD:', '').trim();
+        }
+        
+        // Extract criteria assessment
+        if (line.includes('CRITERIA ASSESSMENT')) {
+          for (let j = i + 1; j < lines.length && !lines[j].includes('DOCUMENTATION GAPS'); j++) {
+            const criteriaLine = lines[j].trim();
+            if (criteriaLine.includes('✓')) {
+              criteriaItems.push({
+                text: criteriaLine.replace('✓', '').replace('•', '').trim(),
+                status: 'passed'
+              });
+            } else if (criteriaLine.includes('✗')) {
+              criteriaItems.push({
+                text: criteriaLine.replace('✗', '').replace('•', '').trim(),
+                status: 'failed'
+              });
+            }
+          }
+        }
+        
+        // Extract documentation gaps
+        if (line.includes('DOCUMENTATION GAPS:')) {
+          for (let j = i + 1; j < lines.length && !lines[j].includes('RECOMMENDATIONS'); j++) {
+            const gapLine = lines[j].trim();
+            if (gapLine.startsWith('–') || gapLine.startsWith('-')) {
+              documentationGaps.push(gapLine.replace(/^[–-]/, '').trim());
+            }
+          }
+        }
+        
+        // Extract recommendations
+        if (line.includes('RECOMMENDATIONS:')) {
+          for (let j = i + 1; j < lines.length && !lines[j].includes('ALTERNATIVE STRATEGIES'); j++) {
+            const recLine = lines[j].trim();
+            if (recLine.match(/^\d+\./)) {
+              recommendations.push(recLine.replace(/^\d+\./, '').trim());
+            }
+          }
+        }
+      }
+
+      return {
+        approvalLikelihood,
+        criteriaItems,
+        documentationGaps,
+        recommendations
+      };
+    } catch (error) {
+      console.error('Error parsing AIGENTS response:', error);
+      return null;
+    }
+  };
+
   // Export patients as CSV (MUST be before /:id route)
   app.get('/api/patients/export/csv', async (req, res) => {
     try {
@@ -1056,25 +1128,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const furtherAnalysis = latestWebhookData?.websearch || latestWebhookData?.webSearch || latestWebhookData?.web_search || '';
           const letterOfMedicalNecessity = latestWebhookData?.lettofneed || latestWebhookData?.letterOfNeed || latestWebhookData?.letter_of_need || '';
           
+          // Parse LEQVIO approval analysis
+          const latestAnalysis = automationLogs.length > 0 && automationLogs[0].agentresponse 
+            ? parseAigentsResponse(automationLogs[0].agentresponse)
+            : null;
+
+          const approvalLikelihood = latestAnalysis?.approvalLikelihood || '';
+          const criteriaAssessment = latestAnalysis?.criteriaItems.map(item => 
+            `${item.status === 'passed' ? '✓' : item.status === 'failed' ? '✗' : '?'} ${item.text}`
+          ).join('; ') || '';
+          const documentationGaps = latestAnalysis?.documentationGaps.join('; ') || '';
+          const recommendations = latestAnalysis?.recommendations.join('; ') || '';
+          
           return {
             ...patient,
             furtherAnalysis,
-            letterOfMedicalNecessity
+            letterOfMedicalNecessity,
+            approvalLikelihood,
+            criteriaAssessment,
+            documentationGaps,
+            recommendations
           };
         })
       );
       
-      // CSV headers - now including AI analysis fields
+      // CSV headers - now including all AI analysis fields
       const headers = [
         'ID', 'First Name', 'Last Name', 'Date of Birth', 'Phone', 'Email', 'Address', 'MRN',
         'Ordering MD', 'Diagnosis', 'Status',
         'Primary Insurance', 'Primary Plan', 'Primary Insurance Number', 'Primary Group ID',
         'Secondary Insurance', 'Secondary Plan', 'Secondary Insurance Number', 'Secondary Group ID',
         'Further Analysis', 'Letter of Medical Necessity',
+        'Approval Likelihood', 'Criteria Assessment', 'Documentation Gaps', 'Recommendations',
         'Created At', 'Updated At'
       ];
       
-      // Convert patients to CSV rows with AI analysis
+      // Convert patients to CSV rows with complete AI analysis
       const csvRows = patientsWithAnalysis.map(patient => [
         patient.id,
         patient.firstName,
@@ -1097,6 +1186,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         patient.secondaryGroupId || '',
         patient.furtherAnalysis || '',
         patient.letterOfMedicalNecessity || '',
+        patient.approvalLikelihood || '',
+        patient.criteriaAssessment || '',
+        patient.documentationGaps || '',
+        patient.recommendations || '',
         new Date(patient.createdAt).toLocaleDateString(),
         new Date(patient.updatedAt).toLocaleDateString()
       ]);
@@ -1115,7 +1208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Set headers for CSV download
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="patients_with_analysis_${new Date().toISOString().split('T')[0]}.csv"`);
+      res.setHeader('Content-Disposition', `attachment; filename="patients_with_leqvio_analysis_${new Date().toISOString().split('T')[0]}.csv"`);
       
       res.send(csvContent);
     } catch (error) {
