@@ -180,7 +180,7 @@ export default function PatientDetail() {
     : null
     
   const furtherAnalysis = latestWebhookData?.websearch || latestWebhookData?.webSearch || latestWebhookData?.web_search || null
-  const letterOfMedicalNecessity = latestWebhookData?.letofneed || latestWebhookData?.letterOfNeed || latestWebhookData?.letter_of_need || null
+  const letterOfMedicalNecessity = latestWebhookData?.lettofneed || latestWebhookData?.letterOfNeed || latestWebhookData?.letter_of_need || null
 
   const updatePatientMutation = useMutation({
     mutationFn: async (updates: Partial<Patient>) => {
