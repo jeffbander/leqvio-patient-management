@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { Link } from 'wouter'
 import { Badge } from '@/components/ui/badge'
-import { UserPlus, Search, Eye } from 'lucide-react'
+import { UserPlus, Search, Eye, Download } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface Patient {
@@ -53,6 +53,36 @@ export default function PatientList() {
     }
   }
 
+  const handleDownloadCSV = async () => {
+    try {
+      const response = await fetch('/api/patients/export/csv')
+      if (!response.ok) {
+        throw new Error('Failed to download CSV')
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `patients_export_${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      
+      toast({
+        title: "Success",
+        description: "Patient data exported successfully"
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to export patient data",
+        variant: "destructive"
+      })
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
@@ -73,12 +103,22 @@ export default function PatientList() {
             />
           </div>
         </div>
-        <Link href="/patient/new">
-          <Button className="flex items-center gap-2">
-            <UserPlus className="h-4 w-4" />
-            New Patient
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleDownloadCSV}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
           </Button>
-        </Link>
+          <Link href="/patient/new">
+            <Button className="flex items-center gap-2">
+              <UserPlus className="h-4 w-4" />
+              New Patient
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {isLoading ? (
