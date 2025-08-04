@@ -994,61 +994,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Export patients as CSV
-  app.get('/api/patients/export/csv', async (req, res) => {
-    try {
-      const patients = await storage.getAllPatients();
-      
-      // CSV headers
-      const headers = [
-        'ID', 'First Name', 'Last Name', 'Date of Birth', 'Phone', 'Email', 'Address', 'MRN',
-        'Ordering MD', 'Diagnosis', 'Status',
-        'Primary Insurance', 'Primary Plan', 'Primary Insurance Number', 'Primary Group ID',
-        'Secondary Insurance', 'Secondary Plan', 'Secondary Insurance Number', 'Secondary Group ID',
-        'Created At', 'Updated At'
-      ];
-      
-      // Convert patients to CSV rows
-      const csvRows = patients.map(patient => [
-        patient.id,
-        patient.firstName,
-        patient.lastName,
-        patient.dateOfBirth,
-        patient.phone || '',
-        patient.email || '',
-        patient.address || '',
-        patient.mrn || '',
-        patient.orderingMD,
-        patient.diagnosis,
-        patient.status,
-        patient.primaryInsurance || '',
-        patient.primaryPlan || '',
-        patient.primaryInsuranceNumber || '',
-        patient.primaryGroupId || '',
-        patient.secondaryInsurance || '',
-        patient.secondaryPlan || '',
-        patient.secondaryInsuranceNumber || '',
-        patient.secondaryGroupId || '',
-        new Date(patient.createdAt).toLocaleDateString(),
-        new Date(patient.updatedAt).toLocaleDateString()
-      ]);
-      
-      // Combine headers and rows
-      const csvContent = [headers, ...csvRows]
-        .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
-        .join('\n');
-      
-      // Set headers for CSV download
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="patients_export_${new Date().toISOString().split('T')[0]}.csv"`);
-      
-      res.send(csvContent);
-    } catch (error) {
-      console.error('Error exporting patients CSV:', error);
-      res.status(500).json({ error: 'Failed to export patients' });
-    }
-  });
-
   // Get specific patient
   app.get('/api/patients/:id', async (req, res) => {
     try {
