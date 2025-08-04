@@ -9,6 +9,7 @@ import { sendMagicLink, verifyLoginToken } from "./auth";
 import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio, extractPatientInfoFromScreenshot } from "./openai-service";
 import { generateLEQVIOPDF } from "./pdf-generator";
 import { googleSheetsService } from "./googleSheets";
+import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
 
 
 // Analytics middleware to track API requests
@@ -171,6 +172,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Configure multer for multipart form data
   const upload = multer();
+
+  // Setup AppSheet-compatible API routes
+  setupAppsheetRoutes(app);
 
   // Health check
   app.get("/api/health", (req, res) => {
