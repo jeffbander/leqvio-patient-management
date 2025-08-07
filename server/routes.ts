@@ -11,6 +11,27 @@ import { generateLEQVIOPDF } from "./pdf-generator";
 import { googleSheetsService } from "./google-sheets-service";
 import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
 
+// Helper function to check schedule status based on appointment status changes
+const checkScheduleStatus = async (patientId: number) => {
+  try {
+    const appointments = await storage.getPatientAppointments(patientId);
+    if (appointments.length === 0) return;
+
+    // Find the most recent appointment (appointments are ordered by createdAt desc)
+    const lastAppointment = appointments[0];
+    
+    // If the last appointment is cancelled or no show, update schedule status
+    if (lastAppointment.status === 'Cancelled' || lastAppointment.status === 'No Show') {
+      await storage.updatePatient(patientId, {
+        scheduleStatus: "Needs Rescheduling"
+      });
+      console.log(`Patient ${patientId}: Schedule status updated to "Needs Rescheduling" - last appointment status is "${lastAppointment.status}"`);
+    }
+  } catch (error) {
+    console.error('Error checking schedule status:', error);
+  }
+};
+
 // Helper function to check if appointment is outside authorization date range
 const checkAuthorizationStatus = async (patientId: number) => {
   try {
@@ -1488,9 +1509,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const appointmentId = parseInt(req.params.id);
       const updatedAppointment = await storage.updateAppointment(appointmentId, req.body);
       
-      // Check authorization status if appointment date was updated
-      if (req.body.appointmentDate && updatedAppointment) {
-        await checkAuthorizationStatus(updatedAppointment.patientId);
+      if (updatedAppointment) {
+        // Check authorization status if appointment date was updated
+        if (req.body.appointmentDate) {
+          await checkAuthorizationStatus(updatedAppointment.patientId);
+        }
+        
+        // Check schedule status if appointment status was updated
+        if (req.body.status) {
+          await checkScheduleStatus(updatedAppointment.patientId);
+        }
       }
       
       res.json(updatedAppointment);
