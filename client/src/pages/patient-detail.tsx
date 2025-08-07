@@ -72,6 +72,16 @@ interface PatientDocument {
   createdAt: string
 }
 
+interface Appointment {
+  id: number
+  patientId: number
+  appointmentDate: string
+  doseNumber: number
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
 export default function PatientDetail() {
   const { toast } = useToast()
   const params = useParams()
@@ -86,6 +96,11 @@ export default function PatientDetail() {
   const [processResult, setProcessResult] = useState<any>(null)
   const [showAigentsData, setShowAigentsData] = useState(false)
   const [viewedDocument, setViewedDocument] = useState<PatientDocument | null>(null)
+  const [showAddAppointment, setShowAddAppointment] = useState(false)
+  const [appointmentForm, setAppointmentForm] = useState({
+    appointmentDate: '',
+    doseNumber: 1
+  })
 
   // Helper function to parse AIGENTS response
   const parseAigentsResponse = (response: string) => {
@@ -171,6 +186,11 @@ export default function PatientDetail() {
 
   const { data: automationLogs = [] } = useQuery({
     queryKey: [`/api/patients/${patientId}/automation-logs`],
+    enabled: !!patientId
+  })
+
+  const { data: appointments = [], isLoading: appointmentsLoading } = useQuery<Appointment[]>({
+    queryKey: [`/api/patients/${patientId}/appointments`],
     enabled: !!patientId
   })
 
@@ -303,6 +323,68 @@ export default function PatientDetail() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to delete document",
+        variant: "destructive"
+      })
+    }
+  })
+
+  const createAppointmentMutation = useMutation({
+    mutationFn: async (appointmentData: { appointmentDate: string; doseNumber: number }) => {
+      return apiRequest('POST', `/api/patients/${patientId}/appointments`, appointmentData)
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Appointment created successfully"
+      })
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/appointments`] })
+      setShowAddAppointment(false)
+      setAppointmentForm({ appointmentDate: '', doseNumber: 1 })
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create appointment",
+        variant: "destructive"
+      })
+    }
+  })
+
+  const updateAppointmentMutation = useMutation({
+    mutationFn: async ({ appointmentId, updates }: { appointmentId: number; updates: Partial<Appointment> }) => {
+      return apiRequest('PATCH', `/api/appointments/${appointmentId}`, updates)
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Appointment updated successfully"
+      })
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/appointments`] })
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update appointment",
+        variant: "destructive"
+      })
+    }
+  })
+
+  const deleteAppointmentMutation = useMutation({
+    mutationFn: async (appointmentId: number) => {
+      return apiRequest('DELETE', `/api/appointments/${appointmentId}`)
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Appointment deleted successfully"
+      })
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/appointments`] })
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete appointment",
         variant: "destructive"
       })
     }
@@ -443,6 +525,27 @@ export default function PatientDetail() {
   const handleDeleteDocument = (documentId: number) => {
     if (confirm('Are you sure you want to delete this document?')) {
       deleteDocumentMutation.mutate(documentId)
+    }
+  }
+
+  const handleCreateAppointment = () => {
+    if (!appointmentForm.appointmentDate) return
+    createAppointmentMutation.mutate({
+      appointmentDate: appointmentForm.appointmentDate,
+      doseNumber: appointmentForm.doseNumber
+    })
+  }
+
+  const handleUpdateAppointmentStatus = (appointmentId: number, status: string) => {
+    updateAppointmentMutation.mutate({
+      appointmentId,
+      updates: { status }
+    })
+  }
+
+  const handleDeleteAppointment = (appointmentId: number) => {
+    if (confirm('Are you sure you want to delete this appointment?')) {
+      deleteAppointmentMutation.mutate(appointmentId)
     }
   }
 
@@ -1285,6 +1388,80 @@ export default function PatientDetail() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Appointments Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Appointments</CardTitle>
+                <CardDescription>Track patient appointments and doses</CardDescription>
+              </div>
+              <Button
+                onClick={() => setShowAddAppointment(true)}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Appointment
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {appointmentsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2">Loading appointments...</span>
+              </div>
+            ) : appointments.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>No appointments scheduled yet</p>
+                <p className="text-sm">Click "Add Appointment" to schedule the first appointment</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {appointments.map((appointment) => (
+                  <div key={appointment.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <Calendar className="h-5 w-5 text-gray-400" />
+                      <div>
+                        <p className="font-medium">
+                          {format(new Date(appointment.appointmentDate), 'MMM d, yyyy')}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Dose #{appointment.doseNumber}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <select
+                        value={appointment.status}
+                        onChange={(e) => handleUpdateAppointmentStatus(appointment.id, e.target.value)}
+                        className="px-3 py-1 border rounded text-sm"
+                        disabled={updateAppointmentMutation.isPending}
+                      >
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="No Show">No Show</option>
+                      </select>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteAppointment(appointment.id)}
+                        className="text-red-600 hover:text-red-700"
+                        disabled={deleteAppointmentMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
       {/* AIGENTS Data Modal */}
       {showAigentsData && automationLogs.length > 0 && (
@@ -1380,6 +1557,87 @@ export default function PatientDetail() {
               ) : (
                 <p className="text-gray-500">No extracted data available for this document.</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Add Appointment Modal */}
+      {showAddAppointment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="p-6 border-b">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Add New Appointment</h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowAddAppointment(false)
+                    setAppointmentForm({ appointmentDate: '', doseNumber: 1 })
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <Label htmlFor="appointmentDate">Date of Appointment</Label>
+                <Input
+                  id="appointmentDate"
+                  type="date"
+                  value={appointmentForm.appointmentDate}
+                  onChange={(e) => setAppointmentForm(prev => ({
+                    ...prev,
+                    appointmentDate: e.target.value
+                  }))}
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="doseNumber">Dose #</Label>
+                <Input
+                  id="doseNumber"
+                  type="number"
+                  min="1"
+                  value={appointmentForm.doseNumber}
+                  onChange={(e) => setAppointmentForm(prev => ({
+                    ...prev,
+                    doseNumber: parseInt(e.target.value) || 1
+                  }))}
+                  className="mt-1"
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowAddAppointment(false)
+                    setAppointmentForm({ appointmentDate: '', doseNumber: 1 })
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateAppointment}
+                  disabled={!appointmentForm.appointmentDate || createAppointmentMutation.isPending}
+                >
+                  {createAppointmentMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Appointment
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

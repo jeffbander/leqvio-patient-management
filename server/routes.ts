@@ -1394,6 +1394,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Appointment routes
+  app.get('/api/patients/:id/appointments', async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const appointments = await storage.getPatientAppointments(patientId);
+      res.json(appointments);
+    } catch (error) {
+      console.error('Error fetching patient appointments:', error);
+      res.status(500).json({ error: 'Failed to fetch patient appointments' });
+    }
+  });
+
+  app.post('/api/patients/:id/appointments', async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const appointmentData = { ...req.body, patientId };
+      const appointment = await storage.createAppointment(appointmentData);
+      res.json(appointment);
+    } catch (error) {
+      console.error('Error creating appointment:', error);
+      res.status(500).json({ error: 'Failed to create appointment' });
+    }
+  });
+
+  app.patch('/api/appointments/:id', async (req, res) => {
+    try {
+      const appointmentId = parseInt(req.params.id);
+      const updatedAppointment = await storage.updateAppointment(appointmentId, req.body);
+      res.json(updatedAppointment);
+    } catch (error) {
+      console.error('Error updating appointment:', error);
+      res.status(500).json({ error: 'Failed to update appointment' });
+    }
+  });
+
+  app.delete('/api/appointments/:id', async (req, res) => {
+    try {
+      const appointmentId = parseInt(req.params.id);
+      await storage.deleteAppointment(appointmentId);
+      res.json({ message: 'Appointment deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting appointment:', error);
+      res.status(500).json({ error: 'Failed to delete appointment' });
+    }
+  });
+
   // Delete patient document
   app.delete('/api/patients/:id/documents/:documentId', async (req, res) => {
     try {

@@ -169,10 +169,21 @@ export const eSignatureForms = pgTable("e_signature_forms", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const appointments = pgTable("appointments", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  appointmentDate: text("appointment_date").notNull(), // MM/DD/YYYY format
+  doseNumber: integer("dose_number").notNull(),
+  status: text("status").notNull().default("Scheduled"), // Scheduled, Completed, Cancelled, No Show
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const patientsRelations = relations(patients, ({ many }) => ({
   documents: many(patientDocuments),
   eSignatureForms: many(eSignatureForms),
+  appointments: many(appointments),
 }));
 
 export const patientDocumentsRelations = relations(patientDocuments, ({ one }) => ({
@@ -185,6 +196,13 @@ export const patientDocumentsRelations = relations(patientDocuments, ({ one }) =
 export const eSignatureFormsRelations = relations(eSignatureForms, ({ one }) => ({
   patient: one(patients, {
     fields: [eSignatureForms.patientId],
+    references: [patients.id],
+  }),
+}));
+
+export const appointmentsRelations = relations(appointments, ({ one }) => ({
+  patient: one(patients, {
+    fields: [appointments.patientId],
     references: [patients.id],
   }),
 }));
@@ -209,6 +227,14 @@ export const insertESignatureFormSchema = createInsertSchema(eSignatureForms).om
   emailSentAt: true,
 });
 
+export const insertAppointmentSchema = createInsertSchema(appointments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  status: z.string().default("Scheduled"),
+});
+
 // Types for new tables
 export type Patient = typeof patients.$inferSelect;
 export type InsertPatient = z.infer<typeof insertPatientSchema>;
@@ -216,3 +242,5 @@ export type PatientDocument = typeof patientDocuments.$inferSelect;
 export type InsertPatientDocument = z.infer<typeof insertPatientDocumentSchema>;
 export type ESignatureForm = typeof eSignatureForms.$inferSelect;
 export type InsertESignatureForm = z.infer<typeof insertESignatureFormSchema>;
+export type Appointment = typeof appointments.$inferSelect;
+export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;

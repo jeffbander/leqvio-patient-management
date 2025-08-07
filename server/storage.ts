@@ -7,6 +7,7 @@ import {
   patients,
   patientDocuments,
   eSignatureForms,
+  appointments,
   type User, 
   type InsertUser,
   type LoginToken,
@@ -22,7 +23,9 @@ import {
   type PatientDocument,
   type InsertPatientDocument,
   type ESignatureForm,
-  type InsertESignatureForm
+  type InsertESignatureForm,
+  type Appointment,
+  type InsertAppointment
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gte } from "drizzle-orm";
@@ -77,6 +80,12 @@ export interface IStorage {
   createESignatureForm(form: InsertESignatureForm): Promise<ESignatureForm>;
   getESignatureForm(id: number): Promise<ESignatureForm | undefined>;
   updateESignatureFormEmailStatus(id: number, emailSentTo: string): Promise<ESignatureForm | undefined>;
+  
+  // Appointments
+  createAppointment(appointment: InsertAppointment): Promise<Appointment>;
+  getPatientAppointments(patientId: number): Promise<Appointment[]>;
+  updateAppointment(id: number, appointment: Partial<InsertAppointment>): Promise<Appointment | undefined>;
+  deleteAppointment(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -526,6 +535,39 @@ export class DatabaseStorage implements IStorage {
       .where(eq(eSignatureForms.id, id))
       .returning();
     return updatedForm;
+  }
+
+  // Appointment methods
+  async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
+    const [newAppointment] = await db.insert(appointments).values(appointment).returning();
+    return newAppointment;
+  }
+
+  async getPatientAppointments(patientId: number): Promise<Appointment[]> {
+    return db
+      .select()
+      .from(appointments)
+      .where(eq(appointments.patientId, patientId))
+      .orderBy(desc(appointments.createdAt));
+  }
+
+  async updateAppointment(id: number, appointment: Partial<InsertAppointment>): Promise<Appointment | undefined> {
+    const [updatedAppointment] = await db
+      .update(appointments)
+      .set({ ...appointment, updatedAt: new Date() })
+      .where(eq(appointments.id, id))
+      .returning();
+    return updatedAppointment;
+  }
+
+  async deleteAppointment(id: number): Promise<boolean> {
+    try {
+      await db.delete(appointments).where(eq(appointments.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting appointment:', error);
+      return false;
+    }
   }
 }
 
