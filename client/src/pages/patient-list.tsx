@@ -189,9 +189,9 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
           value={patient.authStatus || 'Pending Review'} 
           onValueChange={(value) => onAuthStatusChange(patient.id, value)}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full border-none bg-transparent p-0 h-auto hover:bg-transparent">
             <SelectValue>
-              <Badge className={`${getAuthStatusColor(patient.authStatus || 'Pending Review')} border text-xs`}>
+              <Badge className={`${getAuthStatusColor(patient.authStatus || 'Pending Review')} border text-xs cursor-pointer hover:opacity-80`}>
                 {patient.authStatus || 'Pending Review'}
               </Badge>
             </SelectValue>
@@ -220,9 +220,9 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
           value={patient.scheduleStatus || 'Pending Auth'} 
           onValueChange={(value) => onScheduleStatusChange(patient.id, value)}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full border-none bg-transparent p-0 h-auto hover:bg-transparent">
             <SelectValue>
-              <Badge className={`${getScheduleStatusColor(patient.scheduleStatus || 'Pending Auth')} border text-xs`}>
+              <Badge className={`${getScheduleStatusColor(patient.scheduleStatus || 'Pending Auth')} border text-xs cursor-pointer hover:opacity-80`}>
                 {patient.scheduleStatus || 'Pending Auth'}
               </Badge>
             </SelectValue>
@@ -261,9 +261,9 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
               value={lastAppointment.status || 'Scheduled'}
               onValueChange={(status) => onAppointmentStatusChange(lastAppointment.id, status, patient.id)}
             >
-              <SelectTrigger className="w-full text-xs">
+              <SelectTrigger className="w-full border-none bg-transparent p-0 h-auto hover:bg-transparent">
                 <SelectValue>
-                  <Badge className={`${getAppointmentStatusColor(lastAppointment.status || 'Scheduled')} border text-xs`}>
+                  <Badge className={`${getAppointmentStatusColor(lastAppointment.status || 'Scheduled')} border text-xs cursor-pointer hover:opacity-80`}>
                     {lastAppointment.status || 'Scheduled'}
                   </Badge>
                 </SelectValue>
