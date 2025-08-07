@@ -102,6 +102,8 @@ export default function PatientList() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
+      case 'pending auth':
+        return 'bg-orange-100 text-orange-800'
       case 'started':
         return 'bg-blue-100 text-blue-800'
       case 'in_progress':
@@ -144,7 +146,7 @@ export default function PatientList() {
             <Download className="h-4 w-4" />
             Export CSV
           </Button>
-          {sheetsStatus?.configured && (
+          {(sheetsStatus as any)?.configured && (
             <Button 
               onClick={() => syncToSheetsMutation.mutate()}
               disabled={syncToSheetsMutation.isPending}

@@ -9,6 +9,7 @@ Providerloop Chains is a comprehensive patient management system with integrated
 - Focuses on bidirectional communication workflow
 - Values working end-to-end automation testing
 - Wants to create reusable templates for automation systems
+- Default patient status should be "Pending Auth" instead of "started"
 
 ## System Architecture
 

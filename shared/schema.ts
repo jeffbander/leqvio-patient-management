@@ -115,7 +115,7 @@ export const patients = pgTable("patients", {
   dateOfBirth: text("date_of_birth").notNull(),
   orderingMD: text("ordering_md").notNull(),
   diagnosis: text("diagnosis").notNull(),
-  status: text("status").notNull().default("started"),
+  status: text("status").notNull().default("Pending Auth"),
   
   // Primary Insurance (optional)
   primaryInsurance: text("primary_insurance"),
@@ -189,7 +189,7 @@ export const insertPatientSchema = createInsertSchema(patients).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
-  status: z.string().default("started"),
+  status: z.string().default("Pending Auth"),
 });
 
 export const insertPatientDocumentSchema = createInsertSchema(patientDocuments).omit({
