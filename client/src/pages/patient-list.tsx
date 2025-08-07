@@ -34,7 +34,7 @@ interface Patient {
   createdAt: string
 }
 
-type SortField = 'firstName' | 'lastName' | 'dateOfBirth' | 'orderingMD' | 'diagnosis' | 'status' | 'createdAt'
+type SortField = 'firstName' | 'lastName' | 'dateOfBirth' | 'orderingMD' | 'diagnosis' | 'status' | 'createdAt' | 'doseNumber' | 'nextAppointment' | 'lastAppointment'
 type SortDirection = 'asc' | 'desc'
 
 interface PatientRowProps {
@@ -343,6 +343,9 @@ export default function PatientList() {
     queryKey: ['/api/google-sheets/status'],
   })
 
+  // Load appointment data for sorting - simplified approach for now
+  const patientAppointments: Record<number, any[]> = {}
+
   // Helper functions for business logic
   const applyBusinessLogic = (patient: Patient, appointments: any[] = []) => {
     const updates: any = {}
@@ -594,22 +597,78 @@ export default function PatientList() {
         patient.orderingMD.toLowerCase().includes(search) ||
         patient.diagnosis.toLowerCase().includes(search)
       )
-      const matchesStatus = statusFilter === 'all' || patient.status === statusFilter
+      
+      // Enhanced status filtering - check all status types
+      let matchesStatus = statusFilter === 'all'
+      if (!matchesStatus) {
+        matchesStatus = (
+          patient.status === statusFilter ||
+          patient.authStatus === statusFilter ||
+          patient.scheduleStatus === statusFilter
+        )
+      }
+      
       return matchesSearch && matchesStatus
     })
 
-    // Sort the filtered results
+    // Sort the filtered results with enhanced sorting logic
     filtered.sort((a, b) => {
-      let aValue: any = a[sortField]
-      let bValue: any = b[sortField]
+      let aValue: any
+      let bValue: any
 
-      // Handle date sorting
-      if (sortField === 'createdAt' || sortField === 'dateOfBirth') {
-        aValue = new Date(aValue).getTime()
-        bValue = new Date(bValue).getTime()
-      } else {
-        aValue = aValue?.toString().toLowerCase() || ''
-        bValue = bValue?.toString().toLowerCase() || ''
+      switch (sortField) {
+        case 'firstName':
+        case 'lastName':
+          aValue = a[sortField]?.toLowerCase() || ''
+          bValue = b[sortField]?.toLowerCase() || ''
+          break
+          
+        case 'doseNumber':
+          aValue = a.doseNumber || 0
+          bValue = b.doseNumber || 0
+          break
+          
+        case 'nextAppointment':
+          // Get next appointment date for each patient
+          const aAppointments = patientAppointments[a.id] || []
+          const bAppointments = patientAppointments[b.id] || []
+          
+          const aNext = aAppointments
+            .filter(apt => new Date(apt.appointmentDate) >= new Date())
+            .sort((x, y) => new Date(x.appointmentDate).getTime() - new Date(y.appointmentDate).getTime())[0]
+          const bNext = bAppointments
+            .filter(apt => new Date(apt.appointmentDate) >= new Date())
+            .sort((x, y) => new Date(x.appointmentDate).getTime() - new Date(y.appointmentDate).getTime())[0]
+            
+          aValue = aNext ? new Date(aNext.appointmentDate).getTime() : 0
+          bValue = bNext ? new Date(bNext.appointmentDate).getTime() : 0
+          break
+          
+        case 'lastAppointment':
+          // Get last appointment date for each patient
+          const aLastAppointments = patientAppointments[a.id] || []
+          const bLastAppointments = patientAppointments[b.id] || []
+          
+          const aLast = aLastAppointments
+            .filter(apt => new Date(apt.appointmentDate) < new Date())
+            .sort((x, y) => new Date(y.appointmentDate).getTime() - new Date(x.appointmentDate).getTime())[0]
+          const bLast = bLastAppointments
+            .filter(apt => new Date(apt.appointmentDate) < new Date())
+            .sort((x, y) => new Date(y.appointmentDate).getTime() - new Date(x.appointmentDate).getTime())[0]
+            
+          aValue = aLast ? new Date(aLast.appointmentDate).getTime() : 0
+          bValue = bLast ? new Date(bLast.appointmentDate).getTime() : 0
+          break
+          
+        case 'createdAt':
+        case 'dateOfBirth':
+          aValue = new Date(a[sortField]).getTime()
+          bValue = new Date(b[sortField]).getTime()
+          break
+          
+        default:
+          aValue = a[sortField]?.toString().toLowerCase() || ''
+          bValue = b[sortField]?.toString().toLowerCase() || ''
       }
 
       if (sortDirection === 'asc') {
@@ -620,7 +679,7 @@ export default function PatientList() {
     })
 
     return filtered
-  }, [patients, searchTerm, statusFilter, sortField, sortDirection])
+  }, [patients, searchTerm, statusFilter, sortField, sortDirection, patientAppointments])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -640,7 +699,12 @@ export default function PatientList() {
       <ArrowDown className="ml-2 h-4 w-4" />
   }
 
-  const uniqueStatuses = Array.from(new Set(patients.map(p => p.status)))
+  // Get all unique statuses from all status fields
+  const uniqueStatuses = Array.from(new Set([
+    ...patients.map(p => p.status).filter(Boolean),
+    ...patients.map(p => p.authStatus).filter(Boolean),
+    ...patients.map(p => p.scheduleStatus).filter(Boolean),
+  ])).sort()
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -744,13 +808,45 @@ export default function PatientList() {
               <Table className="min-w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-64 min-w-64">Patient Info</TableHead>
+                    <TableHead className="w-64 min-w-64">
+                      <Button 
+                        variant="ghost" 
+                        className="flex items-center justify-start p-0 h-auto font-medium hover:bg-transparent"
+                        onClick={() => handleSort('firstName')}
+                      >
+                        Patient Info {getSortIcon('firstName')}
+                      </Button>
+                    </TableHead>
                     <TableHead className="w-40 min-w-40">Auth Status</TableHead>
                     <TableHead className="w-48 min-w-48">Auth Info</TableHead>
                     <TableHead className="w-40 min-w-40">Schedule Status</TableHead>
-                    <TableHead className="w-20 min-w-20">Dose #</TableHead>
-                    <TableHead className="w-32 min-w-32">Last Apt</TableHead>
-                    <TableHead className="w-32 min-w-32">Next Apt</TableHead>
+                    <TableHead className="w-20 min-w-20">
+                      <Button 
+                        variant="ghost" 
+                        className="flex items-center justify-start p-0 h-auto font-medium hover:bg-transparent"
+                        onClick={() => handleSort('doseNumber')}
+                      >
+                        Dose # {getSortIcon('doseNumber')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="w-32 min-w-32">
+                      <Button 
+                        variant="ghost" 
+                        className="flex items-center justify-start p-0 h-auto font-medium hover:bg-transparent"
+                        onClick={() => handleSort('lastAppointment')}
+                      >
+                        Last Apt {getSortIcon('lastAppointment')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="w-32 min-w-32">
+                      <Button 
+                        variant="ghost" 
+                        className="flex items-center justify-start p-0 h-auto font-medium hover:bg-transparent"
+                        onClick={() => handleSort('nextAppointment')}
+                      >
+                        Next Apt {getSortIcon('nextAppointment')}
+                      </Button>
+                    </TableHead>
                     <TableHead className="w-80 min-w-80">Notes</TableHead>
                     <TableHead className="w-24 min-w-24">Actions</TableHead>
                   </TableRow>
