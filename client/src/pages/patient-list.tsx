@@ -46,6 +46,60 @@ interface PatientRowProps {
   onAppointmentStatusChange: (appointmentId: number, status: string, patientId: number) => void
 }
 
+// Helper functions for status styling
+const getAuthStatusColor = (status: string) => {
+  switch (status) {
+    case 'Approved':
+      return 'bg-green-100 text-green-800 border-green-200'
+    case 'No PA Required':
+      return 'bg-blue-100 text-blue-800 border-blue-200'
+    case 'Denied':
+      return 'bg-red-100 text-red-800 border-red-200'
+    case 'Pending Review':
+      return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+    case 'Pending More Info':
+      return 'bg-orange-100 text-orange-800 border-orange-200'
+    case 'Needs Renewal':
+      return 'bg-purple-100 text-purple-800 border-purple-200'
+    case 'APT SCHEDULED W/O AUTH':
+      return 'bg-red-100 text-red-800 border-red-200'
+    default:
+      return 'bg-gray-100 text-gray-800 border-gray-200'
+  }
+}
+
+const getScheduleStatusColor = (status: string) => {
+  switch (status) {
+    case 'Scheduled':
+      return 'bg-green-100 text-green-800 border-green-200'
+    case 'Needs Scheduling':
+      return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+    case 'Needs Scheduling–High Priority':
+      return 'bg-red-100 text-red-800 border-red-200'
+    case 'Needs Rescheduling':
+      return 'bg-orange-100 text-orange-800 border-orange-200'
+    case 'Pending Auth':
+      return 'bg-blue-100 text-blue-800 border-blue-200'
+    default:
+      return 'bg-gray-100 text-gray-800 border-gray-200'
+  }
+}
+
+const getAppointmentStatusColor = (status: string) => {
+  switch (status) {
+    case 'Completed':
+      return 'bg-green-100 text-green-800 border-green-200'
+    case 'Scheduled':
+      return 'bg-blue-100 text-blue-800 border-blue-200'
+    case 'Cancelled':
+      return 'bg-red-100 text-red-800 border-red-200'
+    case 'No Show':
+      return 'bg-orange-100 text-orange-800 border-orange-200'
+    default:
+      return 'bg-gray-100 text-gray-800 border-gray-200'
+  }
+}
+
 const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDoseNumberChange, onRecordVoicemail, onAppointmentStatusChange }: PatientRowProps) => {
   // Get appointments for this patient
   const { data: appointments = [] } = useQuery({
@@ -136,7 +190,11 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
           onValueChange={(value) => onAuthStatusChange(patient.id, value)}
         >
           <SelectTrigger className="w-full">
-            <SelectValue />
+            <SelectValue>
+              <Badge className={`${getAuthStatusColor(patient.authStatus || 'Pending Review')} border text-xs`}>
+                {patient.authStatus || 'Pending Review'}
+              </Badge>
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {authStatusOptions.map(option => (
@@ -163,7 +221,11 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
           onValueChange={(value) => onScheduleStatusChange(patient.id, value)}
         >
           <SelectTrigger className="w-full">
-            <SelectValue />
+            <SelectValue>
+              <Badge className={`${getScheduleStatusColor(patient.scheduleStatus || 'Pending Auth')} border text-xs`}>
+                {patient.scheduleStatus || 'Pending Auth'}
+              </Badge>
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {scheduleStatusOptions.map(option => (
@@ -200,7 +262,11 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
               onValueChange={(status) => onAppointmentStatusChange(lastAppointment.id, status, patient.id)}
             >
               <SelectTrigger className="w-full text-xs">
-                <SelectValue />
+                <SelectValue>
+                  <Badge className={`${getAppointmentStatusColor(lastAppointment.status || 'Scheduled')} border text-xs`}>
+                    {lastAppointment.status || 'Scheduled'}
+                  </Badge>
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Scheduled">Scheduled</SelectItem>
@@ -224,52 +290,23 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
         )}
       </TableCell>
 
-      {/* Documentation Status */}
-      <TableCell className="text-sm">
-        <div className="space-y-1">
-          {(() => {
-            const hasInsuranceCard = documents.some((doc: any) => doc.documentType === 'insurance_card' || doc.documentType === 'insurance_screenshot')
-            const hasClinicalNotes = documents.some((doc: any) => doc.documentType === 'clinical_note')
-            const hasEpicScreenshot = documents.some((doc: any) => doc.documentType === 'epic_screenshot')
-            const hasPriorAuthForms = documents.some((doc: any) => doc.documentType === 'prior_auth_form')
-            
-            return (
-              <>
-                <div className={hasInsuranceCard ? 'text-green-600' : 'text-gray-400'}>
-                  {hasInsuranceCard ? '✓' : '○'} Insurance Cards
-                </div>
-                <div className={hasClinicalNotes ? 'text-green-600' : 'text-gray-400'}>
-                  {hasClinicalNotes ? '✓' : '○'} Clinical Notes
-                </div>
-                <div className={hasEpicScreenshot ? 'text-green-600' : 'text-gray-400'}>
-                  {hasEpicScreenshot ? '✓' : '○'} Epic Screenshots
-                </div>
-                <div className={hasPriorAuthForms ? 'text-green-600' : 'text-orange-600'}>
-                  {hasPriorAuthForms ? '✓' : '○'} Prior Auth Forms
-                </div>
-              </>
-            )
-          })()}
-        </div>
-      </TableCell>
-
       {/* Notes */}
-      <TableCell className="text-sm max-w-xs">
-        <div className="space-y-1">
+      <TableCell className="text-sm">
+        <div className="space-y-2 max-w-lg">
           {patient.notes && (
-            <div className="whitespace-pre-line text-gray-700 line-clamp-3">
+            <div className="whitespace-pre-line text-gray-700 text-sm leading-relaxed">
               {getNotesPreview()}
             </div>
           )}
-          <div className="flex items-center justify-between">
-            <div className="text-xs text-gray-500">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs text-gray-500 flex-1">
               {patient.lastVoicemailAt && `Voicemail Left: ${format(new Date(patient.lastVoicemailAt), 'MM/dd/yyyy HH:mm')}`}
             </div>
             <Button 
               size="sm" 
               variant="outline" 
               onClick={onRecordVoicemail}
-              className="flex items-center gap-1 text-xs"
+              className="flex items-center gap-1 text-xs whitespace-nowrap"
             >
               <Mic className="h-3 w-3" />
               Record Voicemail
@@ -703,21 +740,21 @@ export default function PatientList() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Patient Info</TableHead>
-                  <TableHead>Auth Status</TableHead>
-                  <TableHead>Auth Info</TableHead>
-                  <TableHead>Schedule Status</TableHead>
-                  <TableHead>Dose #</TableHead>
-                  <TableHead>Last Apt</TableHead>
-                  <TableHead>Next Apt</TableHead>
-                  <TableHead>Documentation Status</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+            <div className="overflow-x-auto">
+              <Table className="min-w-full">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-64 min-w-64">Patient Info</TableHead>
+                    <TableHead className="w-40 min-w-40">Auth Status</TableHead>
+                    <TableHead className="w-48 min-w-48">Auth Info</TableHead>
+                    <TableHead className="w-40 min-w-40">Schedule Status</TableHead>
+                    <TableHead className="w-20 min-w-20">Dose #</TableHead>
+                    <TableHead className="w-32 min-w-32">Last Apt</TableHead>
+                    <TableHead className="w-32 min-w-32">Next Apt</TableHead>
+                    <TableHead className="w-80 min-w-80">Notes</TableHead>
+                    <TableHead className="w-24 min-w-24">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {filteredAndSortedPatients.map((patient) => (
                   <PatientRow 
@@ -733,7 +770,8 @@ export default function PatientList() {
                   />
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}
