@@ -1008,6 +1008,86 @@ export default function PatientDetail() {
           </CardContent>
         </Card>
 
+        {/* Appointments Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Appointments</CardTitle>
+                <CardDescription>Track patient appointments and doses</CardDescription>
+              </div>
+              <Button
+                onClick={() => setShowAddAppointment(true)}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Appointment
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {appointmentsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2">Loading appointments...</span>
+              </div>
+            ) : appointments.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>No appointments scheduled yet</p>
+                <p className="text-sm">Click "Add Appointment" to schedule the first appointment</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {appointments.map((appointment) => (
+                  <div key={appointment.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <Calendar className="h-5 w-5 text-gray-400" />
+                      <div>
+                        <p className="font-medium">
+                          {format(new Date(appointment.appointmentDate), 'MMM d, yyyy')}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Dose #{appointment.doseNumber}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {/* Only show status dropdown for past appointments */}
+                      {new Date(appointment.appointmentDate) < new Date() ? (
+                        <select
+                          value={appointment.status}
+                          onChange={(e) => handleUpdateAppointmentStatus(appointment.id, e.target.value)}
+                          className="px-3 py-1 border rounded text-sm"
+                          disabled={updateAppointmentMutation.isPending}
+                        >
+                          <option value="Completed">Completed</option>
+                          <option value="Cancelled">Cancelled</option>
+                          <option value="No Show">No Show</option>
+                        </select>
+                      ) : (
+                        <span className="px-3 py-1 bg-gray-100 text-gray-600 text-sm rounded">
+                          Scheduled
+                        </span>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteAppointment(appointment.id)}
+                        className="text-red-600 hover:text-red-700"
+                        disabled={deleteAppointmentMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* LEQVIO Approval Analysis */}
         {latestAnalysis && (
           <Card>
@@ -1412,86 +1492,6 @@ export default function PatientDetail() {
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Appointments Section */}
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>Appointments</CardTitle>
-                <CardDescription>Track patient appointments and doses</CardDescription>
-              </div>
-              <Button
-                onClick={() => setShowAddAppointment(true)}
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add Appointment
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {appointmentsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" />
-                <span className="ml-2">Loading appointments...</span>
-              </div>
-            ) : appointments.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>No appointments scheduled yet</p>
-                <p className="text-sm">Click "Add Appointment" to schedule the first appointment</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {appointments.map((appointment) => (
-                  <div key={appointment.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <Calendar className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="font-medium">
-                          {format(new Date(appointment.appointmentDate), 'MMM d, yyyy')}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Dose #{appointment.doseNumber}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {/* Only show status dropdown for past appointments */}
-                      {new Date(appointment.appointmentDate) < new Date() ? (
-                        <select
-                          value={appointment.status}
-                          onChange={(e) => handleUpdateAppointmentStatus(appointment.id, e.target.value)}
-                          className="px-3 py-1 border rounded text-sm"
-                          disabled={updateAppointmentMutation.isPending}
-                        >
-                          <option value="Completed">Completed</option>
-                          <option value="Cancelled">Cancelled</option>
-                          <option value="No Show">No Show</option>
-                        </select>
-                      ) : (
-                        <span className="px-3 py-1 bg-gray-100 text-gray-600 text-sm rounded">
-                          Scheduled
-                        </span>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeleteAppointment(appointment.id)}
-                        className="text-red-600 hover:text-red-700"
-                        disabled={deleteAppointmentMutation.isPending}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
