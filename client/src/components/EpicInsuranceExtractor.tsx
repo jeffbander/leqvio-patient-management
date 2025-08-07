@@ -59,10 +59,22 @@ export const EpicInsuranceExtractor = ({ patientId, onDataExtracted }: EpicInsur
   const applyMutation = useMutation({
     mutationFn: async () => {
       if (!extractedData || !patientId) throw new Error('No data to apply')
+      
+      // Map the extracted data to match the database schema field names
+      const mappedData = {
+        primaryInsurance: extractedData.primaryInsurance,
+        primaryInsuranceNumber: extractedData.primaryMemberId,
+        primaryGroupId: extractedData.primaryGroupNumber,
+        secondaryInsurance: extractedData.secondaryInsurance,
+        secondaryInsuranceNumber: extractedData.secondaryMemberId,
+        secondaryGroupId: extractedData.secondaryGroupNumber,
+        // Note: copay and deductible don't have direct schema fields, would need to be added if needed
+      }
+      
       const response = await fetch(`/api/patients/${patientId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(extractedData)
+        body: JSON.stringify(mappedData)
       })
       if (!response.ok) throw new Error('Update failed')
       return response.json()
