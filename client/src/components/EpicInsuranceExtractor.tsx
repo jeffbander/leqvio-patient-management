@@ -71,10 +71,17 @@ export const EpicInsuranceExtractor = ({ patientId, onDataExtracted }: EpicInsur
         // Note: copay and deductible don't have direct schema fields, would need to be added if needed
       }
       
-      const response = await fetch(`/api/patients/${patientId}`, {
+      const response = await fetch(`/api/appsheet/patients/${patientId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mappedData)
+        body: JSON.stringify({
+          PrimaryInsurance: extractedData.primaryInsurance,
+          PrimaryInsuranceNumber: extractedData.primaryMemberId,
+          PrimaryGroupId: extractedData.primaryGroupNumber,
+          SecondaryInsurance: extractedData.secondaryInsurance,
+          SecondaryInsuranceNumber: extractedData.secondaryMemberId,
+          SecondaryGroupId: extractedData.secondaryGroupNumber,
+        })
       })
       if (!response.ok) throw new Error('Update failed')
       return response.json()
