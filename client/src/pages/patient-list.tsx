@@ -240,7 +240,14 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       target.closest('textarea') ||
       target.closest('[role="combobox"]') ||
       target.closest('[data-radix-collection-item]') ||
-      target.closest('.cursor-text')
+      target.closest('.cursor-text') ||
+      target.closest('.badge') ||
+      target.classList.contains('cursor-pointer') ||
+      target.closest('.cursor-pointer') ||
+      // Prevent navigation when clicking on any editable content areas
+      target.closest('[contenteditable]') ||
+      target.closest('.bg-gray-50') ||
+      target.closest('.bg-blue-100')
     ) {
       return
     }
@@ -269,7 +276,10 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
         >
           <SelectTrigger className="w-full border-none bg-transparent p-0 h-auto hover:bg-transparent">
             <SelectValue>
-              <Badge className={`${getAuthStatusColor(patient.authStatus || 'Pending Review')} border text-xs cursor-pointer hover:opacity-80`}>
+              <Badge 
+                className={`${getAuthStatusColor(patient.authStatus || 'Pending Review')} border text-xs cursor-pointer hover:opacity-80`}
+                onClick={(e) => e.stopPropagation()}
+              >
                 {patient.authStatus || 'Pending Review'}
               </Badge>
             </SelectValue>
@@ -300,7 +310,10 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
         >
           <SelectTrigger className="w-full border-none bg-transparent p-0 h-auto hover:bg-transparent">
             <SelectValue>
-              <Badge className={`${getScheduleStatusColor(patient.scheduleStatus || 'Pending Auth')} border text-xs cursor-pointer hover:opacity-80`}>
+              <Badge 
+                className={`${getScheduleStatusColor(patient.scheduleStatus || 'Pending Auth')} border text-xs cursor-pointer hover:opacity-80`}
+                onClick={(e) => e.stopPropagation()}
+              >
                 {patient.scheduleStatus || 'Pending Auth'}
               </Badge>
             </SelectValue>
@@ -332,13 +345,17 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
             <>
               <Badge 
                 className="bg-blue-100 text-blue-800 border-blue-200 text-xs px-2 py-1 cursor-default"
+                onClick={(e) => e.stopPropagation()}
               >
                 {patient.doseNumber || 1}
               </Badge>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleDoseEdit}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDoseEdit()
+                }}
                 className="h-4 w-4 p-0 hover:bg-gray-100"
               >
                 <Pencil className="h-3 w-3 text-gray-400 hover:text-gray-600" />
@@ -359,7 +376,10 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
             >
               <SelectTrigger className="w-full border-none bg-transparent p-0 h-auto hover:bg-transparent">
                 <SelectValue>
-                  <Badge className={`${getAppointmentStatusColor(lastAppointment.status || 'Scheduled')} border text-xs cursor-pointer hover:opacity-80`}>
+                  <Badge 
+                    className={`${getAppointmentStatusColor(lastAppointment.status || 'Scheduled')} border text-xs cursor-pointer hover:opacity-80`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {lastAppointment.status || 'Scheduled'}
                   </Badge>
                 </SelectValue>
@@ -404,7 +424,10 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
               <>
                 <div 
                   className="flex-1 min-h-8 p-2 bg-gray-50 rounded border cursor-text hover:bg-gray-100 transition-colors"
-                  onClick={handleNotesEdit}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleNotesEdit()
+                  }}
                 >
                   {patient.notes ? (
                     <div className="whitespace-pre-line text-gray-700 text-sm leading-relaxed">
@@ -417,7 +440,10 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleNotesEdit}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleNotesEdit()
+                  }}
                   className="h-6 w-6 p-0 hover:bg-gray-100"
                 >
                   <Pencil className="h-3 w-3 text-gray-400 hover:text-gray-600" />
@@ -432,7 +458,10 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
             <Button 
               size="sm" 
               variant="outline" 
-              onClick={onRecordVoicemail}
+              onClick={(e) => {
+                e.stopPropagation()
+                onRecordVoicemail()
+              }}
               className="flex items-center gap-1 text-xs whitespace-nowrap"
             >
               <Mic className="h-3 w-3" />
