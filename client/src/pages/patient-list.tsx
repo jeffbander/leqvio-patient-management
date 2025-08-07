@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { Link } from 'wouter'
 import { Badge } from '@/components/ui/badge'
-import { UserPlus, Search, Eye, FileSpreadsheet, Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { UserPlus, Search, Eye, FileSpreadsheet, Download, ArrowUpDown, ArrowUp, ArrowDown, Mic, Calendar } from 'lucide-react'
 import { format } from 'date-fns'
 import { queryClient } from '@/lib/queryClient'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -21,15 +21,275 @@ interface Patient {
   orderingMD: string
   diagnosis: string
   status: string
+  mrn?: string
   authNumber?: string
   refNumber?: string
   startDate?: string
   endDate?: string
+  authStatus?: string
+  scheduleStatus?: string
+  doseNumber?: number
+  notes?: string
+  lastVoicemailAt?: string
   createdAt: string
 }
 
 type SortField = 'firstName' | 'lastName' | 'dateOfBirth' | 'orderingMD' | 'diagnosis' | 'status' | 'createdAt'
 type SortDirection = 'asc' | 'desc'
+
+interface PatientRowProps {
+  patient: Patient
+  onAuthStatusChange: (patientId: number, newStatus: string) => void
+  onScheduleStatusChange: (patientId: number, newStatus: string) => void
+  onDoseNumberChange: (patientId: number, newDose: number) => void
+  onRecordVoicemail: () => void
+  onAppointmentStatusChange: (appointmentId: number, status: string, patientId: number) => void
+}
+
+const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDoseNumberChange, onRecordVoicemail, onAppointmentStatusChange }: PatientRowProps) => {
+  // Get appointments for this patient
+  const { data: appointments = [] } = useQuery({
+    queryKey: ['/api/appointments', patient.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/patients/${patient.id}/appointments`)
+      if (!response.ok) throw new Error('Failed to fetch appointments')
+      return response.json()
+    }
+  })
+
+  // Get documents for this patient to show real documentation status
+  const { data: documents = [] } = useQuery({
+    queryKey: ['/api/patients', patient.id, 'documents'],
+    queryFn: async () => {
+      const response = await fetch(`/api/patients/${patient.id}/documents`)
+      if (!response.ok) return []
+      return response.json()
+    }
+  })
+
+  const getLastAppointment = () => {
+    const today = new Date()
+    const pastAppointments = appointments
+      .filter((apt: any) => new Date(apt.appointmentDate) <= today)
+      .sort((a: any, b: any) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime())
+    return pastAppointments[0] || null
+  }
+
+  const getNextAppointment = () => {
+    const today = new Date()
+    const futureAppointments = appointments
+      .filter((apt: any) => new Date(apt.appointmentDate) > today)
+      .sort((a: any, b: any) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime())
+    return futureAppointments[0] || null
+  }
+
+  const lastAppointment = getLastAppointment()
+  const nextAppointment = getNextAppointment()
+  
+  // Check if row should be flagged (light red background)
+  const isRowFlagged = patient.authStatus === 'APT SCHEDULED W/O AUTH'
+  
+  // Get notes preview (first 3 lines of last paragraph)
+  const getNotesPreview = () => {
+    if (!patient.notes) return ''
+    const paragraphs = patient.notes.split('\n\n')
+    const lastParagraph = paragraphs[paragraphs.length - 1]
+    const lines = lastParagraph.split('\n')
+    return lines.slice(0, 3).join('\n')
+  }
+
+  const authStatusOptions = [
+    'Pending Review',
+    'No PA Required',
+    'Approved', 
+    'Denied',
+    'Pending More Info',
+    'Needs Renewal',
+    'APT SCHEDULED W/O AUTH'
+  ]
+
+  const scheduleStatusOptions = [
+    'Pending Auth',
+    'Scheduled',
+    'Needs Scheduling',
+    'Needs Scheduling–High Priority',
+    'Needs Rescheduling'
+  ]
+
+  return (
+    <TableRow 
+      className={`hover:bg-gray-50 ${isRowFlagged ? 'bg-red-50' : ''}`}
+    >
+      {/* Patient Info */}
+      <TableCell className="font-medium">
+        <div>
+          <div className="font-semibold">{patient.lastName}, {patient.firstName}</div>
+          {patient.mrn && <div className="text-sm text-gray-600">MRN: {patient.mrn}</div>}
+          <div className="text-sm text-gray-600">DOB: {patient.dateOfBirth}</div>
+        </div>
+      </TableCell>
+
+      {/* Auth Status */}
+      <TableCell>
+        <Select 
+          value={patient.authStatus || 'Pending Review'} 
+          onValueChange={(value) => onAuthStatusChange(patient.id, value)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {authStatusOptions.map(option => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
+
+      {/* Auth Info */}
+      <TableCell className="text-sm">
+        <div className="space-y-1">
+          <div>Start: {patient.startDate || 'Not set'}</div>
+          <div>End: {patient.endDate || 'Not set'}</div>
+          <div>Auth #: {patient.authNumber || 'Not set'}</div>
+          <div>Ref #: {patient.refNumber || 'Not set'}</div>
+        </div>
+      </TableCell>
+
+      {/* Schedule Status */}
+      <TableCell>
+        <Select 
+          value={patient.scheduleStatus || 'Pending Auth'} 
+          onValueChange={(value) => onScheduleStatusChange(patient.id, value)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {scheduleStatusOptions.map(option => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
+
+      {/* Dose # */}
+      <TableCell>
+        <Select 
+          value={String(patient.doseNumber || 1)}
+          onValueChange={(value) => onDoseNumberChange(patient.id, parseInt(value))}
+        >
+          <SelectTrigger className="w-20">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {[1, 2, 3, 4, 5, 6].map(dose => (
+              <SelectItem key={dose} value={String(dose)}>{dose}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
+
+      {/* Last Apt */}
+      <TableCell className="text-sm">
+        {lastAppointment ? (
+          <div className="space-y-1">
+            <div className="font-medium">{lastAppointment.appointmentDate}</div>
+            <Select 
+              value={lastAppointment.status || 'Scheduled'}
+              onValueChange={(status) => onAppointmentStatusChange(lastAppointment.id, status, patient.id)}
+            >
+              <SelectTrigger className="w-full text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Scheduled">Scheduled</SelectItem>
+                <SelectItem value="Completed">Completed</SelectItem>
+                <SelectItem value="Cancelled">Cancelled</SelectItem>
+                <SelectItem value="No Show">No Show</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <div className="text-gray-400">No past appointments</div>
+        )}
+      </TableCell>
+
+      {/* Next Apt */}
+      <TableCell className="text-sm">
+        {nextAppointment ? (
+          <div>{nextAppointment.appointmentDate}</div>
+        ) : (
+          <div className="text-gray-400">No upcoming appointments</div>
+        )}
+      </TableCell>
+
+      {/* Documentation Status */}
+      <TableCell className="text-sm">
+        <div className="space-y-1">
+          {(() => {
+            const hasInsuranceCard = documents.some((doc: any) => doc.documentType === 'insurance_card' || doc.documentType === 'insurance_screenshot')
+            const hasClinicalNotes = documents.some((doc: any) => doc.documentType === 'clinical_note')
+            const hasEpicScreenshot = documents.some((doc: any) => doc.documentType === 'epic_screenshot')
+            const hasPriorAuthForms = documents.some((doc: any) => doc.documentType === 'prior_auth_form')
+            
+            return (
+              <>
+                <div className={hasInsuranceCard ? 'text-green-600' : 'text-gray-400'}>
+                  {hasInsuranceCard ? '✓' : '○'} Insurance Cards
+                </div>
+                <div className={hasClinicalNotes ? 'text-green-600' : 'text-gray-400'}>
+                  {hasClinicalNotes ? '✓' : '○'} Clinical Notes
+                </div>
+                <div className={hasEpicScreenshot ? 'text-green-600' : 'text-gray-400'}>
+                  {hasEpicScreenshot ? '✓' : '○'} Epic Screenshots
+                </div>
+                <div className={hasPriorAuthForms ? 'text-green-600' : 'text-orange-600'}>
+                  {hasPriorAuthForms ? '✓' : '○'} Prior Auth Forms
+                </div>
+              </>
+            )
+          })()}
+        </div>
+      </TableCell>
+
+      {/* Notes */}
+      <TableCell className="text-sm max-w-xs">
+        <div className="space-y-1">
+          {patient.notes && (
+            <div className="whitespace-pre-line text-gray-700 line-clamp-3">
+              {getNotesPreview()}
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-gray-500">
+              {patient.lastVoicemailAt && `Voicemail Left: ${format(new Date(patient.lastVoicemailAt), 'MM/dd/yyyy HH:mm')}`}
+            </div>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={onRecordVoicemail}
+              className="flex items-center gap-1 text-xs"
+            >
+              <Mic className="h-3 w-3" />
+              Record Voicemail
+            </Button>
+          </div>
+        </div>
+      </TableCell>
+
+      {/* Actions */}
+      <TableCell>
+        <Link href={`/patient/${patient.id}`}>
+          <Button variant="outline" size="sm" className="flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            View
+          </Button>
+        </Link>
+      </TableCell>
+    </TableRow>
+  )
+}
 
 export default function PatientList() {
   const { toast } = useToast()
@@ -45,6 +305,98 @@ export default function PatientList() {
   const { data: sheetsStatus } = useQuery({
     queryKey: ['/api/google-sheets/status'],
   })
+
+  // Helper functions for business logic
+  const applyBusinessLogic = (patient: Patient, appointments: any[] = []) => {
+    const updates: any = {}
+    
+    // Auto-update schedule status based on auth status changes
+    if (patient.authStatus === 'Approved' || patient.authStatus === 'No PA Required') {
+      if (patient.scheduleStatus !== 'Needs Scheduling') {
+        updates.scheduleStatus = 'Needs Scheduling'
+      }
+    } else if (patient.authStatus === 'Needs Renewal' || patient.authStatus === 'APT SCHEDULED W/O AUTH') {
+      if (patient.scheduleStatus !== 'Pending Auth') {
+        updates.scheduleStatus = 'Pending Auth'
+      }
+    }
+    
+    // Set Schedule Status to "Needs Scheduling–High Priority" if Dose # = 2
+    if (patient.doseNumber === 2 && patient.scheduleStatus !== 'Pending Auth') {
+      updates.scheduleStatus = 'Needs Scheduling–High Priority'
+    }
+    
+    return updates
+  }
+
+  // Check if appointments are outside authorization dates
+  const checkAuthDateCompliance = (patient: Patient, appointments: any[]) => {
+    if (!patient.startDate || !patient.endDate) return null
+    
+    const authStartDate = new Date(patient.startDate)
+    const authEndDate = new Date(patient.endDate)
+    const today = new Date()
+    
+    const futureAppointments = appointments.filter(apt => new Date(apt.appointmentDate) > today)
+    
+    for (const appointment of futureAppointments) {
+      const appointmentDate = new Date(appointment.appointmentDate)
+      if (appointmentDate < authStartDate || appointmentDate > authEndDate) {
+        return 'APT SCHEDULED W/O AUTH'
+      }
+    }
+    
+    return null
+  }
+
+  const getLastAppointment = (appointments: any[]) => {
+    const today = new Date()
+    const pastAppointments = appointments
+      .filter(apt => new Date(apt.appointmentDate) <= today)
+      .sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime())
+    return pastAppointments[0] || null
+  }
+
+  const getNextAppointment = (appointments: any[]) => {
+    const today = new Date()
+    const futureAppointments = appointments
+      .filter(apt => new Date(apt.appointmentDate) > today)
+      .sort((a, b) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime())
+    return futureAppointments[0] || null
+  }
+
+  const handleAuthStatusChange = (patientId: number, newAuthStatus: string) => {
+    const patient = patients.find(p => p.id === patientId)
+    if (!patient) return
+
+    const updates = { authStatus: newAuthStatus }
+    const businessLogicUpdates = applyBusinessLogic({ ...patient, authStatus: newAuthStatus })
+    
+    updatePatientMutation.mutate({
+      patientId,
+      updates: { ...updates, ...businessLogicUpdates }
+    })
+  }
+
+  const handleScheduleStatusChange = (patientId: number, newScheduleStatus: string) => {
+    updatePatientMutation.mutate({
+      patientId,
+      updates: { scheduleStatus: newScheduleStatus }
+    })
+  }
+
+  const handleDoseNumberChange = (patientId: number, newDoseNumber: number) => {
+    const patient = patients.find(p => p.id === patientId)
+    if (!patient) return
+
+    const updates = { doseNumber: newDoseNumber }
+    const businessLogicUpdates = applyBusinessLogic({ ...patient, doseNumber: newDoseNumber })
+    
+    updatePatientMutation.mutate({
+      patientId,
+      updates: { ...updates, ...businessLogicUpdates }
+    })
+  }
 
   const syncToSheetsMutation = useMutation({
     mutationFn: async () => {
@@ -63,6 +415,99 @@ export default function PatientList() {
         title: "Success",
         description: data.message || "Patients synced to Google Sheets successfully"
       })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      })
+    }
+  })
+
+  const updatePatientMutation = useMutation({
+    mutationFn: async ({ patientId, updates }: { patientId: number, updates: any }) => {
+      const response = await fetch(`/api/patients/${patientId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      })
+      if (!response.ok) throw new Error('Failed to update patient')
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/patients'] })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      })
+    }
+  })
+
+  const recordVoicemailMutation = useMutation({
+    mutationFn: async (patientId: number) => {
+      const response = await fetch(`/api/patients/${patientId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lastVoicemailAt: new Date().toISOString() })
+      })
+      if (!response.ok) throw new Error('Failed to record voicemail')
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/patients'] })
+      toast({
+        title: "Success",
+        description: "Voicemail timestamp recorded"
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error", 
+        description: error.message,
+        variant: "destructive"
+      })
+    }
+  })
+
+  const updateAppointmentMutation = useMutation({
+    mutationFn: async ({ appointmentId, status, patientId }: { appointmentId: number, status: string, patientId: number }) => {
+      const response = await fetch(`/api/appointments/${appointmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+      if (!response.ok) throw new Error('Failed to update appointment')
+      
+      // If appointment is marked as "Completed", trigger business logic
+      if (status === 'Completed') {
+        const patient = patients.find(p => p.id === patientId)
+        if (patient) {
+          const newDoseNumber = (patient.doseNumber || 1) + 1
+          const updates: any = { doseNumber: newDoseNumber }
+          
+          // If not "Pending Auth", change to "Needs Scheduling"
+          if (patient.scheduleStatus !== 'Pending Auth') {
+            updates.scheduleStatus = 'Needs Scheduling'
+          }
+          
+          // Update patient with new dose number and schedule status
+          await fetch(`/api/patients/${patientId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+          })
+        }
+      }
+      
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/patients'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] })
     },
     onError: (error: Error) => {
       toast({
@@ -261,87 +706,31 @@ export default function PatientList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('lastName')}
-                  >
-                    <div className="flex items-center">
-                      Patient Name
-                      {getSortIcon('lastName')}
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('dateOfBirth')}
-                  >
-                    <div className="flex items-center">
-                      Date of Birth
-                      {getSortIcon('dateOfBirth')}
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('orderingMD')}
-                  >
-                    <div className="flex items-center">
-                      Provider
-                      {getSortIcon('orderingMD')}
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('diagnosis')}
-                  >
-                    <div className="flex items-center">
-                      Diagnosis
-                      {getSortIcon('diagnosis')}
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('status')}
-                  >
-                    <div className="flex items-center">
-                      Status
-                      {getSortIcon('status')}
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('createdAt')}
-                  >
-                    <div className="flex items-center">
-                      Created
-                      {getSortIcon('createdAt')}
-                    </div>
-                  </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Patient Info</TableHead>
+                  <TableHead>Auth Status</TableHead>
+                  <TableHead>Auth Info</TableHead>
+                  <TableHead>Schedule Status</TableHead>
+                  <TableHead>Dose #</TableHead>
+                  <TableHead>Last Apt</TableHead>
+                  <TableHead>Next Apt</TableHead>
+                  <TableHead>Documentation Status</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredAndSortedPatients.map((patient) => (
-                  <TableRow key={patient.id} className="hover:bg-gray-50">
-                    <TableCell className="font-medium">
-                      {patient.lastName}, {patient.firstName}
-                    </TableCell>
-                    <TableCell>{patient.dateOfBirth}</TableCell>
-                    <TableCell>{patient.orderingMD}</TableCell>
-                    <TableCell>{patient.diagnosis}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(patient.status)}>
-                        {patient.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{format(new Date(patient.createdAt), 'MM/dd/yyyy')}</TableCell>
-                    <TableCell className="text-right">
-                      <Link href={`/patient/${patient.id}`}>
-                        <Button variant="outline" size="sm" className="flex items-center gap-2">
-                          <Eye className="h-4 w-4" />
-                          View
-                        </Button>
-                      </Link>
-                    </TableCell>
-                  </TableRow>
+                  <PatientRow 
+                    key={patient.id}
+                    patient={patient}
+                    onAuthStatusChange={handleAuthStatusChange}
+                    onScheduleStatusChange={handleScheduleStatusChange}
+                    onDoseNumberChange={handleDoseNumberChange}
+                    onRecordVoicemail={() => recordVoicemailMutation.mutate(patient.id)}
+                    onAppointmentStatusChange={(appointmentId, status, patientId) => 
+                      updateAppointmentMutation.mutate({ appointmentId, status, patientId })
+                    }
+                  />
                 ))}
               </TableBody>
             </Table>

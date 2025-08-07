@@ -140,6 +140,11 @@ export const patients = pgTable("patients", {
   refNumber: text("ref_number"),
   startDate: text("start_date"), // MM/DD/YYYY format
   endDate: text("end_date"), // MM/DD/YYYY format
+  authStatus: text("auth_status").default("Pending Review"), // Pending Review, No PA Required, Approved, Denied, etc.
+  scheduleStatus: text("schedule_status").default("Pending Auth"), // Pending Auth, Scheduled, Needs Scheduling, etc.
+  doseNumber: integer("dose_number").default(1),
+  notes: text("notes").default(""),
+  lastVoicemailAt: timestamp("last_voicemail_at"),
   
   // Metadata
   createdAt: timestamp("created_at").defaultNow().notNull(),

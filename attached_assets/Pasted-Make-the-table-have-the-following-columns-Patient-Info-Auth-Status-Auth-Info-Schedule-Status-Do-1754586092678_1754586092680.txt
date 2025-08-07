@@ -1,0 +1,19 @@
+Make the table have the following columns: Patient Info, Auth Status, Auth Info, Schedule Status, Dose #, Last Apt, Next Apt, and Notes.
+
+The Patient Info column will show the patient's name, MRN, and date of birth.
+
+The Auth Status column will have a default value of Pending Review, with dropdown options for No PA Required, Approved, Denied, Pending More Info, Needs Renewal, and APT SCHEDULED W/O AUTH. If the value is equal to APT SCHEDULED W/O AUTH, the patient’s entire row should be flagged by coloring it with a light red hue.
+
+The Auth Info column will show Start Date, End Date, Auth #, and Ref #.
+
+The Schedule Status column will be a status column that has a default value of Pending Auth, with dropdown options for Scheduled, Needs Scheduling, Needs Scheduling–High Priority, and Needs Rescheduling. The value should automatically change to Needs Scheduling if Auth Status is changed to Approved or No PA Required. The value should change automatically to Pending Auth if Auth Status is changed to Needs Renewal or APT SCHEDULED W/O AUTH. 
+
+The Dose # column should have a default value of 1. When Dose # is equal to 2, set the value in Schedule Status to Needs Scheduling–High Priority.
+
+The Last Apt column should be connected to the patient’s appointments table, showing the Date of Apt and the Appointment Status of the appointment in the table with the most recent date that has already occurred or is occurring that day (Date ≤ to the date of the viewer). Whenever the Last Apt status is changed to Completed, increase the value in the Dose # column by 1 and change the value in the Schedule Status column to needs scheduling if it isn’t equal to Pending Auth. If the value in Appointment Status is changed to either Cancelled or No Show, change the value in Schedule Status to Needs Rescheduling. Additionally, exactly three months after the date of the last Appointment, change the Schedule Status of the patient to Needs Scheduling–High Priority.
+
+The Next Apt column should show the date of the closest future appointment, if there is one. Additionally, if the Date of Appointment isn’t between the Auth Start Date and End Date, change the value in the Auth Status column to APT SCHEDULED W/O AUTH.
+
+The Notes Column should default empty and connect to an editable section in the patient’s data. In the table, it should show 3 lines of text which are equal to the beginning of the bottommost paragraph in the notes, as well as the datetime of the last voicemail next to text that says “Voicemail Left:”. In the column there should be a button called Record Voicemail that should replace the datetime with the datetime that the button was pressed.
+
+In any case where the value is changed automatically, it should be manually overrideable, with the user being able to change the value at all times.
