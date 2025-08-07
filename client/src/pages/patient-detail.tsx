@@ -36,6 +36,7 @@ import {
   Copy
 } from 'lucide-react'
 import { format } from 'date-fns'
+import { EpicInsuranceExtractor } from '@/components/EpicInsuranceExtractor'
 
 interface Patient {
   id: number
@@ -1301,6 +1302,7 @@ export default function PatientDetail() {
                 onChange={(e) => setDocumentType(e.target.value)}
                 className="w-full border rounded px-3 py-2 mt-1"
               >
+                <option value="epic_insurance_text">Epic Insurance Text (Copy & Paste)</option>
                 <option value="epic_insurance_screenshot">Epic Insurance Coverage Screenshot</option>
                 <option value="epic_screenshot">Epic Patient Screenshot</option>
                 <option value="insurance_screenshot">Insurance Card Screenshot</option>
@@ -1309,7 +1311,15 @@ export default function PatientDetail() {
               </select>
             </div>
 
-            {documentType !== 'clinical_note' ? (
+            {documentType === 'epic_insurance_text' ? (
+              <EpicInsuranceExtractor
+                patientId={patient?.id}
+                onDataExtracted={(data) => {
+                  // Refresh patient data after extraction
+                  queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient?.id}`] });
+                }}
+              />
+            ) : documentType !== 'clinical_note' ? (
               <div>
                 <Label>Upload File</Label>
                 <div className="mt-1 flex items-center gap-4">

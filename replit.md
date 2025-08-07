@@ -19,6 +19,7 @@ Providerloop Chains is a comprehensive patient management system with integrated
   - When last appointment status changes to "Cancelled" or "No Show", scheduleStatus automatically changes to "Needs Rescheduling"
   - When last appointment is at least 3 months ago and no next appointment is scheduled, scheduleStatus automatically changes to "Needs Scheduling–High Priority" (displayed with red styling)
 - Click-to-copy MRN functionality: MRN fields in both patient list and patient detail views have copy buttons that copy the MRN to clipboard
+- Epic insurance text extraction: New "Epic Insurance Text (Copy & Paste)" option in patient documents allows users to copy insurance information from Epic screens and automatically extract insurance details using AI
 
 ## System Architecture
 

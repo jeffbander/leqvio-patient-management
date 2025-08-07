@@ -10,6 +10,84 @@ import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio,
 import { generateLEQVIOPDF } from "./pdf-generator";
 import { googleSheetsService } from "./google-sheets-service";
 import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
+// Using the openai instance directly instead of a service object
+
+// Helper function to extract insurance information from Epic text using OpenAI
+const extractInsuranceFromEpicText = async (epicText: string) => {
+  try {
+    const prompt = `
+Extract insurance information from this Epic EMR text. Look for and extract the following fields:
+- Primary insurance company name
+- Primary member/subscriber ID
+- Primary group number
+- Secondary insurance company name (if present)
+- Secondary member/subscriber ID (if present)
+- Secondary group number (if present)
+- Copay amount
+- Deductible amount
+
+Epic text:
+${epicText}
+
+Return ONLY a JSON object with the extracted data using these exact keys:
+{
+  "primaryInsurance": "string or null",
+  "primaryMemberId": "string or null", 
+  "primaryGroupNumber": "string or null",
+  "secondaryInsurance": "string or null",
+  "secondaryMemberId": "string or null",
+  "secondaryGroupNumber": "string or null",
+  "copay": "string or null",
+  "deductible": "string or null"
+}
+`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.statusText}`);
+    }
+
+    const data: any = await response.json();
+
+    const extractedText = data.choices[0]?.message?.content?.trim();
+    if (!extractedText) {
+      throw new Error('No response from OpenAI');
+    }
+
+    // Parse the JSON response
+    try {
+      const parsedData = JSON.parse(extractedText);
+      
+      // Clean up the data - remove null/empty values
+      const cleanedData: any = {};
+      Object.keys(parsedData).forEach(key => {
+        if (parsedData[key] && parsedData[key] !== 'null' && parsedData[key].trim() !== '') {
+          cleanedData[key] = parsedData[key].trim();
+        }
+      });
+      
+      return cleanedData;
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response as JSON:', extractedText);
+      throw new Error('Invalid response format from OpenAI');
+    }
+  } catch (error) {
+    console.error('Error extracting insurance from Epic text:', error);
+    throw error;
+  }
+};
 
 // Helper function to check schedule status based on appointment status changes
 const checkScheduleStatus = async (patientId: number) => {
@@ -1600,6 +1678,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error checking patient schedule statuses:', error);
       res.status(500).json({ error: 'Failed to check schedule statuses' });
+    }
+  });
+
+  // Epic insurance text extraction endpoint
+  app.post('/api/extract-epic-insurance-text', async (req, res) => {
+    try {
+      const { epicText } = req.body;
+      
+      if (!epicText || typeof epicText !== 'string') {
+        return res.status(400).json({ error: 'Epic text is required' });
+      }
+
+      // Use OpenAI to extract insurance information from Epic text
+      const extractedData = await extractInsuranceFromEpicText(epicText);
+      
+      res.json({ extractedData });
+    } catch (error) {
+      console.error('Epic insurance text extraction error:', error);
+      res.status(500).json({ error: 'Failed to extract insurance information' });
     }
   });
 
