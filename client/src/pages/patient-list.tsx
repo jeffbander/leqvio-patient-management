@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { Link } from 'wouter'
 import { Badge } from '@/components/ui/badge'
-import { UserPlus, Search, Eye, FileSpreadsheet, Download, ArrowUpDown, ArrowUp, ArrowDown, Mic, Calendar } from 'lucide-react'
+import { UserPlus, Search, Eye, FileSpreadsheet, Download, ArrowUpDown, ArrowUp, ArrowDown, Mic, Calendar, Pencil } from 'lucide-react'
 import { format } from 'date-fns'
 import { queryClient } from '@/lib/queryClient'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -101,6 +101,37 @@ const getAppointmentStatusColor = (status: string) => {
 }
 
 const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDoseNumberChange, onRecordVoicemail, onAppointmentStatusChange }: PatientRowProps) => {
+  const [isEditingDose, setIsEditingDose] = useState(false)
+  const [doseValue, setDoseValue] = useState(String(patient.doseNumber || 1))
+  const { toast } = useToast()
+
+  const handleDoseEdit = () => {
+    setDoseValue(String(patient.doseNumber || 1))
+    setIsEditingDose(true)
+  }
+
+  const handleDoseSave = () => {
+    const numericValue = parseInt(doseValue)
+    if (isNaN(numericValue) || numericValue < 1) {
+      toast({
+        title: "Invalid Input",
+        description: "Dose number must be a valid number (1 or greater)",
+        variant: "destructive"
+      })
+      return
+    }
+    onDoseNumberChange(patient.id, numericValue)
+    setIsEditingDose(false)
+  }
+
+  const handleDoseKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleDoseSave()
+    } else if (e.key === 'Escape') {
+      setDoseValue(String(patient.doseNumber || 1))
+      setIsEditingDose(false)
+    }
+  }
   // Get appointments for this patient
   const { data: appointments = [] } = useQuery({
     queryKey: ['/api/appointments', patient.id],
@@ -237,19 +268,37 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
 
       {/* Dose # */}
       <TableCell>
-        <Select 
-          value={String(patient.doseNumber || 1)}
-          onValueChange={(value) => onDoseNumberChange(patient.id, parseInt(value))}
-        >
-          <SelectTrigger className="w-20">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {[1, 2, 3, 4, 5, 6].map(dose => (
-              <SelectItem key={dose} value={String(dose)}>{dose}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          {isEditingDose ? (
+            <div className="flex items-center gap-1">
+              <Input
+                value={doseValue}
+                onChange={(e) => setDoseValue(e.target.value)}
+                onKeyDown={handleDoseKeyPress}
+                onBlur={handleDoseSave}
+                className="w-12 h-6 text-center text-xs px-1"
+                autoFocus
+                type="text"
+              />
+            </div>
+          ) : (
+            <>
+              <Badge 
+                className="bg-blue-100 text-blue-800 border-blue-200 text-xs px-2 py-1 cursor-default"
+              >
+                {patient.doseNumber || 1}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDoseEdit}
+                className="h-4 w-4 p-0 hover:bg-gray-100"
+              >
+                <Pencil className="h-3 w-3 text-gray-400 hover:text-gray-600" />
+              </Button>
+            </>
+          )}
+        </div>
       </TableCell>
 
       {/* Last Apt */}
