@@ -66,9 +66,17 @@ Return ONLY a JSON object with the extracted data using these exact keys:
       throw new Error('No response from OpenAI');
     }
 
-    // Parse the JSON response
+    // Parse the JSON response - handle markdown code blocks
     try {
-      const parsedData = JSON.parse(extractedText);
+      // Remove markdown code block wrapper if present
+      let jsonText = extractedText;
+      if (jsonText.startsWith('```json') && jsonText.endsWith('```')) {
+        jsonText = jsonText.slice(7, -3).trim();
+      } else if (jsonText.startsWith('```') && jsonText.endsWith('```')) {
+        jsonText = jsonText.slice(3, -3).trim();
+      }
+      
+      const parsedData = JSON.parse(jsonText);
       
       // Clean up the data - remove null/empty values
       const cleanedData: any = {};
