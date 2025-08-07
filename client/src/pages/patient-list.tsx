@@ -927,7 +927,7 @@ export default function PatientList() {
                     <TableHead className="w-32">Auth Status</TableHead>
                     <TableHead className="w-36">Auth Info</TableHead>
                     <TableHead className="w-32">Schedule Status</TableHead>
-                    <TableHead className="w-16">
+                    <TableHead className="w-20">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-medium hover:bg-transparent"
@@ -936,7 +936,7 @@ export default function PatientList() {
                         Dose # {getSortIcon('doseNumber')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-24">
+                    <TableHead className="w-28">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-medium hover:bg-transparent"
@@ -945,7 +945,7 @@ export default function PatientList() {
                         Last Apt {getSortIcon('lastAppointment')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-24">
+                    <TableHead className="w-28">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-medium hover:bg-transparent"
