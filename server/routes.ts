@@ -15,17 +15,50 @@ import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
 const checkScheduleStatus = async (patientId: number) => {
   try {
     const appointments = await storage.getPatientAppointments(patientId);
-    if (appointments.length === 0) return;
-
-    // Find the most recent appointment (appointments are ordered by createdAt desc)
-    const lastAppointment = appointments[0];
     
-    // If the last appointment is cancelled or no show, update schedule status
-    if (lastAppointment.status === 'Cancelled' || lastAppointment.status === 'No Show') {
+    if (appointments.length === 0) {
+      // No appointments at all - could set to needs scheduling, but let's leave existing logic
+      return;
+    }
+
+    // Sort appointments by date to get proper chronological order
+    const sortedAppointments = appointments.sort((a, b) => 
+      new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime()
+    );
+
+    // Find the most recent completed appointment
+    const now = new Date();
+    const pastAppointments = sortedAppointments.filter(apt => 
+      new Date(apt.appointmentDate) <= now
+    );
+    const futureAppointments = sortedAppointments.filter(apt => 
+      new Date(apt.appointmentDate) > now
+    );
+
+    const lastAppointment = pastAppointments[pastAppointments.length - 1]; // Most recent past appointment
+    const nextAppointment = futureAppointments[0]; // Next future appointment
+
+    // Check if the last appointment is cancelled or no show
+    if (lastAppointment && (lastAppointment.status === 'Cancelled' || lastAppointment.status === 'No Show')) {
       await storage.updatePatient(patientId, {
         scheduleStatus: "Needs Rescheduling"
       });
       console.log(`Patient ${patientId}: Schedule status updated to "Needs Rescheduling" - last appointment status is "${lastAppointment.status}"`);
+      return;
+    }
+
+    // Check if last appointment is at least 3 months ago and no next appointment scheduled
+    if (lastAppointment && !nextAppointment) {
+      const lastAppointmentDate = new Date(lastAppointment.appointmentDate);
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+      if (lastAppointmentDate <= threeMonthsAgo) {
+        await storage.updatePatient(patientId, {
+          scheduleStatus: "Needs Scheduling High Priority"
+        });
+        console.log(`Patient ${patientId}: Schedule status updated to "Needs Scheduling High Priority" - last appointment was ${lastAppointment.appointmentDate} (>3 months ago) and no future appointments`);
+      }
     }
   } catch (error) {
     console.error('Error checking schedule status:', error);
@@ -1497,6 +1530,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check authorization status after creating appointment
       await checkAuthorizationStatus(patientId);
       
+      // Check schedule status after creating appointment
+      await checkScheduleStatus(patientId);
+      
       res.json(appointment);
     } catch (error) {
       console.error('Error creating appointment:', error);
@@ -1536,6 +1572,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting appointment:', error);
       res.status(500).json({ error: 'Failed to delete appointment' });
+    }
+  });
+
+  // Bulk check all patients for schedule status updates
+  app.post('/api/patients/check-schedule-status', async (req, res) => {
+    try {
+      const patients = await storage.getAllPatients();
+      let updatedCount = 0;
+
+      for (const patient of patients) {
+        const previousStatus = patient.scheduleStatus;
+        await checkScheduleStatus(patient.id);
+        
+        // Check if status was actually updated
+        const updatedPatient = await storage.getPatient(patient.id);
+        if (updatedPatient && updatedPatient.scheduleStatus !== previousStatus) {
+          updatedCount++;
+        }
+      }
+
+      res.json({ 
+        message: `Schedule status check completed`, 
+        patientsChecked: patients.length,
+        statusUpdated: updatedCount 
+      });
+    } catch (error) {
+      console.error('Error checking patient schedule statuses:', error);
+      res.status(500).json({ error: 'Failed to check schedule statuses' });
     }
   });
 

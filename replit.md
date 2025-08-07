@@ -15,7 +15,9 @@ Providerloop Chains is a comprehensive patient management system with integrated
 - Notes are only editable in patient detail view, not in patient list table (read-only in list)
 - Fixed notes saving issue by ensuring notes field is included in update mutations
 - Automatic authorization status update: when appointment dates fall outside auth start/end date range, authStatus automatically changes to "APT SCHEDULED W/O AUTH"
-- Automatic schedule status update: when last appointment status changes to "Cancelled" or "No Show", scheduleStatus automatically changes to "Needs Rescheduling"
+- Automatic schedule status updates:
+  - When last appointment status changes to "Cancelled" or "No Show", scheduleStatus automatically changes to "Needs Rescheduling"
+  - When last appointment is at least 3 months ago and no next appointment is scheduled, scheduleStatus automatically changes to "Needs Scheduling High Priority"
 - Click-to-copy MRN functionality: MRN fields in both patient list and patient detail views have copy buttons that copy the MRN to clipboard
 
 ## System Architecture
