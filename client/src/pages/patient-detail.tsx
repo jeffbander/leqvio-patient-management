@@ -437,6 +437,7 @@ export default function PatientDetail() {
       email: editedData.email,
       address: editedData.address,
       mrn: editedData.mrn,
+      notes: editedData.notes,
       authNumber: editedData.authNumber,
       refNumber: editedData.refNumber,
       startDate: editedData.startDate,
