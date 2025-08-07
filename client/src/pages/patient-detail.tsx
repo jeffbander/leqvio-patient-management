@@ -32,7 +32,8 @@ import {
   Target,
   Trash2,
   X,
-  Plus
+  Plus,
+  Copy
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -691,7 +692,27 @@ export default function PatientDetail() {
                           placeholder="Medical Record Number"
                         />
                       ) : (
-                        <span>{patient.mrn || 'Not provided'}</span>
+                        <div className="flex items-center gap-2">
+                          <span>{patient.mrn || 'Not provided'}</span>
+                          {patient.mrn && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                if (patient.mrn) {
+                                  navigator.clipboard.writeText(patient.mrn)
+                                  toast({
+                                    title: "Copied to clipboard",
+                                    description: `MRN: ${patient.mrn}`,
+                                  })
+                                }
+                              }}
+                              className="h-6 w-6 p-1 hover:bg-gray-100"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { Link } from 'wouter'
 import { Badge } from '@/components/ui/badge'
-import { UserPlus, Search, Eye, FileSpreadsheet, Download, ArrowUpDown, ArrowUp, ArrowDown, Mic, Calendar, Pencil, ChevronRight } from 'lucide-react'
+import { UserPlus, Search, Eye, FileSpreadsheet, Download, ArrowUpDown, ArrowUp, ArrowDown, Mic, Calendar, Pencil, ChevronRight, Copy } from 'lucide-react'
 import { format } from 'date-fns'
 import { queryClient } from '@/lib/queryClient'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -252,7 +252,27 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
             title="Click to view patient details"
           >
             <div className="font-semibold text-blue-700 hover:text-blue-800">{patient.lastName}, {patient.firstName}</div>
-            {patient.mrn && <div className="text-sm text-gray-600">MRN: {patient.mrn}</div>}
+            {patient.mrn && (
+              <div className="text-sm text-gray-600 flex items-center gap-1">
+                MRN: {patient.mrn}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigator.clipboard.writeText(patient.mrn!)
+                    toast({
+                      title: "Copied to clipboard",
+                      description: `MRN: ${patient.mrn}`,
+                    })
+                  }}
+                  className="h-4 w-4 p-0 hover:bg-gray-100 text-gray-500 hover:text-gray-700 ml-1"
+                  title="Copy MRN to clipboard"
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
             <div className="text-sm text-gray-600">DOB: {patient.dateOfBirth}</div>
           </div>
           <Button
