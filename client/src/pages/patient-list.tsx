@@ -254,10 +254,10 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       {/* Auth Info */}
       <TableCell className="py-2 px-2">
         <div className="space-y-0.5">
-          <div className="text-xs">Start: {patient.startDate || 'Not set'}</div>
-          <div className="text-xs">End: {patient.endDate || 'Not set'}</div>
-          <div className="text-xs">Auth #: {patient.authNumber || 'Not set'}</div>
-          <div className="text-xs">Ref #: {patient.refNumber || 'Not set'}</div>
+          <div className="text-xs">Start: {patient.startDate || ''}</div>
+          <div className="text-xs">End: {patient.endDate || ''}</div>
+          <div className="text-xs">Auth #: {patient.authNumber || ''}</div>
+          <div className="text-xs">Ref #: {patient.refNumber || ''}</div>
         </div>
       </TableCell>
 
@@ -363,7 +363,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
           )}
           <div className="flex items-center justify-between gap-1">
             <div className="text-xs text-gray-500 flex-1 truncate">
-              {patient.lastVoicemailAt && `Voicemail: ${format(new Date(patient.lastVoicemailAt), 'MM/dd/yy')}`}
+              {patient.lastVoicemailAt && `Voicemail: ${format(new Date(patient.lastVoicemailAt), 'MM/dd/yyyy HH:mm')}`}
             </div>
             <Button 
               size="sm" 
