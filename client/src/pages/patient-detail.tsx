@@ -31,7 +31,8 @@ import {
   AlertTriangle,
   Target,
   Trash2,
-  X
+  X,
+  Plus
 } from 'lucide-react'
 import { format } from 'date-fns'
 
