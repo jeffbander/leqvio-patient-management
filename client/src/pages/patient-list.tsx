@@ -254,10 +254,10 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       {/* Auth Info */}
       <TableCell className="text-sm">
         <div className="space-y-1">
-          <div>Start: {patient.startDate || 'Not set'}</div>
-          <div>End: {patient.endDate || 'Not set'}</div>
-          <div>Auth #: {patient.authNumber || 'Not set'}</div>
-          <div>Ref #: {patient.refNumber || 'Not set'}</div>
+          <div>Start: {patient.startDate || ''}</div>
+          <div>End: {patient.endDate || ''}</div>
+          <div>Auth #: {patient.authNumber || ''}</div>
+          <div>Ref #: {patient.refNumber || ''}</div>
         </div>
       </TableCell>
 
