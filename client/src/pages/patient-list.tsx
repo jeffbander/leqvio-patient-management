@@ -309,7 +309,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
               className="flex items-center gap-1 text-xs whitespace-nowrap"
             >
               <Mic className="h-3 w-3" />
-              Record Voicemail
+              Left Voicemail
             </Button>
           </div>
         </div>

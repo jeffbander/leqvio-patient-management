@@ -1339,6 +1339,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const patientId = parseInt(req.params.id);
       const updates = req.body;
+      
+      // Handle timestamp fields that might come as ISO strings
+      if (updates.lastVoicemailAt && typeof updates.lastVoicemailAt === 'string') {
+        updates.lastVoicemailAt = new Date(updates.lastVoicemailAt);
+      }
+      if (updates.createdAt && typeof updates.createdAt === 'string') {
+        updates.createdAt = new Date(updates.createdAt);
+      }
+      if (updates.updatedAt && typeof updates.updatedAt === 'string') {
+        updates.updatedAt = new Date(updates.updatedAt);
+      }
+      
       const updatedPatient = await storage.updatePatient(patientId, updates);
       
       if (!updatedPatient) {
