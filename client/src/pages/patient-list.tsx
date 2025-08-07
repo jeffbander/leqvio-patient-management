@@ -222,16 +222,16 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       onClick={handleRowClick}
     >
       {/* Patient Info */}
-      <TableCell className="font-medium py-2 px-3">
-        <div className="space-y-0.5">
-          <div className="font-semibold text-sm">{patient.lastName}, {patient.firstName}</div>
-          {patient.mrn && <div className="text-xs text-gray-600">MRN: {patient.mrn}</div>}
-          <div className="text-xs text-gray-600">DOB: {patient.dateOfBirth}</div>
+      <TableCell className="font-medium">
+        <div>
+          <div className="font-semibold">{patient.lastName}, {patient.firstName}</div>
+          {patient.mrn && <div className="text-sm text-gray-600">MRN: {patient.mrn}</div>}
+          <div className="text-sm text-gray-600">DOB: {patient.dateOfBirth}</div>
         </div>
       </TableCell>
 
       {/* Auth Status */}
-      <TableCell className="py-2 px-2">
+      <TableCell>
         <Select 
           value={patient.authStatus || 'Pending Review'} 
           onValueChange={(value) => onAuthStatusChange(patient.id, value)}
@@ -252,17 +252,17 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Auth Info */}
-      <TableCell className="py-2 px-2">
-        <div className="space-y-0.5">
-          <div className="text-xs">Start: {patient.startDate || ''}</div>
-          <div className="text-xs">End: {patient.endDate || ''}</div>
-          <div className="text-xs">Auth #: {patient.authNumber || ''}</div>
-          <div className="text-xs">Ref #: {patient.refNumber || ''}</div>
+      <TableCell className="text-sm">
+        <div className="space-y-1">
+          <div>Start: {patient.startDate || 'Not set'}</div>
+          <div>End: {patient.endDate || 'Not set'}</div>
+          <div>Auth #: {patient.authNumber || 'Not set'}</div>
+          <div>Ref #: {patient.refNumber || 'Not set'}</div>
         </div>
       </TableCell>
 
       {/* Schedule Status */}
-      <TableCell className="py-2 px-2">
+      <TableCell>
         <Select 
           value={patient.scheduleStatus || 'Pending Auth'} 
           onValueChange={(value) => onScheduleStatusChange(patient.id, value)}
@@ -283,22 +283,24 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Dose # */}
-      <TableCell className="py-2 px-2">
-        <div className="flex items-center gap-1">
+      <TableCell>
+        <div className="flex items-center gap-2">
           {isEditingDose ? (
-            <Input
-              value={doseValue}
-              onChange={(e) => setDoseValue(e.target.value)}
-              onKeyDown={handleDoseKeyPress}
-              onBlur={handleDoseSave}
-              className="w-10 h-6 text-center text-xs px-1"
-              autoFocus
-              type="text"
-            />
+            <div className="flex items-center gap-1">
+              <Input
+                value={doseValue}
+                onChange={(e) => setDoseValue(e.target.value)}
+                onKeyDown={handleDoseKeyPress}
+                onBlur={handleDoseSave}
+                className="w-12 h-6 text-center text-xs px-1"
+                autoFocus
+                type="text"
+              />
+            </div>
           ) : (
             <>
               <Badge 
-                className="bg-blue-100 text-blue-800 border-blue-200 text-xs px-1.5 py-0.5 cursor-default"
+                className="bg-blue-100 text-blue-800 border-blue-200 text-xs px-2 py-1 cursor-default"
               >
                 {patient.doseNumber || 1}
               </Badge>
@@ -316,10 +318,10 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Last Apt */}
-      <TableCell className="py-2 px-2">
+      <TableCell className="text-sm">
         {lastAppointment ? (
-          <div className="space-y-0.5">
-            <div className="text-xs">{lastAppointment.appointmentDate}</div>
+          <div className="space-y-1">
+            <div className="font-medium">{lastAppointment.appointmentDate}</div>
             <Select 
               value={lastAppointment.status || 'Scheduled'}
               onValueChange={(status) => onAppointmentStatusChange(lastAppointment.id, status, patient.id)}
@@ -340,36 +342,36 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
             </Select>
           </div>
         ) : (
-          <div className="text-xs text-gray-400">No past appointments</div>
+          <div className="text-gray-400">No past appointments</div>
         )}
       </TableCell>
 
       {/* Next Apt */}
-      <TableCell className="py-2 px-2">
+      <TableCell className="text-sm">
         {nextAppointment ? (
-          <div className="text-xs">{nextAppointment.appointmentDate}</div>
+          <div>{nextAppointment.appointmentDate}</div>
         ) : (
-          <div className="text-xs text-gray-400">No upcoming appointments</div>
+          <div className="text-gray-400">No upcoming appointments</div>
         )}
       </TableCell>
 
       {/* Notes */}
-      <TableCell className="py-2 px-2">
-        <div className="space-y-1">
+      <TableCell className="text-sm">
+        <div className="space-y-2 max-w-lg">
           {patient.notes && (
-            <div className="whitespace-pre-line text-gray-700 text-xs leading-tight">
+            <div className="whitespace-pre-line text-gray-700 text-sm leading-relaxed">
               {getNotesPreview()}
             </div>
           )}
-          <div className="flex items-center justify-between gap-1">
-            <div className="text-xs text-gray-500 flex-1 truncate">
-              {patient.lastVoicemailAt && `Voicemail: ${format(new Date(patient.lastVoicemailAt), 'MM/dd/yyyy HH:mm')}`}
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs text-gray-500 flex-1">
+              {patient.lastVoicemailAt && `Voicemail Left: ${format(new Date(patient.lastVoicemailAt), 'MM/dd/yyyy HH:mm')}`}
             </div>
             <Button 
               size="sm" 
               variant="outline" 
               onClick={onRecordVoicemail}
-              className="flex items-center gap-1 text-xs h-6 px-2 whitespace-nowrap"
+              className="flex items-center gap-1 text-xs whitespace-nowrap"
             >
               <Mic className="h-3 w-3" />
               Left Voicemail
@@ -912,10 +914,11 @@ export default function PatientList() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <Table className="w-full table-fixed">
+            <div className="overflow-x-auto">
+              <Table className="min-w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-48">
+                    <TableHead className="w-64 min-w-64">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-medium hover:bg-transparent"
@@ -924,10 +927,10 @@ export default function PatientList() {
                         Patient Info {getSortIcon('firstName')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-32">Auth Status</TableHead>
-                    <TableHead className="w-36">Auth Info</TableHead>
-                    <TableHead className="w-32">Schedule Status</TableHead>
-                    <TableHead className="w-20">
+                    <TableHead className="w-40 min-w-40">Auth Status</TableHead>
+                    <TableHead className="w-48 min-w-48">Auth Info</TableHead>
+                    <TableHead className="w-40 min-w-40">Schedule Status</TableHead>
+                    <TableHead className="w-20 min-w-20">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-medium hover:bg-transparent"
@@ -936,7 +939,7 @@ export default function PatientList() {
                         Dose # {getSortIcon('doseNumber')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-28">
+                    <TableHead className="w-32 min-w-32">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-medium hover:bg-transparent"
@@ -945,7 +948,7 @@ export default function PatientList() {
                         Last Apt {getSortIcon('lastAppointment')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-28">
+                    <TableHead className="w-32 min-w-32">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-medium hover:bg-transparent"
@@ -954,7 +957,7 @@ export default function PatientList() {
                         Next Apt {getSortIcon('nextAppointment')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-60">Notes</TableHead>
+                    <TableHead className="w-80 min-w-80">Notes</TableHead>
                   </TableRow>
                 </TableHeader>
               <TableBody>
@@ -972,7 +975,8 @@ export default function PatientList() {
                   />
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}
