@@ -699,7 +699,40 @@ export default function PatientList() {
       <ArrowDown className="ml-2 h-4 w-4" />
   }
 
-  // Get all unique statuses from all status fields
+  // Define all possible status values organized by category
+  const allPossibleStatuses = {
+    'Auth Status': [
+      'Pending Review',
+      'No PA Required', 
+      'Approved',
+      'Denied',
+      'Pending More Info',
+      'Needs Renewal',
+      'APT SCHEDULED W/O AUTH'
+    ],
+    'Schedule Status': [
+      'Pending Auth',
+      'Needs Scheduling',
+      'Needs Scheduling–High Priority',
+      'Scheduled',
+      'Needs Rescheduling'
+    ],
+    'Appointment Status': [
+      'Scheduled',
+      'Completed',
+      'Cancelled', 
+      'No Show'
+    ],
+    'General Status': [
+      'Pending Auth',
+      'started',
+      'in_progress',
+      'completed',
+      'cancelled'
+    ]
+  }
+
+  // Get unique statuses currently in use
   const uniqueStatuses = Array.from(new Set([
     ...patients.map(p => p.status).filter(Boolean),
     ...patients.map(p => p.authStatus).filter(Boolean),
@@ -750,11 +783,31 @@ export default function PatientList() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              {uniqueStatuses.map((status) => (
+              
+              {/* Auth Status Options */}
+              <div className="px-2 py-1 text-xs font-semibold text-gray-500 bg-gray-50">Auth Status</div>
+              {allPossibleStatuses['Auth Status'].map((status) => (
                 <SelectItem key={status} value={status}>
                   {status}
                 </SelectItem>
               ))}
+              
+              {/* Schedule Status Options */}
+              <div className="px-2 py-1 text-xs font-semibold text-gray-500 bg-gray-50">Schedule Status</div>
+              {allPossibleStatuses['Schedule Status'].map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status}
+                </SelectItem>
+              ))}
+              
+              {/* Appointment Status Options */}
+              <div className="px-2 py-1 text-xs font-semibold text-gray-500 bg-gray-50">Appointment Status</div>
+              {allPossibleStatuses['Appointment Status'].map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status}
+                </SelectItem>
+              ))}
+              
             </SelectContent>
           </Select>
         </div>
