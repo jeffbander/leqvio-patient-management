@@ -42,7 +42,6 @@ interface PatientRowProps {
   onAuthStatusChange: (patientId: number, newStatus: string) => void
   onScheduleStatusChange: (patientId: number, newStatus: string) => void
   onDoseNumberChange: (patientId: number, newDose: number) => void
-  onNotesChange: (patientId: number, newNotes: string) => void
   onRecordVoicemail: () => void
   onAppointmentStatusChange: (appointmentId: number, status: string, patientId: number) => void
 }
@@ -101,11 +100,10 @@ const getAppointmentStatusColor = (status: string) => {
   }
 }
 
-const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDoseNumberChange, onNotesChange, onRecordVoicemail, onAppointmentStatusChange }: PatientRowProps) => {
+const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDoseNumberChange, onRecordVoicemail, onAppointmentStatusChange }: PatientRowProps) => {
   const [isEditingDose, setIsEditingDose] = useState(false)
   const [doseValue, setDoseValue] = useState(String(patient.doseNumber || 1))
-  const [isEditingNotes, setIsEditingNotes] = useState(false)
-  const [notesValue, setNotesValue] = useState(patient.notes || '')
+
   const { toast } = useToast()
 
   const handleDoseEdit = () => {
@@ -136,24 +134,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
     }
   }
 
-  const handleNotesEdit = () => {
-    setNotesValue(patient.notes || '')
-    setIsEditingNotes(true)
-  }
 
-  const handleNotesSave = () => {
-    onNotesChange(patient.id, notesValue)
-    setIsEditingNotes(false)
-  }
-
-  const handleNotesKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      handleNotesSave()
-    } else if (e.key === 'Escape') {
-      setNotesValue(patient.notes || '')
-      setIsEditingNotes(false)
-    }
-  }
   // Get appointments for this patient
   const { data: appointments = [] } = useQuery({
     queryKey: ['/api/appointments', patient.id],
@@ -431,46 +412,15 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       <TableCell className="text-sm">
         <div className="space-y-2 max-w-lg">
           <div className="flex items-start gap-2">
-            {isEditingNotes ? (
-              <textarea
-                value={notesValue}
-                onChange={(e) => setNotesValue(e.target.value)}
-                onKeyDown={handleNotesKeyPress}
-                onBlur={handleNotesSave}
-                className="w-full min-h-16 text-sm p-2 border rounded resize-none"
-                placeholder="Patient notes... (Ctrl+Enter to save, Escape to cancel)"
-                autoFocus
-              />
-            ) : (
-              <>
-                <div 
-                  className="flex-1 min-h-8 p-2 bg-gray-50 rounded border cursor-text hover:bg-gray-100 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleNotesEdit()
-                  }}
-                >
-                  {patient.notes ? (
-                    <div className="whitespace-pre-line text-gray-700 text-sm leading-relaxed">
-                      {getNotesPreview()}
-                    </div>
-                  ) : (
-                    <div className="text-gray-400 text-sm italic">Click to add notes...</div>
-                  )}
+            <div className="flex-1 min-h-8 p-2 bg-gray-50 rounded border">
+              {patient.notes ? (
+                <div className="whitespace-pre-line text-gray-700 text-sm leading-relaxed">
+                  {getNotesPreview()}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleNotesEdit()
-                  }}
-                  className="h-6 w-6 p-0 hover:bg-gray-100"
-                >
-                  <Pencil className="h-3 w-3 text-gray-400 hover:text-gray-600" />
-                </Button>
-              </>
-            )}
+              ) : (
+                <div className="text-gray-400 text-sm italic">No notes</div>
+              )}
+            </div>
           </div>
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs text-gray-500 flex-1">
@@ -607,12 +557,7 @@ export default function PatientList() {
     })
   }
 
-  const handleNotesChange = (patientId: number, newNotes: string) => {
-    updatePatientMutation.mutate({
-      patientId,
-      updates: { notes: newNotes }
-    })
-  }
+
 
   const syncToSheetsMutation = useMutation({
     mutationFn: async () => {
@@ -1087,7 +1032,6 @@ export default function PatientList() {
                     onAuthStatusChange={handleAuthStatusChange}
                     onScheduleStatusChange={handleScheduleStatusChange}
                     onDoseNumberChange={handleDoseNumberChange}
-                    onNotesChange={handleNotesChange}
                     onRecordVoicemail={() => recordVoicemailMutation.mutate(patient.id)}
                     onAppointmentStatusChange={(appointmentId, status, patientId) => 
                       updateAppointmentMutation.mutate({ appointmentId, status, patientId })
