@@ -201,9 +201,25 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
     'Needs Rescheduling'
   ]
 
+  const handleRowClick = (e: React.MouseEvent) => {
+    // Don't navigate if clicking on interactive elements
+    const target = e.target as HTMLElement
+    if (
+      target.tagName === 'BUTTON' || 
+      target.tagName === 'INPUT' ||
+      target.closest('button') ||
+      target.closest('[role="combobox"]') ||
+      target.closest('[data-radix-collection-item]')
+    ) {
+      return
+    }
+    window.location.href = `/patient/${patient.id}`
+  }
+
   return (
     <TableRow 
-      className={`hover:bg-gray-50 ${isRowFlagged ? 'bg-red-50' : ''}`}
+      className={`hover:bg-gray-50 cursor-pointer ${isRowFlagged ? 'bg-red-50' : ''}`}
+      onClick={handleRowClick}
     >
       {/* Patient Info */}
       <TableCell className="font-medium">
@@ -364,15 +380,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
         </div>
       </TableCell>
 
-      {/* Actions */}
-      <TableCell>
-        <Link href={`/patient/${patient.id}`}>
-          <Button variant="outline" size="sm" className="flex items-center gap-2">
-            <Eye className="h-4 w-4" />
-            View
-          </Button>
-        </Link>
-      </TableCell>
+
     </TableRow>
   )
 }
@@ -950,7 +958,6 @@ export default function PatientList() {
                       </Button>
                     </TableHead>
                     <TableHead className="w-80 min-w-80">Notes</TableHead>
-                    <TableHead className="w-24 min-w-24">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
               <TableBody>
