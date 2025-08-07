@@ -46,6 +46,7 @@ interface Patient {
   phone?: string
   email?: string
   address?: string
+  mrn?: string
   primaryInsurance?: string
   primaryPlan?: string
   primaryInsuranceNumber?: string
@@ -54,6 +55,9 @@ interface Patient {
   secondaryPlan?: string
   secondaryInsuranceNumber?: string
   secondaryGroupId?: string
+  authNumber?: string
+  startDate?: string
+  endDate?: string
   createdAt: string
   updatedAt: string
 }
@@ -310,7 +314,10 @@ export default function PatientDetail() {
       address: patient.address || '',
       orderingMD: patient.orderingMD || '',
       diagnosis: patient.diagnosis || '',
-      mrn: patient.mrn || ''
+      mrn: patient.mrn || '',
+      authNumber: patient.authNumber || '',
+      startDate: patient.startDate || '',
+      endDate: patient.endDate || ''
     })
     setIsEditing(true)
   }
@@ -341,6 +348,9 @@ export default function PatientDetail() {
       email: editedData.email,
       address: editedData.address,
       mrn: editedData.mrn,
+      authNumber: editedData.authNumber,
+      startDate: editedData.startDate,
+      endDate: editedData.endDate,
       primaryInsurance: editedData.primaryInsurance,
       primaryPlan: editedData.primaryPlan,
       primaryInsuranceNumber: editedData.primaryInsuranceNumber,
@@ -603,6 +613,54 @@ export default function PatientDetail() {
                         />
                       ) : (
                         <span>{patient.diagnosis}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="flex items-center gap-2 text-gray-600">
+                    <CheckCircle className="h-4 w-4" />
+                    Authorization Information
+                  </Label>
+                  <div className="mt-2 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Auth Number:</span>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.authNumber || ''}
+                          onChange={(e) => setEditedData({...editedData, authNumber: e.target.value})}
+                          className="w-48"
+                          placeholder="Authorization Number"
+                        />
+                      ) : (
+                        <span>{patient.authNumber || 'Not provided'}</span>
+                      )}
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Start Date:</span>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.startDate || ''}
+                          onChange={(e) => setEditedData({...editedData, startDate: e.target.value})}
+                          className="w-48"
+                          placeholder="MM/DD/YYYY"
+                        />
+                      ) : (
+                        <span>{patient.startDate || 'Not provided'}</span>
+                      )}
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">End Date:</span>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.endDate || ''}
+                          onChange={(e) => setEditedData({...editedData, endDate: e.target.value})}
+                          className="w-48"
+                          placeholder="MM/DD/YYYY"
+                        />
+                      ) : (
+                        <span>{patient.endDate || 'Not provided'}</span>
                       )}
                     </div>
                   </div>

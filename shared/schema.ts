@@ -135,6 +135,11 @@ export const patients = pgTable("patients", {
   address: text("address"),
   mrn: text("mrn"), // Medical Record Number (optional)
   
+  // Authorization fields
+  authNumber: text("auth_number"),
+  startDate: text("start_date"), // MM/DD/YYYY format
+  endDate: text("end_date"), // MM/DD/YYYY format
+  
   // Metadata
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

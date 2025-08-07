@@ -21,6 +21,9 @@ interface Patient {
   orderingMD: string
   diagnosis: string
   status: string
+  authNumber?: string
+  startDate?: string
+  endDate?: string
   createdAt: string
 }
 
