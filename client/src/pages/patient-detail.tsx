@@ -1442,7 +1442,6 @@ export default function PatientDetail() {
                         className="px-3 py-1 border rounded text-sm"
                         disabled={updateAppointmentMutation.isPending}
                       >
-                        <option value="Scheduled">Scheduled</option>
                         <option value="Completed">Completed</option>
                         <option value="Cancelled">Cancelled</option>
                         <option value="No Show">No Show</option>
