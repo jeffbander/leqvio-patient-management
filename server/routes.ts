@@ -81,14 +81,16 @@ Return ONLY a JSON object with the extracted data using these exact keys:
       // Clean up the data - remove null/empty values
       const cleanedData: any = {};
       Object.keys(parsedData).forEach(key => {
-        if (parsedData[key] && parsedData[key] !== 'null' && parsedData[key].trim() !== '') {
-          cleanedData[key] = parsedData[key].trim();
+        const value = parsedData[key];
+        if (value && value !== 'null' && value !== null && typeof value === 'string' && value.trim() !== '') {
+          cleanedData[key] = value.trim();
         }
       });
       
       return cleanedData;
     } catch (parseError) {
       console.error('Failed to parse OpenAI response as JSON:', extractedText);
+      console.error('Parse error details:', parseError);
       throw new Error('Invalid response format from OpenAI');
     }
   } catch (error) {
