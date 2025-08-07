@@ -55,9 +55,9 @@ const checkScheduleStatus = async (patientId: number) => {
 
       if (lastAppointmentDate <= threeMonthsAgo) {
         await storage.updatePatient(patientId, {
-          scheduleStatus: "Needs Scheduling High Priority"
+          scheduleStatus: "Needs Scheduling–High Priority"
         });
-        console.log(`Patient ${patientId}: Schedule status updated to "Needs Scheduling High Priority" - last appointment was ${lastAppointment.appointmentDate} (>3 months ago) and no future appointments`);
+        console.log(`Patient ${patientId}: Schedule status updated to "Needs Scheduling–High Priority" - last appointment was ${lastAppointment.appointmentDate} (>3 months ago) and no future appointments`);
       }
     }
   } catch (error) {
