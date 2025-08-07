@@ -1436,16 +1436,23 @@ export default function PatientDetail() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <select
-                        value={appointment.status}
-                        onChange={(e) => handleUpdateAppointmentStatus(appointment.id, e.target.value)}
-                        className="px-3 py-1 border rounded text-sm"
-                        disabled={updateAppointmentMutation.isPending}
-                      >
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                        <option value="No Show">No Show</option>
-                      </select>
+                      {/* Only show status dropdown for past appointments */}
+                      {new Date(appointment.appointmentDate) < new Date() ? (
+                        <select
+                          value={appointment.status}
+                          onChange={(e) => handleUpdateAppointmentStatus(appointment.id, e.target.value)}
+                          className="px-3 py-1 border rounded text-sm"
+                          disabled={updateAppointmentMutation.isPending}
+                        >
+                          <option value="Completed">Completed</option>
+                          <option value="Cancelled">Cancelled</option>
+                          <option value="No Show">No Show</option>
+                        </select>
+                      ) : (
+                        <span className="px-3 py-1 bg-gray-100 text-gray-600 text-sm rounded">
+                          Scheduled
+                        </span>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"

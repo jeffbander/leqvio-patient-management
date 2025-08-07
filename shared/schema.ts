@@ -174,7 +174,7 @@ export const appointments = pgTable("appointments", {
   patientId: integer("patient_id").notNull().references(() => patients.id),
   appointmentDate: text("appointment_date").notNull(), // MM/DD/YYYY format
   doseNumber: integer("dose_number").notNull(),
-  status: text("status").notNull().default("Completed"), // Completed, Cancelled, No Show
+  status: text("status").notNull().default("Scheduled"), // Scheduled, Completed, Cancelled, No Show
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
