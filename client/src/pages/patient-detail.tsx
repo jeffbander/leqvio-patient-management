@@ -60,6 +60,7 @@ interface Patient {
   refNumber?: string
   startDate?: string
   endDate?: string
+  notes?: string
   createdAt: string
   updatedAt: string
 }
@@ -403,7 +404,8 @@ export default function PatientDetail() {
       authNumber: patient.authNumber || '',
       refNumber: patient.refNumber || '',
       startDate: patient.startDate || '',
-      endDate: patient.endDate || ''
+      endDate: patient.endDate || '',
+      notes: patient.notes || ''
     })
     setIsEditing(true)
   }
@@ -785,6 +787,27 @@ export default function PatientDetail() {
                         <span>{patient.endDate || 'Not provided'}</span>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="flex items-center gap-2 text-gray-600">
+                    <FileText className="h-4 w-4" />
+                    Notes
+                  </Label>
+                  <div className="mt-2">
+                    {isEditing ? (
+                      <Textarea
+                        value={editedData.notes || ''}
+                        onChange={(e) => setEditedData({...editedData, notes: e.target.value})}
+                        className="w-full min-h-24"
+                        placeholder="Patient notes..."
+                      />
+                    ) : (
+                      <div className="text-sm text-gray-700 whitespace-pre-line min-h-8 p-2 bg-gray-50 rounded border">
+                        {patient.notes || 'No notes'}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
