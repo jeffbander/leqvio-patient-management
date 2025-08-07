@@ -14,6 +14,7 @@ Providerloop Chains is a comprehensive patient management system with integrated
 - Added authorization fields to patient data: auth number, ref number, start date, end date (all optional, editable in patient detail view)
 - Notes are only editable in patient detail view, not in patient list table (read-only in list)
 - Fixed notes saving issue by ensuring notes field is included in update mutations
+- Automatic authorization status update: when appointment dates fall outside auth start/end date range, authStatus automatically changes to "APT SCHEDULED W/O AUTH"
 
 ## System Architecture
 

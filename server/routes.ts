@@ -11,6 +11,50 @@ import { generateLEQVIOPDF } from "./pdf-generator";
 import { googleSheetsService } from "./google-sheets-service";
 import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
 
+// Helper function to check if appointment is outside authorization date range
+const checkAuthorizationStatus = async (patientId: number) => {
+  try {
+    const patient = await storage.getPatient(patientId);
+    if (!patient) return;
+
+    // Get all appointments for the patient
+    const appointments = await storage.getPatientAppointments(patientId);
+    
+    // Check if patient has auth dates
+    if (!patient.startDate || !patient.endDate) {
+      return; // No auth dates to check against
+    }
+
+    // Parse auth dates (MM/DD/YYYY format)
+    const authStartDate = new Date(patient.startDate);
+    const authEndDate = new Date(patient.endDate);
+
+    // Check if any appointment is outside the auth date range
+    for (const appointment of appointments) {
+      const appointmentDate = new Date(appointment.appointmentDate);
+      
+      if (appointmentDate < authStartDate || appointmentDate > authEndDate) {
+        // Appointment is outside auth range - update auth status
+        await storage.updatePatient(patientId, {
+          authStatus: "APT SCHEDULED W/O AUTH"
+        });
+        console.log(`Patient ${patientId}: Authorization status updated to "APT SCHEDULED W/O AUTH" - appointment ${appointment.appointmentDate} is outside auth range ${patient.startDate} to ${patient.endDate}`);
+        return;
+      }
+    }
+
+    // If we get here, all appointments are within auth range
+    // Only update if current status is "APT SCHEDULED W/O AUTH"
+    if (patient.authStatus === "APT SCHEDULED W/O AUTH") {
+      await storage.updatePatient(patientId, {
+        authStatus: "Approved" // or whatever the appropriate status should be
+      });
+      console.log(`Patient ${patientId}: Authorization status updated to "Approved" - all appointments are within auth range`);
+    }
+  } catch (error) {
+    console.error('Error checking authorization status:', error);
+  }
+};
 
 // Analytics middleware to track API requests
 const analyticsMiddleware = (req: any, res: any, next: any) => {
@@ -1356,6 +1400,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!updatedPatient) {
         return res.status(404).json({ error: 'Patient not found' });
       }
+
+      // Check authorization status if auth dates were updated
+      if (updates.startDate || updates.endDate) {
+        await checkAuthorizationStatus(patientId);
+      }
       
       res.json(updatedPatient);
     } catch (error) {
@@ -1423,6 +1472,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const patientId = parseInt(req.params.id);
       const appointmentData = { ...req.body, patientId };
       const appointment = await storage.createAppointment(appointmentData);
+      
+      // Check authorization status after creating appointment
+      await checkAuthorizationStatus(patientId);
+      
       res.json(appointment);
     } catch (error) {
       console.error('Error creating appointment:', error);
@@ -1434,6 +1487,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const appointmentId = parseInt(req.params.id);
       const updatedAppointment = await storage.updateAppointment(appointmentId, req.body);
+      
+      // Check authorization status if appointment date was updated
+      if (req.body.appointmentDate && updatedAppointment) {
+        await checkAuthorizationStatus(updatedAppointment.patientId);
+      }
+      
       res.json(updatedAppointment);
     } catch (error) {
       console.error('Error updating appointment:', error);
