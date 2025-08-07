@@ -188,7 +188,7 @@ export default function PatientDetail() {
   const { data: automationLogs = [] } = useQuery({
     queryKey: [`/api/patients/${patientId}/automation-logs`],
     enabled: !!patientId
-  })
+  }) as { data: any[] }
 
   const { data: appointments = [], isLoading: appointmentsLoading } = useQuery<Appointment[]>({
     queryKey: [`/api/patients/${patientId}/appointments`],
@@ -392,6 +392,7 @@ export default function PatientDetail() {
   })
 
   const handleEdit = () => {
+    if (!patient) return
     setEditedData({
       phone: patient.phone || '',
       email: patient.email || '',
@@ -408,6 +409,7 @@ export default function PatientDetail() {
   }
 
   const handleEditInsurance = () => {
+    if (!patient) return
     setEditedData({
       primaryInsurance: patient.primaryInsurance || '',
       primaryPlan: patient.primaryPlan || '',

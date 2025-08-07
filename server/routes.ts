@@ -1948,7 +1948,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error(`AIGENTS API error: ${aigentsResponse.statusText} - ${errorText}`);
       }
 
-      const aigentsResult = await aigentsResponse.json();
+      const aigentsResult = await aigentsResponse.json() as any;
       console.log('AIGENTS Response Body:', JSON.stringify(aigentsResult, null, 2));
       
       // Extract the AIGENTS Chain Run ID from the response
