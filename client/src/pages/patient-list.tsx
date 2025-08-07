@@ -196,13 +196,19 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
   // Check if row should be flagged (light red background)
   const isRowFlagged = patient.authStatus === 'APT SCHEDULED W/O AUTH'
   
-  // Get notes preview (first 3 lines of last paragraph)
+  // Get notes preview (truncated for table display)
   const getNotesPreview = () => {
     if (!patient.notes) return ''
-    const paragraphs = patient.notes.split('\n\n')
-    const lastParagraph = paragraphs[paragraphs.length - 1]
-    const lines = lastParagraph.split('\n')
-    return lines.slice(0, 3).join('\n')
+    // Truncate to 100 characters and add ellipsis if longer
+    const maxLength = 100
+    if (patient.notes.length <= maxLength) {
+      return patient.notes
+    }
+    // Find the last complete word within the limit
+    const truncated = patient.notes.substring(0, maxLength)
+    const lastSpace = truncated.lastIndexOf(' ')
+    const cutOff = lastSpace > 0 ? lastSpace : maxLength
+    return patient.notes.substring(0, cutOff) + '...'
   }
 
   const authStatusOptions = [
