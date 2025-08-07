@@ -56,6 +56,7 @@ interface Patient {
   secondaryInsuranceNumber?: string
   secondaryGroupId?: string
   authNumber?: string
+  refNumber?: string
   startDate?: string
   endDate?: string
   createdAt: string
@@ -316,6 +317,7 @@ export default function PatientDetail() {
       diagnosis: patient.diagnosis || '',
       mrn: patient.mrn || '',
       authNumber: patient.authNumber || '',
+      refNumber: patient.refNumber || '',
       startDate: patient.startDate || '',
       endDate: patient.endDate || ''
     })
@@ -349,6 +351,7 @@ export default function PatientDetail() {
       address: editedData.address,
       mrn: editedData.mrn,
       authNumber: editedData.authNumber,
+      refNumber: editedData.refNumber,
       startDate: editedData.startDate,
       endDate: editedData.endDate,
       primaryInsurance: editedData.primaryInsurance,
@@ -635,6 +638,19 @@ export default function PatientDetail() {
                         />
                       ) : (
                         <span>{patient.authNumber || 'Not provided'}</span>
+                      )}
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Ref Number:</span>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.refNumber || ''}
+                          onChange={(e) => setEditedData({...editedData, refNumber: e.target.value})}
+                          className="w-48"
+                          placeholder="Reference Number"
+                        />
+                      ) : (
+                        <span>{patient.refNumber || 'Not provided'}</span>
                       )}
                     </div>
                     <div className="flex justify-between">

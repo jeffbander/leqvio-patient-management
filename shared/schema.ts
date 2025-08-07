@@ -137,6 +137,7 @@ export const patients = pgTable("patients", {
   
   // Authorization fields
   authNumber: text("auth_number"),
+  refNumber: text("ref_number"),
   startDate: text("start_date"), // MM/DD/YYYY format
   endDate: text("end_date"), // MM/DD/YYYY format
   

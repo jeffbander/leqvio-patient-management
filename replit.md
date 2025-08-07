@@ -11,7 +11,7 @@ Providerloop Chains is a comprehensive patient management system with integrated
 - Wants to create reusable templates for automation systems
 - Default patient status should be "Pending Auth" instead of "started"
 - Removed "synced" status completely - all patients with synced status converted to "Pending Auth"
-- Added authorization fields to patient data: auth number, start date, end date (all optional, editable in patient detail view)
+- Added authorization fields to patient data: auth number, ref number, start date, end date (all optional, editable in patient detail view)
 
 ## System Architecture
 
