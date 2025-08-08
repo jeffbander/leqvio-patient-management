@@ -189,6 +189,7 @@ export default function PatientDetail() {
   const params = useParams()
   const patientId = parseInt(params.id as string)
   
+  const [activeTab, setActiveTab] = useState<'patient-info' | 'ai-analysis'>('patient-info')
   const [isEditing, setIsEditing] = useState(false)
   const [isEditingInsurance, setIsEditingInsurance] = useState(false)
   const [isEditingLeqvio, setIsEditingLeqvio] = useState(false)
@@ -770,8 +771,38 @@ export default function PatientDetail() {
           </div>
         </div>
       </div>
-      <div className="grid gap-6">
-        {/* Patient Information */}
+      
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('patient-info')}
+            className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'patient-info'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Patient Information
+          </button>
+          <button
+            onClick={() => setActiveTab('ai-analysis')}
+            className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'ai-analysis'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            AI Analysis
+          </button>
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      <div className="mt-6">
+        {activeTab === 'patient-info' && (
+          <div className="grid gap-6">
+            {/* Patient Information */}
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -1670,96 +1701,226 @@ export default function PatientDetail() {
           </CardContent>
         </Card>
 
-        {/* Process Data */}
-        <Card>
-          <CardHeader>
-            <CardTitle>LEQVIO AI agent</CardTitle>
-            <CardDescription>Send insurance and clinical information to  see if LEQVIO can be approved</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Process History */}
-              {automationLogs.length > 0 && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <History className="mr-2 h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-800">Last Processed</span>
+
+          </div>
+        )}
+
+        {activeTab === 'ai-analysis' && (
+          <div className="grid gap-6">
+            {/* Process Data */}
+            <Card>
+              <CardHeader>
+                <CardTitle>LEQVIO AI Agent</CardTitle>
+                <CardDescription>Send insurance and clinical information to see if LEQVIO can be approved</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Process History */}
+                  {automationLogs.length > 0 && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <History className="mr-2 h-4 w-4 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-800">Last Processed</span>
+                        </div>
+                        <span className="text-sm text-blue-700">
+                          {new Date(automationLogs[0].timestamp || automationLogs[0].createdat).toLocaleString()}
+                        </span>
+                      </div>
+                      {automationLogs[0].iscompleted && (
+                        <p className="text-sm text-blue-700 mt-1">
+                          Status: Completed {automationLogs[0].agentresponse ? '✓' : '- Processing'}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between mt-2">
+                        {automationLogs.length > 1 && (
+                          <p className="text-xs text-blue-600">
+                            Total processes: {automationLogs.length}
+                          </p>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowAigentsData(true)}
+                          className="text-xs"
+                        >
+                          View AIGENTS Data
+                        </Button>
+                      </div>
                     </div>
-                    <span className="text-sm text-blue-700">
-                      {new Date(automationLogs[0].timestamp || automationLogs[0].createdat).toLocaleString()}
-                    </span>
-                  </div>
-                  {automationLogs[0].iscompleted && (
-                    <p className="text-sm text-blue-700 mt-1">
-                      Status: Completed {automationLogs[0].agentresponse ? '✓' : '- Processing'}
-                    </p>
                   )}
-                  <div className="flex items-center justify-between mt-2">
-                    {automationLogs.length > 1 && (
-                      <p className="text-xs text-blue-600">
-                        Total processes: {automationLogs.length}
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Ready to Process</p>
+                      <p className="text-sm text-gray-500">
+                        {documents.filter(d => d.documentType === 'epic_insurance_screenshot' || d.documentType === 'insurance_screenshot').length} insurance documents, {' '}
+                        {documents.filter(d => d.documentType === 'epic_screenshot' || d.documentType === 'clinical_note').length} clinical documents
                       </p>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowAigentsData(true)}
-                      className="text-xs"
+                    </div>
+                    <Button 
+                      onClick={() => processDataMutation.mutate()}
+                      disabled={processDataMutation.isPending || documents.length === 0}
+                      className="bg-blue-600 hover:bg-blue-700"
                     >
-                      View AIGENTS Data
+                      {processDataMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Process Data
+                        </>
+                      )}
                     </Button>
                   </div>
-                </div>
-              )}
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Ready to Process</p>
-                  <p className="text-sm text-gray-500">
-                    {documents.filter(d => d.documentType === 'epic_insurance_screenshot' || d.documentType === 'insurance_screenshot').length} insurance documents, {' '}
-                    {documents.filter(d => d.documentType === 'epic_screenshot' || d.documentType === 'clinical_note').length} clinical documents
-                  </p>
-                </div>
-                <Button 
-                  onClick={() => processDataMutation.mutate()}
-                  disabled={processDataMutation.isPending || documents.length === 0}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {processDataMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Process Data
-                    </>
+                  
+                  {processResult && (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center">
+                        <Shield className="mr-2 h-4 w-4 text-green-600" />
+                        <span className="text-sm font-medium text-green-800">
+                          Data Processed Successfully
+                        </span>
+                      </div>
+                      <p className="text-sm text-green-700 mt-1">
+                        Unique ID: {processResult.uniqueId}
+                      </p>
+                      <p className="text-sm text-green-700">
+                        {processResult.documentsProcessed.insurance} insurance and {processResult.documentsProcessed.clinical} clinical documents sent to AIGENTS
+                      </p>
+                    </div>
                   )}
-                </Button>
-              </div>
-              
-              {processResult && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center">
-                    <Shield className="mr-2 h-4 w-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-800">
-                      Data Processed Successfully
-                    </span>
-                  </div>
-                  <p className="text-sm text-green-700 mt-1">
-                    Unique ID: {processResult.uniqueId}
-                  </p>
-                  <p className="text-sm text-green-700">
-                    {processResult.documentsProcessed.insurance} insurance and {processResult.documentsProcessed.clinical} clinical documents sent to AIGENTS
-                  </p>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+
+            {/* AI Analysis Content */}
+            <Card>
+              <CardHeader>
+                <CardTitle>LEQVIO AI Analysis</CardTitle>
+                <CardDescription>AI-powered analysis of patient eligibility and approval likelihood</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {automationLogs.length > 0 ? (
+                  <div className="space-y-6">
+                    {/* Latest Analysis Summary */}
+                    {(() => {
+                      const latestAnalysis = automationLogs[0]?.agentresponse 
+                        ? parseAigentsResponse(automationLogs[0].agentresponse)
+                        : null;
+                      
+                      if (latestAnalysis) {
+                        return (
+                          <div className="space-y-4">
+                            {/* Approval Likelihood */}
+                            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                              <h3 className="font-semibold text-blue-800 mb-2">Approval Likelihood</h3>
+                              <p className="text-blue-700">{latestAnalysis.approvalLikelihood}</p>
+                            </div>
+                            
+                            {/* Criteria Assessment */}
+                            {latestAnalysis.criteriaItems.length > 0 && (
+                              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                                <h3 className="font-semibold text-gray-800 mb-3">Criteria Assessment</h3>
+                                <div className="space-y-2">
+                                  {latestAnalysis.criteriaItems.map((item, idx) => (
+                                    <div key={idx} className="flex items-start gap-2">
+                                      <span className={`text-sm font-medium ${
+                                        item.status === 'passed' ? 'text-green-600' : 
+                                        item.status === 'failed' ? 'text-red-600' : 'text-yellow-600'
+                                      }`}>
+                                        {item.status === 'passed' ? '✓' : item.status === 'failed' ? '✗' : '?'}
+                                      </span>
+                                      <span className="text-sm text-gray-700">{item.text}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Documentation Gaps */}
+                            {latestAnalysis.documentationGaps.length > 0 && (
+                              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <h3 className="font-semibold text-yellow-800 mb-3">Documentation Gaps</h3>
+                                <ul className="space-y-1">
+                                  {latestAnalysis.documentationGaps.map((gap, idx) => (
+                                    <li key={idx} className="text-sm text-yellow-700">• {gap}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {/* Recommendations */}
+                            {latestAnalysis.recommendations.length > 0 && (
+                              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                                <h3 className="font-semibold text-green-800 mb-3">Recommendations</h3>
+                                <ul className="space-y-1">
+                                  {latestAnalysis.recommendations.map((rec, idx) => (
+                                    <li key={idx} className="text-sm text-green-700">• {rec}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">No detailed analysis available yet</p>
+                        </div>
+                      );
+                    })()}
+                    
+                    {/* Analysis History */}
+                    <div className="border-t pt-6">
+                      <h3 className="font-semibold text-gray-800 mb-4">Analysis History</h3>
+                      <div className="space-y-3">
+                        {automationLogs.map((log, idx) => (
+                          <div key={log.id} className="p-3 border rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">Chain: {log.chainname}</span>
+                                {log.iscompleted && (
+                                  <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
+                                    Completed
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-sm text-gray-500">
+                                {new Date(log.timestamp || log.createdat).toLocaleString()}
+                              </span>
+                            </div>
+                            {log.agentresponse && log.agentresponse !== 'No response content' && (
+                              <div className="mt-2">
+                                <button
+                                  onClick={() => setShowAigentsData(true)}
+                                  className="text-sm text-blue-600 hover:text-blue-800"
+                                >
+                                  View Full Response
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No AI analysis available yet</p>
+                    <p className="text-sm text-gray-400 mt-2">Upload documents and process data to see AI analysis</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
+      
       {/* AIGENTS Data Modal */}
       {showAigentsData && automationLogs.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
