@@ -63,6 +63,11 @@ interface Patient {
   startDate?: string
   endDate?: string
   notes?: string
+  leqvioCopayProgram?: boolean
+  leqvioCvgStatus?: string
+  leqvioEffectiveFrom?: string
+  leqvioSubscriber?: string
+  leqvioSubscriberId?: string
   createdAt: string
   updatedAt: string
 }
@@ -93,6 +98,7 @@ export default function PatientDetail() {
   
   const [isEditing, setIsEditing] = useState(false)
   const [isEditingInsurance, setIsEditingInsurance] = useState(false)
+  const [isEditingLeqvio, setIsEditingLeqvio] = useState(false)
   const [editedData, setEditedData] = useState<any>({})
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [documentType, setDocumentType] = useState<string>('epic_insurance_screenshot')
@@ -223,6 +229,8 @@ export default function PatientDetail() {
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}`] })
       setIsEditing(false)
       setIsEditingInsurance(false)
+      setIsEditingLeqvio(false)
+      setEditedData({})
     },
     onError: (error) => {
       toast({
@@ -493,6 +501,40 @@ export default function PatientDetail() {
 
   const handleCancelInsurance = () => {
     setIsEditingInsurance(false)
+    setEditedData({})
+  }
+
+  const handleEditLeqvio = () => {
+    if (!patient) return
+    setEditedData({
+      leqvioCvgStatus: patient.leqvioCvgStatus || '',
+      leqvioEffectiveFrom: patient.leqvioEffectiveFrom || '',
+      leqvioSubscriber: patient.leqvioSubscriber || '',
+      leqvioSubscriberId: patient.leqvioSubscriberId || ''
+    })
+    setIsEditingLeqvio(true)
+  }
+
+  const handleSaveLeqvio = () => {
+    const updateData: any = {
+      leqvioCvgStatus: editedData.leqvioCvgStatus,
+      leqvioEffectiveFrom: editedData.leqvioEffectiveFrom,
+      leqvioSubscriber: editedData.leqvioSubscriber,
+      leqvioSubscriberId: editedData.leqvioSubscriberId
+    }
+    
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key]
+      }
+    })
+    
+    updatePatientMutation.mutate(updateData)
+  }
+
+  const handleCancelLeqvio = () => {
+    setIsEditingLeqvio(false)
     setEditedData({})
   }
 
@@ -1030,6 +1072,104 @@ export default function PatientDetail() {
             </div>
           </CardContent>
         </Card>
+
+        {/* LEQVIO Copay Program Information */}
+        {patient.leqvioCopayProgram && (
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  LEQVIO Copay Program
+                </CardTitle>
+                {!isEditingLeqvio ? (
+                  <Button onClick={handleEditLeqvio} variant="outline" size="sm">
+                    Edit
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleSaveLeqvio} 
+                      size="sm"
+                      disabled={updatePatientMutation.isPending}
+                    >
+                      {updatePatientMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                      Save
+                    </Button>
+                    <Button onClick={handleCancelLeqvio} variant="outline" size="sm">
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="font-medium">Coverage Status:</span>
+                    {isEditingLeqvio ? (
+                      <Input
+                        value={editedData.leqvioCvgStatus || ''}
+                        onChange={(e) => setEditedData({...editedData, leqvioCvgStatus: e.target.value})}
+                        className="w-48"
+                        placeholder="e.g., Active, Pending"
+                      />
+                    ) : (
+                      <span>{patient.leqvioCvgStatus || 'Not provided'}</span>
+                    )}
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Effective From:</span>
+                    {isEditingLeqvio ? (
+                      <Input
+                        type="date"
+                        value={editedData.leqvioEffectiveFrom || ''}
+                        onChange={(e) => setEditedData({...editedData, leqvioEffectiveFrom: e.target.value})}
+                        className="w-48"
+                      />
+                    ) : (
+                      <span>{patient.leqvioEffectiveFrom || 'Not provided'}</span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="font-medium">Subscriber:</span>
+                    {isEditingLeqvio ? (
+                      <Input
+                        value={editedData.leqvioSubscriber || ''}
+                        onChange={(e) => setEditedData({...editedData, leqvioSubscriber: e.target.value})}
+                        className="w-48"
+                        placeholder="Subscriber name"
+                      />
+                    ) : (
+                      <span>{patient.leqvioSubscriber || 'Not provided'}</span>
+                    )}
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Subscriber ID:</span>
+                    {isEditingLeqvio ? (
+                      <Input
+                        value={editedData.leqvioSubscriberId || ''}
+                        onChange={(e) => setEditedData({...editedData, leqvioSubscriberId: e.target.value})}
+                        className="w-48"
+                        placeholder="Subscriber ID number"
+                      />
+                    ) : (
+                      <span>{patient.leqvioSubscriberId || 'Not provided'}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Appointments Section */}
         <Card>

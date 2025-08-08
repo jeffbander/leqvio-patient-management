@@ -315,7 +315,12 @@ export const setupAppsheetRoutes = (app: Application) => {
         startDate: req.body.StartDate,
         endDate: req.body.EndDate,
         authStatus: req.body.AuthStatus,
-        scheduleStatus: req.body.ScheduleStatus
+        scheduleStatus: req.body.ScheduleStatus,
+        leqvioCopayProgram: req.body.LeqvioCopayProgram,
+        leqvioCvgStatus: req.body.LeqvioCvgStatus,
+        leqvioEffectiveFrom: req.body.LeqvioEffectiveFrom,
+        leqvioSubscriber: req.body.LeqvioSubscriber,
+        leqvioSubscriberId: req.body.LeqvioSubscriberId
       };
 
       // Remove undefined values

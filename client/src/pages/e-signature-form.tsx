@@ -62,7 +62,12 @@ export default function ESignatureForm() {
     secondaryGroupId: '',
     recipientEmail: '',
     copayProgram: false,
-    ongoingSupport: false
+    ongoingSupport: false,
+    // LEQVIO Copay Program fields
+    leqvioCvgStatus: '',
+    leqvioEffectiveFrom: '',
+    leqvioSubscriber: '',
+    leqvioSubscriberId: ''
   })
 
   const createPatientMutation = useMutation({
@@ -205,7 +210,12 @@ export default function ESignatureForm() {
       ...formData,
       diagnosis: formData.diagnosis.join(', '), // Convert array to comma-separated string for backend
       signatureData,
-      status: 'started'
+      status: 'started',
+      leqvioCopayProgram: formData.copayProgram,
+      leqvioCvgStatus: formData.copayProgram ? formData.leqvioCvgStatus : null,
+      leqvioEffectiveFrom: formData.copayProgram ? formData.leqvioEffectiveFrom : null,
+      leqvioSubscriber: formData.copayProgram ? formData.leqvioSubscriber : null,
+      leqvioSubscriberId: formData.copayProgram ? formData.leqvioSubscriberId : null
     })
   }
 
@@ -566,6 +576,55 @@ export default function ESignatureForm() {
                   </p>
                 </div>
               </div>
+
+              {/* Conditional LEQVIO Copay Program fields */}
+              {formData.copayProgram && (
+                <div className="mt-4 p-4 border rounded-lg bg-blue-50">
+                  <h4 className="font-medium mb-3 text-blue-900">LEQVIO Copay Program Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="leqvioCvgStatus">Coverage Status</Label>
+                      <Input
+                        id="leqvioCvgStatus"
+                        name="leqvioCvgStatus"
+                        value={formData.leqvioCvgStatus}
+                        onChange={handleInputChange}
+                        placeholder="e.g., Active, Pending"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="leqvioEffectiveFrom">Effective From</Label>
+                      <Input
+                        id="leqvioEffectiveFrom"
+                        name="leqvioEffectiveFrom"
+                        type="date"
+                        value={formData.leqvioEffectiveFrom}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="leqvioSubscriber">Subscriber</Label>
+                      <Input
+                        id="leqvioSubscriber"
+                        name="leqvioSubscriber"
+                        value={formData.leqvioSubscriber}
+                        onChange={handleInputChange}
+                        placeholder="Subscriber name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="leqvioSubscriberId">Subscriber ID</Label>
+                      <Input
+                        id="leqvioSubscriberId"
+                        name="leqvioSubscriberId"
+                        value={formData.leqvioSubscriberId}
+                        onChange={handleInputChange}
+                        placeholder="Subscriber ID number"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-start space-x-2">
                 <Checkbox

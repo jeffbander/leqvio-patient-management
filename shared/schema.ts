@@ -146,6 +146,13 @@ export const patients = pgTable("patients", {
   notes: text("notes").default(""),
   lastVoicemailAt: timestamp("last_voicemail_at"),
   
+  // LEQVIO Copay Program fields (only if opted in)
+  leqvioCopayProgram: boolean("leqvio_copay_program").default(false),
+  leqvioCvgStatus: text("leqvio_cvg_status"),
+  leqvioEffectiveFrom: text("leqvio_effective_from"),
+  leqvioSubscriber: text("leqvio_subscriber"),
+  leqvioSubscriberId: text("leqvio_subscriber_id"),
+  
   // Metadata
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
