@@ -181,19 +181,54 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
   // Check if row should be flagged (light red background)
   const isRowFlagged = patient.authStatus === 'APT SCHEDULED W/O AUTH'
   
-  // Get notes preview (truncated for table display)
+  // Get notes preview (truncated for table display, only actual notes - no voicemails or insurance updates)
   const getNotesPreview = () => {
     if (!patient.notes) return ''
+    
+    // Extract only the actual notes section (before voicemails and insurance updates)
+    const notesText = patient.notes
+    let actualNotes = ''
+    
+    // Check if there are organized sections
+    const voicemailsIndex = notesText.indexOf('=== VOICEMAILS ===')
+    const insuranceIndex = notesText.indexOf('=== INSURANCE & AUTH UPDATES ===')
+    const notesIndex = notesText.indexOf('=== NOTES ===')
+    
+    if (notesIndex !== -1) {
+      // If there's a notes section, extract content after the header
+      let startIndex = notesIndex + '=== NOTES ==='.length
+      let endIndex = notesText.length
+      
+      // Find where notes section ends (before voicemails or insurance sections)
+      if (voicemailsIndex > notesIndex && voicemailsIndex < endIndex) {
+        endIndex = voicemailsIndex
+      }
+      if (insuranceIndex > notesIndex && insuranceIndex < endIndex) {
+        endIndex = insuranceIndex
+      }
+      
+      actualNotes = notesText.substring(startIndex, endIndex).trim()
+    } else {
+      // If no organized sections, take content until first section marker
+      let endIndex = notesText.length
+      if (voicemailsIndex !== -1) endIndex = Math.min(endIndex, voicemailsIndex)
+      if (insuranceIndex !== -1) endIndex = Math.min(endIndex, insuranceIndex)
+      
+      actualNotes = notesText.substring(0, endIndex).trim()
+    }
+    
+    if (!actualNotes) return ''
+    
     // Truncate to 100 characters and add ellipsis if longer
     const maxLength = 100
-    if (patient.notes.length <= maxLength) {
-      return patient.notes
+    if (actualNotes.length <= maxLength) {
+      return actualNotes
     }
     // Find the last complete word within the limit
-    const truncated = patient.notes.substring(0, maxLength)
+    const truncated = actualNotes.substring(0, maxLength)
     const lastSpace = truncated.lastIndexOf(' ')
     const cutOff = lastSpace > 0 ? lastSpace : maxLength
-    return patient.notes.substring(0, cutOff) + '...'
+    return actualNotes.substring(0, cutOff) + '...'
   }
 
   const authStatusOptions = [
