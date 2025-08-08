@@ -796,58 +796,61 @@ export default function PatientDetail() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-8">
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+      <div className="mb-6">
         <Link href="/patients">
-          <Button variant="ghost" size="sm" className="mb-4">
+          <Button variant="ghost" size="sm" className="mb-6 text-gray-600 hover:text-gray-900">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Patients
           </Button>
         </Link>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              {patient.lastName}, {patient.firstName}
-            </h1>
-            <p className="text-gray-600 mt-1">Patient ID: {patient.id}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge className={getStatusColor(patient.status)}>
-              {patient.status}
-            </Badge>
-            <select
-              value={patient.status}
-              onChange={(e) => updateStatusMutation.mutate(e.target.value)}
-              className="text-sm border rounded px-2 py-1"
-            >
-              <option value="started">Started</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+        <div className="bg-white rounded-lg border shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">
+                {patient.lastName}, {patient.firstName}
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">Patient ID: {patient.id}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge className={getStatusColor(patient.status)}>
+                {patient.status}
+              </Badge>
+              <select
+                value={patient.status}
+                onChange={(e) => updateStatusMutation.mutate(e.target.value)}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="started">Started</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
       
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      <div className="bg-white rounded-lg border shadow-sm">
+        <nav className="flex">
           <button
             onClick={() => setActiveTab('patient-info')}
-            className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`flex-1 py-4 px-6 text-center font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'patient-info'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-blue-500 text-blue-600 bg-blue-50'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
             }`}
           >
             Patient Information
           </button>
           <button
             onClick={() => setActiveTab('ai-analysis')}
-            className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`flex-1 py-4 px-6 text-center font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'ai-analysis'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-blue-500 text-blue-600 bg-blue-50'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
             }`}
           >
             AI Analysis
@@ -856,14 +859,14 @@ export default function PatientDetail() {
       </div>
 
       {/* Tab Content */}
-      <div className="mt-6">
+      <div className="mt-4">
         {activeTab === 'patient-info' && (
-          <div className="grid gap-6">
+          <div className="space-y-4">
             {/* Patient Information */}
-        <Card>
-          <CardHeader>
+        <Card className="shadow-sm">
+          <CardHeader className="bg-gray-50 rounded-t-lg">
             <div className="flex justify-between items-center">
-              <CardTitle>Patient Information</CardTitle>
+              <CardTitle className="text-lg text-gray-800">Patient Information</CardTitle>
               {!isEditing ? (
                 <Button onClick={handleEdit} variant="outline" size="sm">
                   Edit
@@ -892,32 +895,32 @@ export default function PatientDetail() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <div>
-                  <Label className="flex items-center gap-2 text-gray-600">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <Label className="flex items-center gap-2 text-gray-700 font-semibold mb-3">
                     <User className="h-4 w-4" />
                     Personal Information
                   </Label>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Name:</span>
-                      <span>{patient.firstName} {patient.lastName}</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Name:</span>
+                      <span className="font-medium">{patient.firstName} {patient.lastName}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">DOB:</span>
-                      <span>{patient.dateOfBirth}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">DOB:</span>
+                      <span className="font-medium">{patient.dateOfBirth}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">MRN:</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">MRN:</span>
                       {isEditing ? (
                         <Input
                           value={editedData.mrn || ''}
                           onChange={(e) => setEditedData({...editedData, mrn: e.target.value})}
-                          className="w-48"
+                          className="w-48 h-8"
                           placeholder="Medical Record Number"
                         />
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span>{patient.mrn || 'Not provided'}</span>
+                          <span className="font-medium">{patient.mrn || 'Not provided'}</span>
                           {patient.mrn && (
                             <Button
                               size="sm"
@@ -931,7 +934,7 @@ export default function PatientDetail() {
                                   })
                                 }
                               }}
-                              className="h-6 w-6 p-1 hover:bg-gray-100"
+                              className="h-6 w-6 p-1 hover:bg-white hover:border border-gray-200 rounded"
                             >
                               <Copy className="h-3 w-3" />
                             </Button>
@@ -942,34 +945,34 @@ export default function PatientDetail() {
                   </div>
                 </div>
 
-                <div>
-                  <Label className="flex items-center gap-2 text-gray-600">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <Label className="flex items-center gap-2 text-gray-700 font-semibold mb-3">
                     <Stethoscope className="h-4 w-4" />
                     Medical Information
                   </Label>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Ordering MD:</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Ordering MD:</span>
                       {isEditing ? (
                         <Input
                           value={editedData.orderingMD || ''}
                           onChange={(e) => setEditedData({...editedData, orderingMD: e.target.value})}
-                          className="w-48"
+                          className="w-48 h-8"
                         />
                       ) : (
-                        <span>{patient.orderingMD}</span>
+                        <span className="font-medium">{patient.orderingMD}</span>
                       )}
                     </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Diagnosis:</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Diagnosis:</span>
                       {isEditing ? (
                         <Input
                           value={editedData.diagnosis || ''}
                           onChange={(e) => setEditedData({...editedData, diagnosis: e.target.value})}
-                          className="w-48"
+                          className="w-48 h-8"
                         />
                       ) : (
-                        <span>{patient.diagnosis}</span>
+                        <span className="font-medium">{patient.diagnosis}</span>
                       )}
                     </div>
                   </div>
@@ -979,46 +982,46 @@ export default function PatientDetail() {
               </div>
 
               <div className="space-y-4">
-                <div>
-                  <Label className="flex items-center gap-2 text-gray-600">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <Label className="flex items-center gap-2 text-gray-700 font-semibold mb-3">
                     <Phone className="h-4 w-4" />
                     Contact Information
                   </Label>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Phone:</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Phone:</span>
                       {isEditing ? (
                         <Input
                           value={editedData.phone || ''}
                           onChange={(e) => setEditedData({...editedData, phone: e.target.value})}
-                          className="w-48"
+                          className="w-48 h-8"
                         />
                       ) : (
-                        <span>{patient.phone || 'Not provided'}</span>
+                        <span className="font-medium">{patient.phone || 'Not provided'}</span>
                       )}
                     </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Email:</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Email:</span>
                       {isEditing ? (
                         <Input
                           value={editedData.email || ''}
                           onChange={(e) => setEditedData({...editedData, email: e.target.value})}
-                          className="w-48"
+                          className="w-48 h-8"
                         />
                       ) : (
-                        <span>{patient.email || 'Not provided'}</span>
+                        <span className="font-medium">{patient.email || 'Not provided'}</span>
                       )}
                     </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Address:</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Address:</span>
                       {isEditing ? (
                         <Input
                           value={editedData.address || ''}
                           onChange={(e) => setEditedData({...editedData, address: e.target.value})}
-                          className="w-48"
+                          className="w-48 h-8"
                         />
                       ) : (
-                        <span>{patient.address || 'Not provided'}</span>
+                        <span className="font-medium">{patient.address || 'Not provided'}</span>
                       )}
                     </div>
                   </div>
@@ -1029,10 +1032,10 @@ export default function PatientDetail() {
         </Card>
 
         {/* Insurance Information */}
-        <Card>
-          <CardHeader>
+        <Card className="shadow-sm">
+          <CardHeader className="bg-gray-50 rounded-t-lg">
             <div className="flex justify-between items-center">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg text-gray-800">
                 <Shield className="h-5 w-5" />
                 Insurance Information
               </CardTitle>
@@ -1339,12 +1342,12 @@ export default function PatientDetail() {
         )}
 
         {/* Appointments Section */}
-        <Card>
-          <CardHeader>
+        <Card className="shadow-sm">
+          <CardHeader className="bg-gray-50 rounded-t-lg">
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle>Appointments</CardTitle>
-                <CardDescription>Track patient appointments and doses</CardDescription>
+                <CardTitle className="text-lg text-gray-800">Appointments</CardTitle>
+                <CardDescription className="text-gray-600">Track patient appointments and doses</CardDescription>
               </div>
               <Button
                 onClick={() => setShowAddAppointment(true)}
@@ -1423,10 +1426,10 @@ export default function PatientDetail() {
 
 
         {/* Notes Section */}
-        <Card>
-          <CardHeader>
+        <Card className="shadow-sm">
+          <CardHeader className="bg-gray-50 rounded-t-lg">
             <div className="flex justify-between items-center">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg text-gray-800">
                 <FileText className="h-5 w-5" />
                 Notes
               </CardTitle>
@@ -1455,16 +1458,16 @@ export default function PatientDetail() {
               )}
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             {isEditing ? (
               <Textarea
                 value={editedData.notes || ''}
                 onChange={(e) => setEditedData({...editedData, notes: e.target.value})}
-                className="w-full min-h-32"
+                className="w-full min-h-32 border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Patient notes..."
               />
             ) : (
-              <div className="text-sm text-gray-700 min-h-8 p-4 bg-gray-50 rounded border">
+              <div className="text-sm text-gray-700 min-h-8 p-4 bg-white rounded-lg border border-gray-200">
                 <OrganizedNotesDisplay notes={patient.notes} />
               </div>
             )}
@@ -1625,7 +1628,7 @@ export default function PatientDetail() {
         )}
 
         {activeTab === 'ai-analysis' && (
-          <div className="grid gap-6">
+          <div className="space-y-4">
             {/* Process Data */}
             <Card>
               <CardHeader>
@@ -2083,6 +2086,7 @@ export default function PatientDetail() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
