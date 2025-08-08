@@ -975,26 +975,7 @@ export default function PatientDetail() {
                   </div>
                 </div>
 
-                <div>
-                  <Label className="flex items-center gap-2 text-gray-600">
-                    <FileText className="h-4 w-4" />
-                    Notes
-                  </Label>
-                  <div className="mt-2">
-                    {isEditing ? (
-                      <Textarea
-                        value={editedData.notes || ''}
-                        onChange={(e) => setEditedData({...editedData, notes: e.target.value})}
-                        className="w-full min-h-24"
-                        placeholder="Patient notes..."
-                      />
-                    ) : (
-                      <div className="text-sm text-gray-700 min-h-8 p-2 bg-gray-50 rounded border">
-                        <OrganizedNotesDisplay notes={patient.notes} />
-                      </div>
-                    )}
-                  </div>
-                </div>
+
               </div>
 
               <div className="space-y-4">
@@ -1440,6 +1421,55 @@ export default function PatientDetail() {
 
 
 
+
+        {/* Notes Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Notes
+              </CardTitle>
+              {!isEditing ? (
+                <Button onClick={handleEdit} variant="outline" size="sm">
+                  Edit
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleSave} 
+                    size="sm"
+                    disabled={updatePatientMutation.isPending}
+                  >
+                    {updatePatientMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                    Save
+                  </Button>
+                  <Button onClick={handleCancel} variant="outline" size="sm">
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isEditing ? (
+              <Textarea
+                value={editedData.notes || ''}
+                onChange={(e) => setEditedData({...editedData, notes: e.target.value})}
+                className="w-full min-h-32"
+                placeholder="Patient notes..."
+              />
+            ) : (
+              <div className="text-sm text-gray-700 min-h-8 p-4 bg-gray-50 rounded border">
+                <OrganizedNotesDisplay notes={patient.notes} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Document Upload */}
         <Card>
