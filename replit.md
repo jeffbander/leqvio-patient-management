@@ -20,6 +20,8 @@ Providerloop Chains is a comprehensive patient management system with integrated
   - When last appointment is at least 3 months ago and no next appointment is scheduled, scheduleStatus automatically changes to "Needs Scheduling–High Priority" (displayed with red styling)
 - Click-to-copy MRN functionality: MRN fields in both patient list and patient detail views have copy buttons that copy the MRN to clipboard
 - Epic insurance text extraction: New "Epic Insurance Text (Copy & Paste)" option in patient documents allows users to copy insurance information from Epic screens and automatically extract insurance details using AI
+- Automatic note logging: Insurance and authorization changes are automatically logged in patient notes with timestamps showing old and new values
+- Voicemail note integration: When voicemail is logged for a patient, it's automatically added to their notes in addition to updating the lastVoicemailAt timestamp
 
 ## System Architecture
 

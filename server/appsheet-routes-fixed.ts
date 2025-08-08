@@ -284,6 +284,13 @@ export const setupAppsheetRoutes = (app: Application) => {
   app.put('/api/appsheet/patients/:id', async (req, res) => {
     try {
       const patientId = parseInt(req.params.id);
+      
+      // Get current patient data before update to compare changes
+      const currentPatient = await storage.getPatient(patientId);
+      if (!currentPatient) {
+        return res.status(404).json({ error: 'Patient not found' });
+      }
+
       const updateData: any = {
         firstName: req.body.FirstName,
         lastName: req.body.LastName,
@@ -302,7 +309,13 @@ export const setupAppsheetRoutes = (app: Application) => {
         secondaryInsurance: req.body.SecondaryInsurance,
         secondaryPlan: req.body.SecondaryPlan,
         secondaryInsuranceNumber: req.body.SecondaryInsuranceNumber,
-        secondaryGroupId: req.body.SecondaryGroupId
+        secondaryGroupId: req.body.SecondaryGroupId,
+        authNumber: req.body.AuthNumber,
+        refNumber: req.body.RefNumber,
+        startDate: req.body.StartDate,
+        endDate: req.body.EndDate,
+        authStatus: req.body.AuthStatus,
+        scheduleStatus: req.body.ScheduleStatus
       };
 
       // Remove undefined values
@@ -311,6 +324,53 @@ export const setupAppsheetRoutes = (app: Application) => {
           delete updateData[key];
         }
       });
+
+      // Generate notes for insurance and authorization changes
+      const changeNotes: string[] = [];
+      const timestamp = new Date().toLocaleString();
+
+      // Check for insurance changes
+      const insuranceFields = [
+        { key: 'primaryInsurance', label: 'Primary Insurance' },
+        { key: 'primaryInsuranceNumber', label: 'Primary Member ID' },
+        { key: 'primaryGroupId', label: 'Primary Group ID' },
+        { key: 'secondaryInsurance', label: 'Secondary Insurance' },
+        { key: 'secondaryInsuranceNumber', label: 'Secondary Member ID' },
+        { key: 'secondaryGroupId', label: 'Secondary Group ID' }
+      ];
+
+      insuranceFields.forEach(field => {
+        const oldValue = (currentPatient as any)[field.key] || '';
+        const newValue = updateData[field.key] || '';
+        if (oldValue !== newValue && (oldValue || newValue)) {
+          changeNotes.push(`${field.label} changed from "${oldValue}" to "${newValue}"`);
+        }
+      });
+
+      // Check for authorization changes
+      const authFields = [
+        { key: 'authNumber', label: 'Auth Number' },
+        { key: 'refNumber', label: 'Ref Number' },
+        { key: 'startDate', label: 'Start Date' },
+        { key: 'endDate', label: 'End Date' },
+        { key: 'authStatus', label: 'Auth Status' },
+        { key: 'scheduleStatus', label: 'Schedule Status' }
+      ];
+
+      authFields.forEach(field => {
+        const oldValue = (currentPatient as any)[field.key] || '';
+        const newValue = updateData[field.key] || '';
+        if (oldValue !== newValue && (oldValue || newValue)) {
+          changeNotes.push(`${field.label} changed from "${oldValue}" to "${newValue}"`);
+        }
+      });
+
+      // Add change notes to existing notes if there are any changes
+      if (changeNotes.length > 0) {
+        const existingNotes = currentPatient.notes || '';
+        const newNoteEntry = `[${timestamp}] ${changeNotes.join('; ')}`;
+        updateData.notes = existingNotes ? `${existingNotes}\n${newNoteEntry}` : newNoteEntry;
+      }
 
       const updatedPatient = await storage.updatePatient(patientId, updateData);
       

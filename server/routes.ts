@@ -1526,6 +1526,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const patientId = parseInt(req.params.id);
       const updates = req.body;
       
+      // Get current patient data to check for voicemail logging
+      const currentPatient = await storage.getPatient(patientId);
+      if (!currentPatient) {
+        return res.status(404).json({ error: 'Patient not found' });
+      }
+      
       // Handle timestamp fields that might come as ISO strings
       if (updates.lastVoicemailAt && typeof updates.lastVoicemailAt === 'string') {
         updates.lastVoicemailAt = new Date(updates.lastVoicemailAt);
@@ -1535,6 +1541,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (updates.updatedAt && typeof updates.updatedAt === 'string') {
         updates.updatedAt = new Date(updates.updatedAt);
+      }
+      
+      // Check if voicemail is being logged and add to notes
+      if (updates.lastVoicemailAt && !currentPatient.lastVoicemailAt) {
+        const timestamp = new Date().toLocaleString();
+        const voicemailNote = `[${timestamp}] Voicemail left for patient`;
+        const existingNotes = currentPatient.notes || '';
+        updates.notes = existingNotes ? `${existingNotes}\n${voicemailNote}` : voicemailNote;
       }
       
       const updatedPatient = await storage.updatePatient(patientId, updates);
