@@ -977,67 +977,6 @@ export default function PatientDetail() {
 
                 <div>
                   <Label className="flex items-center gap-2 text-gray-600">
-                    <CheckCircle className="h-4 w-4" />
-                    Authorization Information
-                  </Label>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Auth Number:</span>
-                      {isEditing ? (
-                        <Input
-                          value={editedData.authNumber || ''}
-                          onChange={(e) => setEditedData({...editedData, authNumber: e.target.value})}
-                          className="w-48"
-                          placeholder="Authorization Number"
-                        />
-                      ) : (
-                        <span>{patient.authNumber || 'Not provided'}</span>
-                      )}
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Ref Number:</span>
-                      {isEditing ? (
-                        <Input
-                          value={editedData.refNumber || ''}
-                          onChange={(e) => setEditedData({...editedData, refNumber: e.target.value})}
-                          className="w-48"
-                          placeholder="Reference Number"
-                        />
-                      ) : (
-                        <span>{patient.refNumber || 'Not provided'}</span>
-                      )}
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Start Date:</span>
-                      {isEditing ? (
-                        <Input
-                          value={editedData.startDate || ''}
-                          onChange={(e) => setEditedData({...editedData, startDate: e.target.value})}
-                          className="w-48"
-                          placeholder="MM/DD/YYYY"
-                        />
-                      ) : (
-                        <span>{patient.startDate || 'Not provided'}</span>
-                      )}
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">End Date:</span>
-                      {isEditing ? (
-                        <Input
-                          value={editedData.endDate || ''}
-                          onChange={(e) => setEditedData({...editedData, endDate: e.target.value})}
-                          className="w-48"
-                          placeholder="MM/DD/YYYY"
-                        />
-                      ) : (
-                        <span>{patient.endDate || 'Not provided'}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="flex items-center gap-2 text-gray-600">
                     <FileText className="h-4 w-4" />
                     Notes
                   </Label>
@@ -1238,7 +1177,7 @@ export default function PatientDetail() {
                   </div>
                   <div className="flex justify-between">
                     <span>Group ID:</span>
-                    {isEditing ? (
+                    {isEditingInsurance ? (
                       <Input
                         value={editedData.secondaryGroupId || ''}
                         onChange={(e) => setEditedData({...editedData, secondaryGroupId: e.target.value})}
@@ -1247,6 +1186,72 @@ export default function PatientDetail() {
                     ) : (
                       <span>{patient.secondaryGroupId || 'Not provided'}</span>
                     )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Authorization Information */}
+              <div className="border-t pt-6">
+                <Label className="flex items-center gap-2 text-gray-700 mb-4">
+                  <CheckCircle className="h-4 w-4" />
+                  Authorization Information
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Auth Number:</span>
+                      {isEditingInsurance ? (
+                        <Input
+                          value={editedData.authNumber || ''}
+                          onChange={(e) => setEditedData({...editedData, authNumber: e.target.value})}
+                          className="w-48"
+                          placeholder="Authorization Number"
+                        />
+                      ) : (
+                        <span>{patient.authNumber || 'Not provided'}</span>
+                      )}
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Ref Number:</span>
+                      {isEditingInsurance ? (
+                        <Input
+                          value={editedData.refNumber || ''}
+                          onChange={(e) => setEditedData({...editedData, refNumber: e.target.value})}
+                          className="w-48"
+                          placeholder="Reference Number"
+                        />
+                      ) : (
+                        <span>{patient.refNumber || 'Not provided'}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Start Date:</span>
+                      {isEditingInsurance ? (
+                        <Input
+                          value={editedData.startDate || ''}
+                          onChange={(e) => setEditedData({...editedData, startDate: e.target.value})}
+                          className="w-48"
+                          placeholder="MM/DD/YYYY"
+                        />
+                      ) : (
+                        <span>{patient.startDate || 'Not provided'}</span>
+                      )}
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">End Date:</span>
+                      {isEditingInsurance ? (
+                        <Input
+                          value={editedData.endDate || ''}
+                          onChange={(e) => setEditedData({...editedData, endDate: e.target.value})}
+                          className="w-48"
+                          placeholder="MM/DD/YYYY"
+                        />
+                      ) : (
+                        <span>{patient.endDate || 'Not provided'}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
