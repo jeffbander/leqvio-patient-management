@@ -1543,6 +1543,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.updatedAt = new Date(updates.updatedAt);
       }
       
+      // Helper function to organize notes into sections
+      const organizeNotes = (existingNotes: string, newEntry: string, section: 'NOTES' | 'VOICEMAILS' | 'INSURANCE_UPDATES'): string => {
+        const sections = {
+          NOTES: '=== NOTES ===',
+          VOICEMAILS: '=== VOICEMAILS ===',
+          INSURANCE_UPDATES: '=== INSURANCE & AUTH UPDATES ==='
+        };
+        
+        if (!existingNotes) {
+          return `${sections[section]}\n${newEntry}`;
+        }
+        
+        // Parse existing notes to find sections
+        let notesSection = '';
+        let voicemailsSection = '';
+        let insuranceSection = '';
+        
+        const lines = existingNotes.split('\n');
+        let currentSection = 'NOTES'; // Default section for legacy notes
+        
+        for (const line of lines) {
+          if (line === sections.NOTES) {
+            currentSection = 'NOTES';
+            continue;
+          } else if (line === sections.VOICEMAILS) {
+            currentSection = 'VOICEMAILS';
+            continue;
+          } else if (line === sections.INSURANCE_UPDATES) {
+            currentSection = 'INSURANCE_UPDATES';
+            continue;
+          }
+          
+          if (line.trim()) {
+            if (currentSection === 'NOTES') {
+              notesSection += (notesSection ? '\n' : '') + line;
+            } else if (currentSection === 'VOICEMAILS') {
+              voicemailsSection += (voicemailsSection ? '\n' : '') + line;
+            } else if (currentSection === 'INSURANCE_UPDATES') {
+              insuranceSection += (insuranceSection ? '\n' : '') + line;
+            }
+          }
+        }
+        
+        // Add new entry to appropriate section
+        if (section === 'NOTES') {
+          notesSection += (notesSection ? '\n' : '') + newEntry;
+        } else if (section === 'VOICEMAILS') {
+          voicemailsSection += (voicemailsSection ? '\n' : '') + newEntry;
+        } else if (section === 'INSURANCE_UPDATES') {
+          insuranceSection += (insuranceSection ? '\n' : '') + newEntry;
+        }
+        
+        // Rebuild notes with sections
+        let result = '';
+        if (notesSection) {
+          result += `${sections.NOTES}\n${notesSection}`;
+        }
+        if (voicemailsSection) {
+          result += (result ? '\n\n' : '') + `${sections.VOICEMAILS}\n${voicemailsSection}`;
+        }
+        if (insuranceSection) {
+          result += (result ? '\n\n' : '') + `${sections.INSURANCE_UPDATES}\n${insuranceSection}`;
+        }
+        
+        return result;
+      };
+
       // Check if voicemail is being logged and add to notes
       if (updates.lastVoicemailAt) {
         // Check if this is a new voicemail (different timestamp) or first voicemail
@@ -1553,7 +1620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const timestamp = new Date().toLocaleString();
           const voicemailNote = `[${timestamp}] Voicemail left for patient`;
           const existingNotes = currentPatient.notes || '';
-          updates.notes = existingNotes ? `${existingNotes}\n${voicemailNote}` : voicemailNote;
+          updates.notes = organizeNotes(existingNotes, voicemailNote, 'VOICEMAILS');
         }
       }
 
@@ -1589,7 +1656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (changeNotes.length > 0) {
         const changeNote = `[${changeTimestamp}] Updated: ${changeNotes.join(', ')}`;
         const existingNotes = updates.notes !== undefined ? updates.notes : (currentPatient.notes || '');
-        updates.notes = existingNotes ? `${existingNotes}\n${changeNote}` : changeNote;
+        updates.notes = organizeNotes(existingNotes, changeNote, 'INSURANCE_UPDATES');
       }
       
       const updatedPatient = await storage.updatePatient(patientId, updates);

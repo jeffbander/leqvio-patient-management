@@ -38,6 +38,99 @@ import {
 import { format } from 'date-fns'
 import { EpicInsuranceExtractor } from '@/components/EpicInsuranceExtractor'
 
+// Component to display organized notes with sections
+const OrganizedNotesDisplay = ({ notes }: { notes?: string | null }) => {
+  if (!notes) {
+    return <div className="text-gray-400 italic">No notes</div>
+  }
+
+  // Parse notes into sections
+  const sections = {
+    notes: [] as string[],
+    voicemails: [] as string[],
+    insuranceUpdates: [] as string[]
+  }
+
+  const lines = notes.split('\n')
+  let currentSection = 'notes' // Default section for legacy notes
+
+  for (const line of lines) {
+    if (line === '=== NOTES ===') {
+      currentSection = 'notes'
+      continue
+    } else if (line === '=== VOICEMAILS ===') {
+      currentSection = 'voicemails'
+      continue
+    } else if (line === '=== INSURANCE & AUTH UPDATES ===') {
+      currentSection = 'insuranceUpdates'
+      continue
+    }
+
+    if (line.trim()) {
+      if (currentSection === 'notes') {
+        sections.notes.push(line)
+      } else if (currentSection === 'voicemails') {
+        sections.voicemails.push(line)
+      } else if (currentSection === 'insuranceUpdates') {
+        sections.insuranceUpdates.push(line)
+      }
+    }
+  }
+
+  // If no sections found, treat as legacy unorganized notes
+  const hasOrganizedSections = notes.includes('=== NOTES ===') || notes.includes('=== VOICEMAILS ===') || notes.includes('=== INSURANCE & AUTH UPDATES ===')
+  
+  if (!hasOrganizedSections) {
+    return <div className="whitespace-pre-line">{notes}</div>
+  }
+
+  return (
+    <div className="space-y-4">
+      {sections.notes.length > 0 && (
+        <div>
+          <h4 className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2">
+            <FileText className="h-4 w-4" />
+            Notes
+          </h4>
+          <div className="pl-6 space-y-1">
+            {sections.notes.map((note, idx) => (
+              <div key={idx} className="text-sm text-gray-700 whitespace-pre-line">{note}</div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {sections.voicemails.length > 0 && (
+        <div>
+          <h4 className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2">
+            <Phone className="h-4 w-4" />
+            Voicemails
+          </h4>
+          <div className="pl-6 space-y-1">
+            {sections.voicemails.map((voicemail, idx) => (
+              <div key={idx} className="text-sm text-blue-700 whitespace-pre-line">{voicemail}</div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {sections.insuranceUpdates.length > 0 && (
+        <div>
+          <h4 className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2">
+            <Shield className="h-4 w-4" />
+            Insurance & Auth Updates
+          </h4>
+          <div className="pl-6 space-y-1">
+            {sections.insuranceUpdates.map((update, idx) => (
+              <div key={idx} className="text-sm text-green-700 whitespace-pre-line">{update}</div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface Patient {
   id: number
   firstName: string
@@ -869,8 +962,8 @@ export default function PatientDetail() {
                         placeholder="Patient notes..."
                       />
                     ) : (
-                      <div className="text-sm text-gray-700 whitespace-pre-line min-h-8 p-2 bg-gray-50 rounded border">
-                        {patient.notes || 'No notes'}
+                      <div className="text-sm text-gray-700 min-h-8 p-2 bg-gray-50 rounded border">
+                        <OrganizedNotesDisplay notes={patient.notes} />
                       </div>
                     )}
                   </div>
