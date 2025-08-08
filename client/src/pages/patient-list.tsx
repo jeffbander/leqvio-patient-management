@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { Link } from 'wouter'
 import { Badge } from '@/components/ui/badge'
-import { UserPlus, Search, Eye, FileSpreadsheet, Download, ArrowUpDown, ArrowUp, ArrowDown, Mic, Calendar, Pencil, ChevronRight, Copy } from 'lucide-react'
+import { UserPlus, Search, Eye, FileSpreadsheet, Download, ArrowUpDown, ArrowUp, ArrowDown, Mic, Calendar, Pencil, Copy } from 'lucide-react'
 import { format } from 'date-fns'
 import { queryClient } from '@/lib/queryClient'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -279,18 +279,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
             )}
             <div className="text-sm text-gray-600">DOB: {patient.dateOfBirth}</div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation()
-              window.location.href = `/patient/${patient.id}`
-            }}
-            className="h-6 w-6 p-0 hover:bg-blue-100 text-blue-600 hover:text-blue-800"
-            title="View patient details"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+
         </div>
       </TableCell>
 
