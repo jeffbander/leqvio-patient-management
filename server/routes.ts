@@ -1398,6 +1398,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  // Migrate existing notes to organized format
+  app.post('/api/migrate-notes', async (req, res) => {
+    try {
+      const patients = await storage.getAllPatients();
+      let migratedCount = 0;
+      
+      for (const patient of patients) {
+        if (patient.notes && !patient.notes.includes('=== NOTES ===') && !patient.notes.includes('=== VOICEMAILS ===')) {
+          // Organize existing notes
+          const existingNotes = patient.notes;
+          const lines = existingNotes.split('\n');
+          
+          let notesSection = '';
+          let voicemailsSection = '';
+          let insuranceSection = '';
+          
+          for (const line of lines) {
+            if (line.trim()) {
+              if (line.includes('Voicemail left for patient')) {
+                voicemailsSection += (voicemailsSection ? '\n' : '') + line;
+              } else if (line.includes('Updated:') && (line.includes('Insurance') || line.includes('auth') || line.includes('primary') || line.includes('secondary'))) {
+                insuranceSection += (insuranceSection ? '\n' : '') + line;
+              } else {
+                notesSection += (notesSection ? '\n' : '') + line;
+              }
+            }
+          }
+          
+          // Rebuild organized notes
+          let organizedNotes = '';
+          if (notesSection) {
+            organizedNotes += `=== NOTES ===\n${notesSection}`;
+          }
+          if (voicemailsSection) {
+            organizedNotes += (organizedNotes ? '\n\n' : '') + `=== VOICEMAILS ===\n${voicemailsSection}`;
+          }
+          if (insuranceSection) {
+            organizedNotes += (organizedNotes ? '\n\n' : '') + `=== INSURANCE & AUTH UPDATES ===\n${insuranceSection}`;
+          }
+          
+          if (organizedNotes) {
+            await storage.updatePatient(patient.id, { notes: organizedNotes });
+            migratedCount++;
+          }
+        }
+      }
+      
+      res.json({ message: `Migrated ${migratedCount} patient notes to organized format` });
+    } catch (error) {
+      console.error('Error migrating notes:', error);
+      res.status(500).json({ error: 'Failed to migrate notes' });
+    }
+  });
+
   // Export patients as CSV (MUST be before /:id route)
   app.get('/api/patients/export/csv', async (req, res) => {
     try {
