@@ -1556,6 +1556,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updates.notes = existingNotes ? `${existingNotes}\n${voicemailNote}` : voicemailNote;
         }
       }
+
+      // Check for insurance and authorization changes and log to notes
+      const insuranceFields = [
+        'primaryInsurance', 'primaryPlan', 'primaryInsuranceNumber', 'primaryGroupId',
+        'secondaryInsurance', 'secondaryPlan', 'secondaryInsuranceNumber', 'secondaryGroupId'
+      ];
+      const authFields = ['authNumber', 'refNumber', 'startDate', 'endDate'];
+      
+      const changeNotes: string[] = [];
+      const changeTimestamp = new Date().toLocaleString();
+      
+      // Check insurance field changes
+      insuranceFields.forEach(field => {
+        if (updates[field] !== undefined && updates[field] !== (currentPatient as any)[field]) {
+          const oldValue = (currentPatient as any)[field] || '(empty)';
+          const newValue = updates[field] || '(empty)';
+          changeNotes.push(`${field}: ${oldValue} → ${newValue}`);
+        }
+      });
+      
+      // Check authorization field changes
+      authFields.forEach(field => {
+        if (updates[field] !== undefined && updates[field] !== (currentPatient as any)[field]) {
+          const oldValue = (currentPatient as any)[field] || '(empty)';
+          const newValue = updates[field] || '(empty)';
+          changeNotes.push(`${field}: ${oldValue} → ${newValue}`);
+        }
+      });
+      
+      // Add change notes if any were found
+      if (changeNotes.length > 0) {
+        const changeNote = `[${changeTimestamp}] Updated: ${changeNotes.join(', ')}`;
+        const existingNotes = updates.notes !== undefined ? updates.notes : (currentPatient.notes || '');
+        updates.notes = existingNotes ? `${existingNotes}\n${changeNote}` : changeNote;
+      }
       
       const updatedPatient = await storage.updatePatient(patientId, updates);
       
