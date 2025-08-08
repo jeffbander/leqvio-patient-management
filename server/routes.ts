@@ -1544,11 +1544,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if voicemail is being logged and add to notes
-      if (updates.lastVoicemailAt && !currentPatient.lastVoicemailAt) {
-        const timestamp = new Date().toLocaleString();
-        const voicemailNote = `[${timestamp}] Voicemail left for patient`;
-        const existingNotes = currentPatient.notes || '';
-        updates.notes = existingNotes ? `${existingNotes}\n${voicemailNote}` : voicemailNote;
+      if (updates.lastVoicemailAt) {
+        // Check if this is a new voicemail (different timestamp) or first voicemail
+        const isNewVoicemail = !currentPatient.lastVoicemailAt || 
+          new Date(updates.lastVoicemailAt).getTime() !== new Date(currentPatient.lastVoicemailAt).getTime();
+        
+        if (isNewVoicemail) {
+          const timestamp = new Date().toLocaleString();
+          const voicemailNote = `[${timestamp}] Voicemail left for patient`;
+          const existingNotes = currentPatient.notes || '';
+          updates.notes = existingNotes ? `${existingNotes}\n${voicemailNote}` : voicemailNote;
+        }
       }
       
       const updatedPatient = await storage.updatePatient(patientId, updates);
