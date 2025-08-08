@@ -33,10 +33,62 @@ import {
   Trash2,
   X,
   Plus,
-  Copy
+  Copy,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { EpicInsuranceExtractor } from '@/components/EpicInsuranceExtractor'
+
+// Component for expandable text fields
+const ExpandableText = ({ 
+  text, 
+  fieldKey, 
+  maxLength = 200, 
+  expandedFields, 
+  setExpandedFields, 
+  className = "text-sm" 
+}: { 
+  text: string, 
+  fieldKey: string, 
+  maxLength?: number, 
+  expandedFields: {[key: string]: boolean}, 
+  setExpandedFields: (fields: {[key: string]: boolean}) => void,
+  className?: string 
+}) => {
+  const isExpanded = expandedFields[fieldKey]
+  const shouldTruncate = text.length > maxLength
+
+  const toggleExpanded = () => {
+    setExpandedFields({
+      ...expandedFields,
+      [fieldKey]: !isExpanded
+    })
+  }
+
+  if (!shouldTruncate) {
+    return <div className={`${className} whitespace-pre-wrap`}>{text}</div>
+  }
+
+  return (
+    <div className="relative">
+      <div className={`${className} whitespace-pre-wrap`}>
+        {isExpanded ? text : `${text.substring(0, maxLength)}...`}
+      </div>
+      <button
+        onClick={toggleExpanded}
+        className="absolute bottom-0 right-0 bg-white/90 hover:bg-white border rounded-full p-1 shadow-sm transition-colors"
+        title={isExpanded ? "Collapse" : "Expand"}
+      >
+        {isExpanded ? (
+          <ChevronUp className="h-4 w-4 text-gray-600" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-gray-600" />
+        )}
+      </button>
+    </div>
+  )
+}
 
 // Component to display organized notes with sections
 const OrganizedNotesDisplay = ({ notes }: { notes?: string | null }) => {
@@ -204,6 +256,11 @@ export default function PatientDetail() {
   const [appointmentForm, setAppointmentForm] = useState({
     appointmentDate: '',
     doseNumber: 1
+  })
+  const [expandedFields, setExpandedFields] = useState<{[key: string]: boolean}>({
+    furtherAnalysis: false,
+    letterOfMedicalNecessity: false,
+    approvalLikelihood: false
   })
 
   // Helper function to parse AIGENTS response
@@ -1645,7 +1702,14 @@ export default function PatientDetail() {
                             {/* Approval Likelihood */}
                             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                               <h3 className="font-semibold text-blue-800 mb-2">Approval Likelihood</h3>
-                              <p className="text-blue-700">{latestAnalysis.approvalLikelihood}</p>
+                              <ExpandableText
+                                text={latestAnalysis.approvalLikelihood}
+                                fieldKey="approvalLikelihood"
+                                maxLength={150}
+                                expandedFields={expandedFields}
+                                setExpandedFields={setExpandedFields}
+                                className="text-blue-700"
+                              />
                             </div>
                             
                             {/* Criteria Assessment */}
@@ -1710,9 +1774,14 @@ export default function PatientDetail() {
                           Further Analysis
                         </h3>
                         <div className="bg-blue-50 p-4 rounded-lg">
-                          <p className="text-sm text-blue-800 whitespace-pre-wrap">
-                            {furtherAnalysis}
-                          </p>
+                          <ExpandableText
+                            text={furtherAnalysis}
+                            fieldKey="furtherAnalysis"
+                            maxLength={300}
+                            expandedFields={expandedFields}
+                            setExpandedFields={setExpandedFields}
+                            className="text-sm text-blue-800"
+                          />
                         </div>
                       </div>
                     )}
@@ -1725,9 +1794,14 @@ export default function PatientDetail() {
                           Letter of Medical Necessity
                         </h3>
                         <div className="bg-green-50 p-4 rounded-lg">
-                          <p className="text-sm text-green-800 whitespace-pre-wrap">
-                            {letterOfMedicalNecessity}
-                          </p>
+                          <ExpandableText
+                            text={letterOfMedicalNecessity}
+                            fieldKey="letterOfMedicalNecessity"
+                            maxLength={400}
+                            expandedFields={expandedFields}
+                            setExpandedFields={setExpandedFields}
+                            className="text-sm text-green-800"
+                          />
                         </div>
                       </div>
                     )}
@@ -1751,6 +1825,23 @@ export default function PatientDetail() {
                                 {new Date(log.timestamp || log.createdat).toLocaleString()}
                               </span>
                             </div>
+                            {log.agentresponse && log.agentresponse !== 'No response content' && log.agentresponse.length > 100 && (
+                              <div className="mt-3">
+                                <ExpandableText
+                                  text={log.agentresponse}
+                                  fieldKey={`analysis-history-${log.id}`}
+                                  maxLength={200}
+                                  expandedFields={expandedFields}
+                                  setExpandedFields={setExpandedFields}
+                                  className="text-sm text-gray-700"
+                                />
+                              </div>
+                            )}
+                            {log.agentresponse && log.agentresponse !== 'No response content' && log.agentresponse.length <= 100 && (
+                              <div className="mt-2 text-sm text-gray-700">
+                                {log.agentresponse}
+                              </div>
+                            )}
                             {log.agentresponse && log.agentresponse !== 'No response content' && (
                               <div className="mt-2">
                                 <button
