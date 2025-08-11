@@ -1342,6 +1342,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test basic cookie functionality
+  app.get('/api/debug/cookie-test', (req: any, res) => {
+    res.cookie('testCookie', 'testValue', { 
+      httpOnly: false, // Allow JS access for testing
+      secure: false,
+      sameSite: 'lax'
+    });
+    res.json({ 
+      message: 'Cookie set',
+      receivedCookies: req.headers.cookie,
+      testCookie: req.cookies?.testCookie 
+    });
+  });
+
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {
     try {

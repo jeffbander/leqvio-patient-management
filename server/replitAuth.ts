@@ -43,6 +43,7 @@ export function getSession() {
       secure: false, // Force false for development debugging
       maxAge: sessionTtl,
       sameSite: 'lax' as const,
+      domain: undefined, // Let browser handle domain
     },
   };
   
@@ -143,7 +144,17 @@ export async function setupAuth(app: Express) {
         console.log('User successfully logged in');
         console.log('Session after login:', req.session);
         console.log('isAuthenticated after login:', req.isAuthenticated());
-        return res.redirect("/");
+        console.log('Session ID after login:', req.sessionID);
+        
+        // Force session save before redirect
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.log('Session save error:', saveErr);
+            return res.redirect("/api/login");
+          }
+          console.log('Session saved successfully, redirecting to /');
+          return res.redirect("/");
+        });
       });
     })(req, res, next);
   });
