@@ -1,46 +1,14 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, varchar, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
-import { sql } from 'drizzle-orm';
 
-// Session storage table for Replit Auth
-export const sessions = pgTable(
-  "sessions",
-  {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
-  },
-  (table) => [index("IDX_session_expire").on(table.expire)],
-);
-
-// Organizations table
-export const organizations = pgTable("organizations", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-// Users table with organization support  
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Organization members table for many-to-many relationship
-export const organizationMembers = pgTable("organization_members", {
   id: serial("id").primaryKey(),
-  organizationId: integer("organization_id").notNull().references(() => organizations.id),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  role: text("role").notNull().default("member"), // 'admin', 'member'
+  email: text("email").notNull().unique(),
+  name: text("name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastLoginAt: timestamp("last_login_at"),
 });
 
 export const loginTokens = pgTable("login_tokens", {
@@ -100,9 +68,9 @@ export const automationLogsRelations = relations(automationLogs, ({ one }) => ({
 export const customChainsRelations = relations(customChains, ({ one }) => ({}));
 export const apiAnalyticsRelations = relations(apiAnalytics, ({ one }) => ({}));
 
-export const upsertUserSchema = createInsertSchema(users).omit({
-  createdAt: true,
-  updatedAt: true,
+export const insertUserSchema = createInsertSchema(users).pick({
+  email: true,
+  name: true,
 });
 
 export const insertLoginTokenSchema = createInsertSchema(loginTokens).omit({
@@ -127,12 +95,8 @@ export const insertApiAnalyticsSchema = createInsertSchema(apiAnalytics).omit({
   timestamp: true,
 });
 
-export type UpsertUser = z.infer<typeof upsertUserSchema>;
+export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
-export type Organization = typeof organizations.$inferSelect;
-export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
-export type OrganizationMember = typeof organizationMembers.$inferSelect;
-export type InsertOrganizationMember = z.infer<typeof insertOrganizationMemberSchema>;
 export type LoginToken = typeof loginTokens.$inferSelect;
 export type InsertLoginToken = z.infer<typeof insertLoginTokenSchema>;
 export type AutomationLog = typeof automationLogs.$inferSelect;
@@ -146,7 +110,6 @@ export type InsertApiAnalytics = z.infer<typeof insertApiAnalyticsSchema>;
 
 export const patients = pgTable("patients", {
   id: serial("id").primaryKey(),
-  organizationId: integer("organization_id").notNull().references(() => organizations.id),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   dateOfBirth: text("date_of_birth").notNull(),
@@ -230,31 +193,7 @@ export const appointments = pgTable("appointments", {
 });
 
 // Relations
-export const organizationsRelations = relations(organizations, ({ many }) => ({
-  members: many(organizationMembers),
-  patients: many(patients),
-}));
-
-export const usersRelations = relations(users, ({ many }) => ({
-  organizations: many(organizationMembers),
-}));
-
-export const organizationMembersRelations = relations(organizationMembers, ({ one }) => ({
-  organization: one(organizations, {
-    fields: [organizationMembers.organizationId],
-    references: [organizations.id],
-  }),
-  user: one(users, {
-    fields: [organizationMembers.userId],
-    references: [users.id],
-  }),
-}));
-
-export const patientsRelations = relations(patients, ({ many, one }) => ({
-  organization: one(organizations, {
-    fields: [patients.organizationId],
-    references: [organizations.id],
-  }),
+export const patientsRelations = relations(patients, ({ many }) => ({
   documents: many(patientDocuments),
   eSignatureForms: many(eSignatureForms),
   appointments: many(appointments),
@@ -282,17 +221,6 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
 }));
 
 // Insert schemas for new tables
-export const insertOrganizationSchema = createInsertSchema(organizations).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertOrganizationMemberSchema = createInsertSchema(organizationMembers).omit({
-  id: true,
-  createdAt: true,
-});
-
 export const insertPatientSchema = createInsertSchema(patients).omit({
   id: true,
   createdAt: true,

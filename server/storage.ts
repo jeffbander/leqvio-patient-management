@@ -1,7 +1,5 @@
 import { 
   users, 
-  organizations,
-  organizationMembers,
   loginTokens,
   automationLogs, 
   customChains,
@@ -11,11 +9,7 @@ import {
   eSignatureForms,
   appointments,
   type User, 
-  type UpsertUser,
-  type Organization,
-  type InsertOrganization,
-  type OrganizationMember,
-  type InsertOrganizationMember,
+  type InsertUser,
   type LoginToken,
   type InsertLoginToken,
   type AutomationLog,
@@ -38,17 +32,10 @@ import { eq, desc, gte } from "drizzle-orm";
 
 export interface IStorage {
   // User management
-  getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
-  
-  // Organization management
-  createOrganization(organization: InsertOrganization): Promise<Organization>;
-  getOrganization(id: number): Promise<Organization | undefined>;
-  getUserOrganizations(userId: string): Promise<(Organization & { role: string })[]>;
-  addUserToOrganization(userId: string, organizationId: number, role: string): Promise<OrganizationMember>;
-  removeUserFromOrganization(userId: string, organizationId: number): Promise<void>;
-  getOrganizationMembers(organizationId: number): Promise<(OrganizationMember & { user: User })[]>;
-  updateMemberRole(userId: string, organizationId: number, role: string): Promise<OrganizationMember | undefined>;
+  getUser(id: number): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUserLastLogin(id: number): Promise<void>;
   
   // Login tokens
   createLoginToken(token: InsertLoginToken): Promise<LoginToken>;
@@ -80,7 +67,7 @@ export interface IStorage {
   // Patient Management
   createPatient(patient: InsertPatient): Promise<Patient>;
   getPatient(id: number): Promise<Patient | undefined>;
-  getOrganizationPatients(organizationId: number): Promise<Patient[]>;
+  getAllPatients(): Promise<Patient[]>;
   updatePatient(id: number, patient: Partial<InsertPatient>): Promise<Patient | undefined>;
   updatePatientStatus(id: number, status: string): Promise<Patient | undefined>;
   
@@ -102,99 +89,29 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getUser(id: string): Promise<User | undefined> {
+  async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    return user || undefined;
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
+      .values(insertUser)
       .returning();
     return user;
   }
 
-  async createOrganization(organization: InsertOrganization): Promise<Organization> {
-    const [newOrg] = await db
-      .insert(organizations)
-      .values(organization)
-      .returning();
-    return newOrg;
-  }
-
-  async getOrganization(id: number): Promise<Organization | undefined> {
-    const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
-    return org;
-  }
-
-  async getUserOrganizations(userId: string): Promise<(Organization & { role: string })[]> {
-    const userOrgs = await db
-      .select({
-        id: organizations.id,
-        name: organizations.name,
-        createdAt: organizations.createdAt,
-        updatedAt: organizations.updatedAt,
-        role: organizationMembers.role,
-      })
-      .from(organizationMembers)
-      .innerJoin(organizations, eq(organizationMembers.organizationId, organizations.id))
-      .where(eq(organizationMembers.userId, userId));
-    
-    return userOrgs;
-  }
-
-  async addUserToOrganization(userId: string, organizationId: number, role: string): Promise<OrganizationMember> {
-    const [member] = await db
-      .insert(organizationMembers)
-      .values({ userId, organizationId, role })
-      .returning();
-    return member;
-  }
-
-  async removeUserFromOrganization(userId: string, organizationId: number): Promise<void> {
+  async updateUserLastLogin(id: number): Promise<void> {
     await db
-      .delete(organizationMembers)
-      .where(
-        eq(organizationMembers.userId, userId) && 
-        eq(organizationMembers.organizationId, organizationId)
-      );
-  }
-
-  async getOrganizationMembers(organizationId: number): Promise<(OrganizationMember & { user: User })[]> {
-    const members = await db
-      .select({
-        id: organizationMembers.id,
-        organizationId: organizationMembers.organizationId,
-        userId: organizationMembers.userId,
-        role: organizationMembers.role,
-        createdAt: organizationMembers.createdAt,
-        user: users,
-      })
-      .from(organizationMembers)
-      .innerJoin(users, eq(organizationMembers.userId, users.id))
-      .where(eq(organizationMembers.organizationId, organizationId));
-    
-    return members;
-  }
-
-  async updateMemberRole(userId: string, organizationId: number, role: string): Promise<OrganizationMember | undefined> {
-    const [member] = await db
-      .update(organizationMembers)
-      .set({ role })
-      .where(
-        eq(organizationMembers.userId, userId) && 
-        eq(organizationMembers.organizationId, organizationId)
-      )
-      .returning();
-    return member;
+      .update(users)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(users.id, id));
   }
 
   async createLoginToken(token: InsertLoginToken): Promise<LoginToken> {
@@ -554,14 +471,8 @@ export class DatabaseStorage implements IStorage {
     return patient;
   }
 
-  async getOrganizationPatients(organizationId: number): Promise<Patient[]> {
-    const orgPatients = await db
-      .select()
-      .from(patients)
-      .where(eq(patients.organizationId, organizationId))
-      .orderBy(desc(patients.createdAt));
-    
-    return orgPatients;
+  async getAllPatients(): Promise<Patient[]> {
+    return db.select().from(patients).orderBy(desc(patients.createdAt));
   }
 
   async updatePatient(id: number, patient: Partial<InsertPatient>): Promise<Patient | undefined> {

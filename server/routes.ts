@@ -4,15 +4,12 @@ import multer from "multer";
 import session from "express-session";
 import fetch from "node-fetch";
 import { storage } from "./storage";
-import { insertAutomationLogSchema, insertCustomChainSchema, insertOrganizationSchema, insertOrganizationMemberSchema } from "@shared/schema";
+import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
 import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio, extractPatientInfoFromScreenshot } from "./openai-service";
 import { generateLEQVIOPDF } from "./pdf-generator";
 import { googleSheetsService } from "./google-sheets-service";
 import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
-import { setupSimpleAuth } from "./simple-auth";
-import crypto from 'crypto';
-// Removed isAuthenticated import - using direct auth checks instead
 // Using the openai instance directly instead of a service object
 
 // Helper function to extract insurance information from Epic text using OpenAI
@@ -245,10 +242,8 @@ const analyticsMiddleware = (req: any, res: any, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupSimpleAuth(app);
-  // Skip analytics middleware for testing to avoid errors
-  // app.use(analyticsMiddleware);
+  // Apply analytics middleware to all routes
+  app.use(analyticsMiddleware);
   
   // Store debug requests in memory for retrieval (moved to top)
   let debugRequests: any[] = [];
@@ -350,7 +345,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Session is configured in setupAuth() - don't duplicate here
+  // Configure session
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'fallback-secret-for-dev',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // Set to true in production with HTTPS
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  }));
 
   // Configure multer for multipart form data
   const upload = multer();
@@ -559,121 +563,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Removed duplicate auth endpoint - using the simplified version below
+  app.get("/api/auth/user", (req, res) => {
+    const userId = (req.session as any)?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    storage.getUser(userId)
+      .then(user => {
+        if (user) {
+          res.json(user);
+        } else {
+          res.status(404).json({ error: "User not found" });
+        }
+      })
+      .catch(error => {
+        console.error("Get user error:", error);
+        res.status(500).json({ error: "Internal server error" });
+      });
+  });
 
   app.post("/api/auth/logout", (req, res) => {
-    console.log('=== LOGOUT ENDPOINT CALLED ===');
     req.session.destroy((err) => {
       if (err) {
         console.error("Logout error:", err);
         return res.status(500).json({ error: "Logout failed" });
       }
-      console.log('Session destroyed successfully');
       res.json({ message: "Logged out successfully" });
     });
-  });
-
-  // Also handle GET requests for logout (for backwards compatibility)
-  app.get("/api/logout", (req, res) => {
-    console.log('=== LOGOUT GET ENDPOINT CALLED ===');
-    req.session.destroy((err) => {
-      if (err) {
-        console.error("Logout error:", err);
-        return res.redirect('/');
-      }
-      console.log('Session destroyed successfully');
-      res.redirect('/');
-    });
-  });
-
-  // Magic link auth endpoint
-  app.post('/api/auth/magic-link', async (req, res) => {
-    try {
-      const { email } = req.body;
-      
-      if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
-      }
-      
-      if (email !== 'notifications@providerloop.com') {
-        return res.status(403).json({ error: 'Access restricted' });
-      }
-      
-      // Generate magic link token
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-      
-      // Store token in database
-      await storage.createLoginToken({
-        token,
-        email,
-        expiresAt,
-        used: false
-      });
-      
-      // In a real app, you'd send an email here
-      // For now, just return success with the token for testing
-      const magicLink = `http://localhost:5000/api/auth/verify?token=${token}`;
-      console.log(`Magic link for ${email}: ${magicLink}`);
-      
-      res.json({ 
-        message: 'Magic link sent',
-        // Include token in response for testing (remove in production)
-        magicLink
-      });
-    } catch (error) {
-      console.error('Magic link error:', error);
-      res.status(500).json({ error: 'Failed to send magic link' });
-    }
-  });
-
-  // Magic link verification endpoint
-  app.get('/api/auth/verify', async (req, res) => {
-    try {
-      const { token } = req.query;
-      
-      if (!token) {
-        return res.redirect('/?error=invalid-token');
-      }
-      
-      // Get and validate token
-      const loginToken = await storage.getLoginToken(token as string);
-      
-      if (!loginToken) {
-        return res.redirect('/?error=invalid-token');
-      }
-      
-      if (loginToken.used) {
-        return res.redirect('/?error=token-used');
-      }
-      
-      if (loginToken.expiresAt < new Date()) {
-        return res.redirect('/?error=token-expired');
-      }
-      
-      // Mark token as used
-      await storage.markTokenAsUsed(token as string);
-      
-      // Create or get user
-      const userId = `user-${Date.now()}`;
-      const user = await storage.upsertUser({
-        id: userId,
-        email: loginToken.email,
-        firstName: 'User',
-        lastName: '',
-        profileImageUrl: null
-      });
-      
-      // Set session
-      (req.session as any).userId = user.id;
-      
-      console.log(`User ${loginToken.email} authenticated successfully`);
-      res.redirect('/dashboard');
-      
-    } catch (error) {
-      console.error('Magic link verification error:', error);
-      res.redirect('/?error=server-error');
-    }
   });
 
   // Automation logs endpoints
@@ -1311,29 +1228,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Patient Management Routes
   
-  // Create a new patient (protected route)
-  app.post('/api/patients', async (req: any, res) => {
-    // Skip auth check for testing
+  // Create a new patient
+  app.post('/api/patients', async (req, res) => {
     try {
       const patientData = req.body;
-      const { signatureData, recipientEmail, organizationId, ...patientInfo } = patientData;
-      const userId = req.user.claims.sub;
+      const { signatureData, recipientEmail, ...patientInfo } = patientData;
       
-      if (!organizationId) {
-        return res.status(400).json({ error: 'Organization ID required' });
-      }
-      
-      // Check if user is member of this organization
-      const userOrgs = await storage.getUserOrganizations(userId);
-      if (!userOrgs.find(org => org.id === parseInt(organizationId))) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-      
-      // Create patient with organization ID
-      const newPatient = await storage.createPatient({
-        ...patientInfo,
-        organizationId: parseInt(organizationId)
-      });
+      // Create patient
+      const newPatient = await storage.createPatient(patientInfo);
       
       // If signature data provided, create e-signature form and send PDF
       if (signatureData && recipientEmail) {
@@ -1400,189 +1302,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Debug endpoint to check auth status
-  app.get('/api/debug/session', (req: any, res) => {
-    console.log('=== SESSION DEBUG ===');
-    console.log('Session ID:', req.sessionID);
-    console.log('Session exists:', !!req.session);
-    console.log('Session data:', req.session);
-    console.log('Cookies:', req.headers.cookie);
-    console.log('isAuthenticated():', req.isAuthenticated ? req.isAuthenticated() : 'function not available');
-    console.log('req.user exists:', !!req.user);
-    console.log('req.user data:', req.user);
-    console.log('=====================');
-    
-    res.json({
-      sessionExists: !!req.session,
-      sessionId: req.sessionID,
-      cookies: req.headers.cookie,
-      isAuthenticated: req.isAuthenticated ? req.isAuthenticated() : false,
-      userExists: !!req.user,
-      user: req.user
-    });
-  });
-
-  // Test endpoint to set and read session
-  app.get('/api/debug/session-test', (req: any, res) => {
-    if (!req.session.testData) {
-      req.session.testData = { timestamp: Date.now(), test: 'session working' };
-      res.json({ message: 'Session data set', sessionId: req.sessionID });
-    } else {
-      res.json({ message: 'Session data found', data: req.session.testData, sessionId: req.sessionID });
-    }
-  });
-
-  // Test basic cookie functionality
-  app.get('/api/debug/cookie-test', (req: any, res) => {
-    res.cookie('testCookie', 'testValue', { 
-      httpOnly: false, // Allow JS access for testing
-      secure: false,
-      sameSite: 'lax'
-    });
-    res.json({ 
-      message: 'Cookie set',
-      receivedCookies: req.headers.cookie,
-      testCookie: req.cookies?.testCookie 
-    });
-  });
-
-  // Auth routes with magic link authentication
-  app.get('/api/auth/user', async (req: any, res) => {
+  // Get all patients
+  app.get('/api/patients', async (req, res) => {
     try {
-      console.log('=== AUTH ENDPOINT CALLED ===');
-      
-      // Check session for authenticated user
-      const userId = (req.session as any)?.userId;
-      console.log('Session userId:', userId);
-      
-      if (!userId) {
-        console.log('No authenticated user in session');
-        return res.status(401).json({ error: "Not authenticated" });
-      }
-      
-      // Get user from database
-      const dbUser = await storage.getUser(userId);
-      if (!dbUser) {
-        console.log('User not found in database:', userId);
-        return res.status(401).json({ error: "User not found" });
-      }
-      
-      const userOrganizations = await storage.getUserOrganizations(userId);
-      console.log('User organizations:', userOrganizations.length);
-      
-      console.log('Returning authenticated user:', dbUser.email);
-      res.json({ ...dbUser, organizations: userOrganizations });
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
-
-  // Organization routes
-  app.post('/api/organizations', async (req: any, res) => {
-    // Simple auth check
-    const simpleAuthModule = require('./simple-auth');
-    const activeUser = simpleAuthModule.SimpleAuth.getActiveUser();
-    if (!activeUser) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-    req.user = activeUser;
-    try {
-      const { name } = req.body;
-      const userId = req.user.claims.sub;
-      
-      // Create organization
-      const organization = await storage.createOrganization({ name });
-      
-      // Add current user as admin
-      await storage.addUserToOrganization(userId, organization.id, 'admin');
-      
-      res.json(organization);
-    } catch (error) {
-      console.error('Error creating organization:', error);
-      res.status(500).json({ error: 'Failed to create organization' });
-    }
-  });
-
-  app.get('/api/organizations/:id/members', async (req: any, res) => {
-    // Skip auth check for testing
-    try {
-      const organizationId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
-      
-      // Check if user is member of this organization
-      const userOrgs = await storage.getUserOrganizations(userId);
-      if (!userOrgs.find(org => org.id === organizationId)) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-      
-      const members = await storage.getOrganizationMembers(organizationId);
-      res.json(members);
-    } catch (error) {
-      console.error('Error fetching organization members:', error);
-      res.status(500).json({ error: 'Failed to fetch members' });
-    }
-  });
-
-  app.post('/api/organizations/:id/members', async (req: any, res) => {
-    // Skip auth check for testing
-    try {
-      const organizationId = parseInt(req.params.id);
-      const { email, role = 'member' } = req.body;
-      const userId = req.user.claims.sub;
-      
-      // Check if user is admin of this organization
-      const userOrgs = await storage.getUserOrganizations(userId);
-      const userRole = userOrgs.find(org => org.id === organizationId)?.role;
-      if (userRole !== 'admin') {
-        return res.status(403).json({ error: 'Admin access required' });
-      }
-      
-      // For now, just return success - in production you'd send invites
-      res.json({ success: true, message: 'Invite sent' });
-    } catch (error) {
-      console.error('Error inviting member:', error);
-      res.status(500).json({ error: 'Failed to invite member' });
-    }
-  });
-
-  // Get organization patients (simplified for testing)
-  app.get('/api/patients', async (req: any, res) => {
-    try {
-      console.log('=== PATIENTS ENDPOINT CALLED ===');
-      
-      // For now, return empty array to get the app working
-      const patients = [];
+      const patients = await storage.getAllPatients();
       res.json(patients);
     } catch (error) {
       console.error('Error fetching patients:', error);
       res.status(500).json({ error: 'Failed to fetch patients' });
-    }
-  });
-
-  // Initialize organization and assign existing patients
-  app.post('/api/initialize-organization', async (req: any, res) => {
-    // Skip auth check for testing
-    try {
-      const userId = req.user.claims.sub;
-      const { name } = req.body;
-      
-      if (!name) {
-        return res.status(400).json({ error: 'Organization name required' });
-      }
-      
-      // Create organization and add user as admin
-      const organization = await storage.createOrganization({ name });
-      await storage.addUserToOrganization(userId, organization.id, 'admin');
-      
-      res.json({ 
-        success: true, 
-        message: `${name} organization created successfully`,
-        organization 
-      });
-    } catch (error) {
-      console.error('Error creating organization:', error);
-      res.status(500).json({ error: 'Failed to create organization' });
     }
   });
 
