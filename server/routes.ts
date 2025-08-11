@@ -11,6 +11,7 @@ import { generateLEQVIOPDF } from "./pdf-generator";
 import { googleSheetsService } from "./google-sheets-service";
 import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
 import { setupSimpleAuth } from "./simple-auth";
+import crypto from 'crypto';
 // Removed isAuthenticated import - using direct auth checks instead
 // Using the openai instance directly instead of a service object
 
@@ -583,6 +584,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Session destroyed successfully');
       res.redirect('/');
     });
+  });
+
+  // Magic link auth endpoint
+  app.post('/api/auth/magic-link', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+      }
+      
+      if (email !== 'notifications@providerloop.com') {
+        return res.status(403).json({ error: 'Access restricted' });
+      }
+      
+      // Generate magic link token
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      
+      // Store token in database
+      await storage.createLoginToken({
+        token,
+        email,
+        expiresAt,
+        used: false
+      });
+      
+      // In a real app, you'd send an email here
+      // For now, just return success with the token for testing
+      const magicLink = `http://localhost:5000/api/auth/verify?token=${token}`;
+      console.log(`Magic link for ${email}: ${magicLink}`);
+      
+      res.json({ 
+        message: 'Magic link sent',
+        // Include token in response for testing (remove in production)
+        magicLink
+      });
+    } catch (error) {
+      console.error('Magic link error:', error);
+      res.status(500).json({ error: 'Failed to send magic link' });
+    }
+  });
+
+  // Magic link verification endpoint
+  app.get('/api/auth/verify', async (req, res) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token) {
+        return res.redirect('/?error=invalid-token');
+      }
+      
+      // Get and validate token
+      const loginToken = await storage.getLoginToken(token as string);
+      
+      if (!loginToken) {
+        return res.redirect('/?error=invalid-token');
+      }
+      
+      if (loginToken.used) {
+        return res.redirect('/?error=token-used');
+      }
+      
+      if (loginToken.expiresAt < new Date()) {
+        return res.redirect('/?error=token-expired');
+      }
+      
+      // Mark token as used
+      await storage.markTokenAsUsed(token as string);
+      
+      // Create or get user
+      const userId = `user-${Date.now()}`;
+      const user = await storage.upsertUser({
+        id: userId,
+        email: loginToken.email,
+        firstName: 'User',
+        lastName: '',
+        profileImageUrl: null
+      });
+      
+      // Set session
+      (req.session as any).userId = user.id;
+      
+      console.log(`User ${loginToken.email} authenticated successfully`);
+      res.redirect('/dashboard');
+      
+    } catch (error) {
+      console.error('Magic link verification error:', error);
+      res.redirect('/?error=server-error');
+    }
   });
 
   // Automation logs endpoints

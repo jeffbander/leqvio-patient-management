@@ -36,15 +36,23 @@ export default function Landing() {
     setIsLoading(true);
     
     try {
-      await apiRequest('/api/auth/magic-link', {
+      const response = await fetch('/api/auth/magic-link', {
         method: 'POST',
         body: JSON.stringify({ email }),
         headers: { 'Content-Type': 'application/json' }
       });
       
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send magic link');
+      }
+      
       toast({
-        title: "Magic Link Sent",
-        description: "Check your email for the sign-in link",
+        title: "Magic Link Generated",
+        description: `Click this link to sign in: ${result.magicLink}`,
+        variant: "default",
+        duration: 10000, // Show for 10 seconds
       });
     } catch (error) {
       toast({
