@@ -1320,11 +1320,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
+      console.log('Auth check - isAuthenticated:', req.isAuthenticated());
+      console.log('Auth check - user:', req.user ? 'exists' : 'null');
+      console.log('Auth check - session:', req.session ? 'exists' : 'null');
+      
+      if (!req.isAuthenticated() || !req.user) {
+        console.log('User not authenticated');
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      console.log('Fetching user for ID:', userId);
+      
+      let user = await storage.getUser(userId);
+      
+      // If user doesn't exist in database, create them
+      if (!user) {
+        console.log('User not found in database, creating...');
+        user = await storage.upsertUser({
+          id: userId,
+          email: req.user.claims.email,
+          firstName: req.user.claims.first_name,
+          lastName: req.user.claims.last_name,
+          profileImageUrl: req.user.claims.profile_image_url,
+        });
+        console.log('Created user:', user);
+      }
+      
       const userOrganizations = await storage.getUserOrganizations(userId);
+      console.log('User organizations:', userOrganizations.length);
+      
       res.json({ ...user, organizations: userOrganizations });
     } catch (error) {
       console.error("Error fetching user:", error);

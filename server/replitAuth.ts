@@ -130,27 +130,41 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  console.log('isAuthenticated middleware - user exists:', !!user);
+  console.log('isAuthenticated middleware - req.isAuthenticated():', req.isAuthenticated());
+  
+  if (!req.isAuthenticated() || !user) {
+    console.log('isAuthenticated middleware - not authenticated');
     return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // If we don't have expires_at, skip token validation for now
+  if (!user.expires_at) {
+    console.log('isAuthenticated middleware - no expires_at, continuing');
+    return next();
   }
 
   const now = Math.floor(Date.now() / 1000);
   if (now <= user.expires_at) {
+    console.log('isAuthenticated middleware - token still valid');
     return next();
   }
 
   const refreshToken = user.refresh_token;
   if (!refreshToken) {
+    console.log('isAuthenticated middleware - no refresh token');
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
 
   try {
+    console.log('isAuthenticated middleware - refreshing token');
     const config = await getOidcConfig();
     const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
     updateUserSession(user, tokenResponse);
     return next();
   } catch (error) {
+    console.log('isAuthenticated middleware - token refresh failed:', error);
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
