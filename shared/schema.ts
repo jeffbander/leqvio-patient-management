@@ -110,6 +110,7 @@ export type InsertApiAnalytics = z.infer<typeof insertApiAnalyticsSchema>;
 
 export const patients = pgTable("patients", {
   id: serial("id").primaryKey(),
+  organizationId: integer("organization_id"),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   dateOfBirth: text("date_of_birth").notNull(),
@@ -223,6 +224,7 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
 // Insert schemas for new tables
 export const insertPatientSchema = createInsertSchema(patients).omit({
   id: true,
+  organizationId: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
