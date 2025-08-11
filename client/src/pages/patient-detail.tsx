@@ -956,8 +956,6 @@ export default function PatientDetail() {
                           <SelectContent>
                             <SelectItem value="Mount Sinai West">Mount Sinai West</SelectItem>
                             <SelectItem value="Mount Sinai East">Mount Sinai East</SelectItem>
-                            <SelectItem value="Mount Sinai Brooklyn">Mount Sinai Brooklyn</SelectItem>
-                            <SelectItem value="Mount Sinai Queens">Mount Sinai Queens</SelectItem>
                             <SelectItem value="Mount Sinai Morningside">Mount Sinai Morningside</SelectItem>
                           </SelectContent>
                         </Select>

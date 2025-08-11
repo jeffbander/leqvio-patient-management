@@ -353,8 +353,6 @@ export default function ESignatureForm() {
                 >
                   <option value="Mount Sinai West">Mount Sinai West</option>
                   <option value="Mount Sinai East">Mount Sinai East</option>
-                  <option value="Mount Sinai Brooklyn">Mount Sinai Brooklyn</option>
-                  <option value="Mount Sinai Queens">Mount Sinai Queens</option>
                   <option value="Mount Sinai Morningside">Mount Sinai Morningside</option>
                 </select>
               </div>

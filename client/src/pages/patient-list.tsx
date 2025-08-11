@@ -992,11 +992,9 @@ export default function PatientList() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Campuses</SelectItem>
-              <SelectItem value="Mount Sinai West">Mount Sinai West</SelectItem>
-              <SelectItem value="Mount Sinai East">Mount Sinai East</SelectItem>
-              <SelectItem value="Mount Sinai Brooklyn">Mount Sinai Brooklyn</SelectItem>
-              <SelectItem value="Mount Sinai Queens">Mount Sinai Queens</SelectItem>
-              <SelectItem value="Mount Sinai Morningside">Mount Sinai Morningside</SelectItem>
+              <SelectItem value="Mount Sinai West">West</SelectItem>
+              <SelectItem value="Mount Sinai East">East</SelectItem>
+              <SelectItem value="Mount Sinai Morningside">Morningside</SelectItem>
             </SelectContent>
           </Select>
         </div>

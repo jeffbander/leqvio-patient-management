@@ -26,7 +26,7 @@ Providerloop Chains is a comprehensive patient management system with integrated
   - "=== NOTES ===" for general patient notes (gray text)
   - "=== VOICEMAILS ===" for voicemail logs (blue text)  
   - "=== INSURANCE & AUTH UPDATES ===" for insurance/authorization change logs (green text)
-- Campus field integration: All patients now have campus location tracking with dropdown selection (Mount Sinai West/East/Brooklyn/Queens/Morningside), defaults to "Mount Sinai West", editable in patient detail view and selectable in new patient e-signature form
+- Campus field integration: All patients now have campus location tracking with dropdown selection (Mount Sinai West/East/Morningside), defaults to "Mount Sinai West", editable in patient detail view and selectable in new patient e-signature form
 - Campus filtering: Added separate Campus filter dropdown in patient list table allowing users to filter patients by hospital campus location alongside existing status filters
 
 ## System Architecture
