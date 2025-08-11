@@ -502,6 +502,7 @@ export default function PatientList() {
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [campusFilter, setCampusFilter] = useState<string>('all')
 
   const { data: patients = [], isLoading } = useQuery<Patient[]>({
     queryKey: ['/api/patients'],
@@ -768,6 +769,9 @@ export default function PatientList() {
         patient.diagnosis.toLowerCase().includes(search)
       )
       
+      // Campus filtering
+      const matchesCampus = campusFilter === 'all' || patient.campus === campusFilter
+      
       // Enhanced status filtering - check all status types
       let matchesStatus = statusFilter === 'all'
       if (!matchesStatus) {
@@ -778,7 +782,7 @@ export default function PatientList() {
         )
       }
       
-      return matchesSearch && matchesStatus
+      return matchesSearch && matchesStatus && matchesCampus
     })
 
     // Sort the filtered results with enhanced sorting logic
@@ -849,7 +853,7 @@ export default function PatientList() {
     })
 
     return filtered
-  }, [patients, searchTerm, statusFilter, sortField, sortDirection, patientAppointments])
+  }, [patients, searchTerm, statusFilter, campusFilter, sortField, sortDirection, patientAppointments])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -981,6 +985,21 @@ export default function PatientList() {
             </SelectContent>
           </Select>
         </div>
+        <div className="w-48">
+          <Select value={campusFilter} onValueChange={setCampusFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by campus" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Campuses</SelectItem>
+              <SelectItem value="Mount Sinai West">Mount Sinai West</SelectItem>
+              <SelectItem value="Mount Sinai East">Mount Sinai East</SelectItem>
+              <SelectItem value="Mount Sinai Brooklyn">Mount Sinai Brooklyn</SelectItem>
+              <SelectItem value="Mount Sinai Queens">Mount Sinai Queens</SelectItem>
+              <SelectItem value="Mount Sinai Morningside">Mount Sinai Morningside</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex gap-2">
           <Button 
             onClick={handleDownloadCSV}
@@ -1020,7 +1039,7 @@ export default function PatientList() {
         <Card>
           <CardContent className="p-8 text-center">
             <p className="text-gray-500">
-              {searchTerm || statusFilter !== 'all' ? 'No patients found matching your filters.' : 'No patients found. Create your first patient to get started.'}
+              {searchTerm || statusFilter !== 'all' || campusFilter !== 'all' ? 'No patients found matching your filters.' : 'No patients found. Create your first patient to get started.'}
             </p>
           </CardContent>
         </Card>
