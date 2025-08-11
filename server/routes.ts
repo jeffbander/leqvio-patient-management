@@ -561,12 +561,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Removed duplicate auth endpoint - using the simplified version below
 
   app.post("/api/auth/logout", (req, res) => {
+    console.log('=== LOGOUT ENDPOINT CALLED ===');
     req.session.destroy((err) => {
       if (err) {
         console.error("Logout error:", err);
         return res.status(500).json({ error: "Logout failed" });
       }
+      console.log('Session destroyed successfully');
       res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  // Also handle GET requests for logout (for backwards compatibility)
+  app.get("/api/logout", (req, res) => {
+    console.log('=== LOGOUT GET ENDPOINT CALLED ===');
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.redirect('/');
+      }
+      console.log('Session destroyed successfully');
+      res.redirect('/');
     });
   });
 
@@ -1340,31 +1355,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Auth routes - SIMPLIFIED FOR IMMEDIATE TESTING
+  // Auth routes with magic link authentication
   app.get('/api/auth/user', async (req: any, res) => {
     try {
       console.log('=== AUTH ENDPOINT CALLED ===');
       
-      // For now, always return a test user to get the app working
-      const testUserId = 'test-user-123';
+      // Check session for authenticated user
+      const userId = (req.session as any)?.userId;
+      console.log('Session userId:', userId);
       
-      // Get or create user in database
-      let dbUser = await storage.getUser(testUserId);
-      if (!dbUser) {
-        console.log('Creating test user in database');
-        dbUser = await storage.upsertUser({
-          id: testUserId,
-          email: 'test@example.com',
-          firstName: 'Test',
-          lastName: 'User',
-          profileImageUrl: null
-        });
+      if (!userId) {
+        console.log('No authenticated user in session');
+        return res.status(401).json({ error: "Not authenticated" });
       }
       
-      const userOrganizations = await storage.getUserOrganizations(testUserId);
+      // Get user from database
+      const dbUser = await storage.getUser(userId);
+      if (!dbUser) {
+        console.log('User not found in database:', userId);
+        return res.status(401).json({ error: "User not found" });
+      }
+      
+      const userOrganizations = await storage.getUserOrganizations(userId);
       console.log('User organizations:', userOrganizations.length);
       
-      console.log('Returning authenticated user successfully');
+      console.log('Returning authenticated user:', dbUser.email);
       res.json({ ...dbUser, organizations: userOrganizations });
     } catch (error) {
       console.error("Error fetching user:", error);

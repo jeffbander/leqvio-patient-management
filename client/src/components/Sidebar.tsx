@@ -168,7 +168,15 @@ export function Sidebar({ className }: SidebarProps) {
               variant="ghost"
               size="sm"
               className="w-full justify-start"
-              onClick={() => window.location.href = '/api/logout'}
+              onClick={async () => {
+                try {
+                  await fetch('/api/auth/logout', { method: 'POST' });
+                  window.location.href = '/';
+                } catch (error) {
+                  console.error('Logout error:', error);
+                  window.location.href = '/';
+                }
+              }}
             >
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
