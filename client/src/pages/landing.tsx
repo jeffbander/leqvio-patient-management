@@ -18,12 +18,22 @@ export default function Landing() {
             <p>• LEQVIO copay program integration</p>
             <p>• Automated workflow processing</p>
           </div>
-          <Button 
-            className="w-full" 
-            onClick={() => window.location.href = '/api/login'}
-          >
-            Sign In to Continue
-          </Button>
+          <div className="space-y-3">
+            <Button 
+              className="w-full" 
+              onClick={() => window.location.href = '/api/login'}
+            >
+              Sign In to Continue
+            </Button>
+            <div className="text-center text-sm text-gray-500">or</div>
+            <Button 
+              variant="outline"
+              className="w-full" 
+              onClick={() => window.location.href = '/api/login'}
+            >
+              Create New Account
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -348,16 +348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Configure session
-  app.use(session({
-    secret: process.env.SESSION_SECRET || 'fallback-secret-for-dev',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: false, // Set to true in production with HTTPS
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-  }));
+  // Session is configured in setupAuth() - don't duplicate here
 
   // Configure multer for multipart form data
   const upload = multer();
@@ -1319,19 +1310,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint to check auth status
+  app.get('/api/debug/session', (req: any, res) => {
+    console.log('=== SESSION DEBUG ===');
+    console.log('Session ID:', req.sessionID);
+    console.log('Session exists:', !!req.session);
+    console.log('Session data:', req.session);
+    console.log('isAuthenticated():', req.isAuthenticated ? req.isAuthenticated() : 'function not available');
+    console.log('req.user exists:', !!req.user);
+    console.log('req.user data:', req.user);
+    console.log('=====================');
+    
+    res.json({
+      sessionExists: !!req.session,
+      sessionId: req.sessionID,
+      isAuthenticated: req.isAuthenticated ? req.isAuthenticated() : false,
+      userExists: !!req.user,
+      user: req.user
+    });
+  });
+
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {
     try {
       console.log('=== AUTH DEBUG ===');
       console.log('Session ID:', req.sessionID);
       console.log('Session exists:', !!req.session);
-      console.log('Session data:', req.session);
-      console.log('isAuthenticated():', req.isAuthenticated());
+      console.log('isAuthenticated():', req.isAuthenticated ? req.isAuthenticated() : 'function not available');
       console.log('req.user exists:', !!req.user);
-      console.log('req.user data:', req.user);
       console.log('==================');
       
-      if (!req.isAuthenticated() || !req.user) {
+      if (!req.isAuthenticated || !req.isAuthenticated() || !req.user) {
         console.log('User not authenticated');
         return res.status(401).json({ error: "Not authenticated" });
       }
