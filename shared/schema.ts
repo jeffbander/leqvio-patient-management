@@ -4,11 +4,13 @@ import { z } from "zod";
 import { relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+  id: text("id").primaryKey(),
   email: text("email").notNull().unique(),
-  name: text("name"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  profileImageUrl: text("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  lastLoginAt: timestamp("last_login_at"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const loginTokens = pgTable("login_tokens", {
@@ -70,7 +72,9 @@ export const apiAnalyticsRelations = relations(apiAnalytics, ({ one }) => ({}));
 
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
-  name: true,
+  firstName: true,
+  lastName: true,
+  profileImageUrl: true,
 });
 
 export const insertLoginTokenSchema = createInsertSchema(loginTokens).omit({
