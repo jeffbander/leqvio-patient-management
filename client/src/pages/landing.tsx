@@ -50,10 +50,15 @@ export default function Landing() {
       
       toast({
         title: "Magic Link Generated",
-        description: `Click this link to sign in: ${result.magicLink}`,
+        description: "Redirecting you to the dashboard...",
         variant: "default",
-        duration: 10000, // Show for 10 seconds
+        duration: 3000,
       });
+      
+      // Automatically redirect to the magic link after a short delay
+      setTimeout(() => {
+        window.location.href = result.magicLink;
+      }, 1000);
     } catch (error) {
       toast({
         title: "Error",
