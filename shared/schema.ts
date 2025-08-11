@@ -134,6 +134,7 @@ export const patients = pgTable("patients", {
   email: text("email"),
   address: text("address"),
   mrn: text("mrn"), // Medical Record Number (optional)
+  campus: text("campus").default("Mount Sinai West"), // Hospital campus location
   
   // Authorization fields
   authNumber: text("auth_number"),

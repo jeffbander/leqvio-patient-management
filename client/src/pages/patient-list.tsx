@@ -22,6 +22,7 @@ interface Patient {
   diagnosis: string
   status: string
   mrn?: string
+  campus?: string
   authNumber?: string
   refNumber?: string
   startDate?: string

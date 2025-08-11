@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { useParams, Link } from 'wouter'
 import { apiRequest, queryClient } from '@/lib/queryClient'
@@ -195,6 +196,7 @@ interface Patient {
   email?: string
   address?: string
   mrn?: string
+  campus?: string
   primaryInsurance?: string
   primaryPlan?: string
   primaryInsuranceNumber?: string
@@ -562,6 +564,7 @@ export default function PatientDetail() {
       orderingMD: patient.orderingMD || '',
       diagnosis: patient.diagnosis || '',
       mrn: patient.mrn || '',
+      campus: patient.campus || 'Mount Sinai West',
       authNumber: patient.authNumber || '',
       refNumber: patient.refNumber || '',
       startDate: patient.startDate || '',
@@ -598,6 +601,7 @@ export default function PatientDetail() {
       email: editedData.email,
       address: editedData.address,
       mrn: editedData.mrn,
+      campus: editedData.campus,
       notes: editedData.notes,
       authNumber: editedData.authNumber,
       refNumber: editedData.refNumber,
@@ -937,6 +941,28 @@ export default function PatientDetail() {
                             </Button>
                           )}
                         </div>
+                      )}
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Campus:</span>
+                      {isEditing ? (
+                        <Select
+                          value={editedData.campus || 'Mount Sinai West'}
+                          onValueChange={(value) => setEditedData({...editedData, campus: value})}
+                        >
+                          <SelectTrigger className="w-48">
+                            <SelectValue placeholder="Select campus" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Mount Sinai West">Mount Sinai West</SelectItem>
+                            <SelectItem value="Mount Sinai East">Mount Sinai East</SelectItem>
+                            <SelectItem value="Mount Sinai Brooklyn">Mount Sinai Brooklyn</SelectItem>
+                            <SelectItem value="Mount Sinai Queens">Mount Sinai Queens</SelectItem>
+                            <SelectItem value="Mount Sinai Morningside">Mount Sinai Morningside</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span>{patient.campus || 'Mount Sinai West'}</span>
                       )}
                     </div>
                   </div>
