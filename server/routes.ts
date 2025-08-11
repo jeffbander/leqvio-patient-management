@@ -557,25 +557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/auth/user", (req, res) => {
-    const userId = (req.session as any)?.userId;
-    if (!userId) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-    
-    storage.getUser(userId)
-      .then(user => {
-        if (user) {
-          res.json(user);
-        } else {
-          res.status(404).json({ error: "User not found" });
-        }
-      })
-      .catch(error => {
-        console.error("Get user error:", error);
-        res.status(500).json({ error: "Internal server error" });
-      });
-  });
+  // Removed duplicate auth endpoint - using the simplified version below
 
   app.post("/api/auth/logout", (req, res) => {
     req.session.destroy((err) => {
