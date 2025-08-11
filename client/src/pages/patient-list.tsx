@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -7,11 +7,13 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { Link } from 'wouter'
 import { Badge } from '@/components/ui/badge'
-import { UserPlus, Search, Eye, FileSpreadsheet, Download, ArrowUpDown, ArrowUp, ArrowDown, Mic, Calendar, Pencil, Copy } from 'lucide-react'
+import { UserPlus, Search, Eye, FileSpreadsheet, Download, ArrowUpDown, ArrowUp, ArrowDown, Mic, Calendar, Pencil, Copy, Building2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { queryClient } from '@/lib/queryClient'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useAuth } from '@/hooks/useAuth'
+import { isUnauthorizedError } from '@/lib/authUtils'
 
 interface Patient {
   id: number
@@ -498,14 +500,56 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
 
 export default function PatientList() {
   const { toast } = useToast()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [campusFilter, setCampusFilter] = useState<string>('all')
+  const [selectedOrgId, setSelectedOrgId] = useState<string>('')
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [isAuthenticated, authLoading, toast]);
+
+  // Set default organization
+  useEffect(() => {
+    if (user?.organizations && user.organizations.length > 0 && !selectedOrgId) {
+      setSelectedOrgId(user.organizations[0].id.toString());
+    }
+  }, [user, selectedOrgId]);
 
   const { data: patients = [], isLoading } = useQuery<Patient[]>({
-    queryKey: ['/api/patients'],
+    queryKey: ['/api/patients', selectedOrgId],
+    queryFn: async () => {
+      if (!selectedOrgId) return [];
+      const response = await fetch(`/api/patients?organizationId=${selectedOrgId}`);
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast({
+            title: "Unauthorized",
+            description: "You are logged out. Logging in again...",
+            variant: "destructive",
+          });
+          setTimeout(() => {
+            window.location.href = "/api/login";
+          }, 500);
+        }
+        throw new Error('Failed to fetch patients');
+      }
+      return response.json();
+    },
+    enabled: !!selectedOrgId && isAuthenticated,
   })
 
   const { data: sheetsStatus } = useQuery({
@@ -930,6 +974,10 @@ export default function PatientList() {
     }
   }
 
+  if (authLoading || !isAuthenticated) {
+    return <div className="container mx-auto px-4 py-8">Loading...</div>;
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
@@ -938,10 +986,34 @@ export default function PatientList() {
       </div>
 
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        {/* Organization Selector */}
+        <div className="w-64">
+          <Label htmlFor="organization" className="text-sm font-medium text-gray-700 mb-1 block">
+            Organization
+          </Label>
+          <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
+            <SelectTrigger className="w-full">
+              <Building2 className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Select organization" />
+            </SelectTrigger>
+            <SelectContent>
+              {user?.organizations?.map((org: any) => (
+                <SelectItem key={org.id} value={org.id.toString()}>
+                  {org.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
         <div className="flex-1">
+          <Label htmlFor="search" className="text-sm font-medium text-gray-700 mb-1 block">
+            Search
+          </Label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
+              id="search"
               type="text"
               placeholder="Search patients, providers, or diagnosis..."
               value={searchTerm}

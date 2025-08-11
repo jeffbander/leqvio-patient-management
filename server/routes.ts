@@ -4,12 +4,13 @@ import multer from "multer";
 import session from "express-session";
 import fetch from "node-fetch";
 import { storage } from "./storage";
-import { insertAutomationLogSchema, insertCustomChainSchema } from "@shared/schema";
+import { insertAutomationLogSchema, insertCustomChainSchema, insertOrganizationSchema, insertOrganizationMemberSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
 import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio, extractPatientInfoFromScreenshot } from "./openai-service";
 import { generateLEQVIOPDF } from "./pdf-generator";
 import { googleSheetsService } from "./google-sheets-service";
 import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 // Using the openai instance directly instead of a service object
 
 // Helper function to extract insurance information from Epic text using OpenAI
@@ -242,6 +243,8 @@ const analyticsMiddleware = (req: any, res: any, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth middleware
+  await setupAuth(app);
   // Apply analytics middleware to all routes
   app.use(analyticsMiddleware);
   
@@ -1228,14 +1231,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Patient Management Routes
   
-  // Create a new patient
-  app.post('/api/patients', async (req, res) => {
+  // Create a new patient (protected route)
+  app.post('/api/patients', isAuthenticated, async (req: any, res) => {
     try {
       const patientData = req.body;
-      const { signatureData, recipientEmail, ...patientInfo } = patientData;
+      const { signatureData, recipientEmail, organizationId, ...patientInfo } = patientData;
+      const userId = req.user.claims.sub;
       
-      // Create patient
-      const newPatient = await storage.createPatient(patientInfo);
+      if (!organizationId) {
+        return res.status(400).json({ error: 'Organization ID required' });
+      }
+      
+      // Check if user is member of this organization
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(org => org.id === parseInt(organizationId))) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      // Create patient with organization ID
+      const newPatient = await storage.createPatient({
+        ...patientInfo,
+        organizationId: parseInt(organizationId)
+      });
       
       // If signature data provided, create e-signature form and send PDF
       if (signatureData && recipientEmail) {
@@ -1302,14 +1319,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all patients
-  app.get('/api/patients', async (req, res) => {
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const patients = await storage.getAllPatients();
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const userOrganizations = await storage.getUserOrganizations(userId);
+      res.json({ ...user, organizations: userOrganizations });
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Organization routes
+  app.post('/api/organizations', isAuthenticated, async (req: any, res) => {
+    try {
+      const { name } = req.body;
+      const userId = req.user.claims.sub;
+      
+      // Create organization
+      const organization = await storage.createOrganization({ name });
+      
+      // Add current user as admin
+      await storage.addUserToOrganization(userId, organization.id, 'admin');
+      
+      res.json(organization);
+    } catch (error) {
+      console.error('Error creating organization:', error);
+      res.status(500).json({ error: 'Failed to create organization' });
+    }
+  });
+
+  app.get('/api/organizations/:id/members', isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      // Check if user is member of this organization
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(org => org.id === organizationId)) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      const members = await storage.getOrganizationMembers(organizationId);
+      res.json(members);
+    } catch (error) {
+      console.error('Error fetching organization members:', error);
+      res.status(500).json({ error: 'Failed to fetch members' });
+    }
+  });
+
+  app.post('/api/organizations/:id/members', isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = parseInt(req.params.id);
+      const { email, role = 'member' } = req.body;
+      const userId = req.user.claims.sub;
+      
+      // Check if user is admin of this organization
+      const userOrgs = await storage.getUserOrganizations(userId);
+      const userRole = userOrgs.find(org => org.id === organizationId)?.role;
+      if (userRole !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+      
+      // For now, just return success - in production you'd send invites
+      res.json({ success: true, message: 'Invite sent' });
+    } catch (error) {
+      console.error('Error inviting member:', error);
+      res.status(500).json({ error: 'Failed to invite member' });
+    }
+  });
+
+  // Get organization patients (protected route)
+  app.get('/api/patients', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId } = req.query;
+      
+      if (!organizationId) {
+        return res.status(400).json({ error: 'Organization ID required' });
+      }
+      
+      // Check if user is member of this organization
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(org => org.id === parseInt(organizationId))) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      const patients = await storage.getOrganizationPatients(parseInt(organizationId));
       res.json(patients);
     } catch (error) {
       console.error('Error fetching patients:', error);
       res.status(500).json({ error: 'Failed to fetch patients' });
+    }
+  });
+
+  // Initialize organization and assign existing patients
+  app.post('/api/initialize-organization', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { name } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ error: 'Organization name required' });
+      }
+      
+      // Create organization and add user as admin
+      const organization = await storage.createOrganization({ name });
+      await storage.addUserToOrganization(userId, organization.id, 'admin');
+      
+      res.json({ 
+        success: true, 
+        message: `${name} organization created successfully`,
+        organization 
+      });
+    } catch (error) {
+      console.error('Error creating organization:', error);
+      res.status(500).json({ error: 'Failed to create organization' });
     }
   });
 

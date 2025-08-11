@@ -5,11 +5,14 @@ import {
   Users, 
   FileText, 
   UserPlus,
+  Building2,
+  LogOut,
   Menu,
   X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
+import { useAuth } from '@/hooks/useAuth'
 
 interface SidebarProps {
   className?: string
@@ -20,6 +23,11 @@ const navigation = [
     name: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    name: 'Organizations',
+    href: '/organizations',
+    icon: Building2,
   },
   {
     name: 'Patients',
@@ -41,6 +49,7 @@ const navigation = [
 export function Sidebar({ className }: SidebarProps) {
   const [location] = useLocation()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { user } = useAuth()
 
   return (
     <>
@@ -129,7 +138,41 @@ export function Sidebar({ className }: SidebarProps) {
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-gray-200 space-y-3">
+            {user && (
+              <div className="flex items-center space-x-3 pb-2">
+                {user.profileImageUrl ? (
+                  <img
+                    src={user.profileImageUrl}
+                    alt={`${user.firstName} ${user.lastName}`}
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
+                    <span className="text-sm font-medium text-gray-600">
+                      {user.firstName?.[0] || user.email?.[0] || 'U'}
+                    </span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start"
+              onClick={() => window.location.href = '/api/logout'}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
             <div className="text-xs text-gray-500 text-center">
               Providerloop Chains v1.0
             </div>
