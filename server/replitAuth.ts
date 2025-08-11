@@ -154,15 +154,29 @@ export async function setupAuth(app: Express) {
           }
           console.log('Session saved successfully, redirecting to /');
           
-          // Set session cookie explicitly with signed value
+          // Try multiple approaches to set session cookie
           const sessionId = req.sessionID;
+          
+          // Method 1: Standard session cookie
           res.cookie('connect.sid', `s:${sessionId}`, {
-            httpOnly: true,
+            httpOnly: false,  // Allow JS access for debugging
             secure: false,
-            sameSite: 'lax',
+            sameSite: 'none', // Try more permissive setting
             maxAge: 604800000,
-            signed: false
+            path: '/',
+            domain: undefined
           });
+          
+          // Method 2: Alternative cookie name
+          res.cookie('app-session', sessionId, {
+            httpOnly: false,
+            secure: false,
+            sameSite: 'none',
+            maxAge: 604800000,
+            path: '/'
+          });
+          
+          console.log('Set cookies with sessionId:', sessionId);
           
           return res.redirect("/");
         });

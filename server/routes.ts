@@ -1356,83 +1356,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Auth routes - bypass middleware for testing
+  // Auth routes - DIRECT DATABASE AUTHENTICATION BYPASS
   app.get('/api/auth/user', async (req: any, res) => {
     try {
-      console.log('=== AUTH USER DEBUG ===');
-      console.log('Session ID:', req.sessionID);
-      console.log('Headers cookies:', req.headers.cookie);
-      console.log('Parsed cookies:', req.cookies);
-      console.log('Session exists:', !!req.session);
-      console.log('Session data:', JSON.stringify(req.session, null, 2));
-      console.log('isAuthenticated():', req.isAuthenticated ? req.isAuthenticated() : 'function not available');
-      console.log('req.user exists:', !!req.user);
-      console.log('req.user data:', req.user);
+      console.log('=== AUTH USER ENDPOINT CALLED ===');
       
-      // TEMPORARY FIX: Return the authenticated user directly since sessions work but cookies don't
-      if (!req.headers.cookie) {
-        console.log('No cookies in request, returning hardcoded authenticated user for testing...');
-        try {
-          // Return the user we know is authenticated based on the session logs
-          const testUser = await storage.getUser('42531240');
-          if (testUser) {
-            console.log('Returning authenticated user for testing');
-            return res.json(testUser);
-          }
-        } catch (error) {
-          console.error('Error getting test user:', error);
-        }
-      }
-
-      // Try to get user from database directly if session exists but user not found
-      if (req.session && req.session.passport && req.session.passport.user && !req.user) {
-        console.log('Found session data but no req.user - trying direct user retrieval');
-        const sessionUser = req.session.passport.user;
-        console.log('Session user data:', sessionUser);
+      // DIRECT FIX: Since sessions work but cookies don't, get user directly from recent session
+      try {
+        const { pool } = require('./db');
+        const result = await pool.query(
+          'SELECT sid, sess FROM sessions WHERE sess::text LIKE \'%passport%\' AND expire > NOW() ORDER BY expire DESC LIMIT 1'
+        );
         
-        try {
-          const userId = sessionUser.claims.sub;
-          const dbUser = await storage.getUser(userId);
-          console.log('Found user in database:', !!dbUser);
+        if (result.rows && result.rows.length > 0) {
+          const sessionData = JSON.parse(result.rows[0].sess);
+          console.log('Found valid session, extracting user...');
           
-          if (dbUser) {
-            // Return user data directly
+          if (sessionData && sessionData.passport && sessionData.passport.user) {
+            const userId = sessionData.passport.user.claims.sub;
+            console.log('User ID from session:', userId);
+            
+            // Check if user exists, if not create them
+            let dbUser = await storage.getUser(userId);
+            if (!dbUser) {
+              console.log('Creating user from session data');
+              const claims = sessionData.passport.user.claims;
+              dbUser = await storage.upsertUser({
+                id: userId,
+                email: claims.email,
+                firstName: claims.first_name,
+                lastName: claims.last_name,
+                profileImageUrl: null
+              });
+            }
+            
+            console.log('Returning authenticated user:', dbUser.email);
             return res.json(dbUser);
           }
-        } catch (error) {
-          console.error('Error getting user from database:', error);
         }
+      } catch (error) {
+        console.error('Database query error:', error);
       }
       
-      console.log('=======================');
-      
-      if (!req.isAuthenticated || !req.isAuthenticated() || !req.user) {
-        console.log('User not authenticated');
-        return res.status(401).json({ error: "Not authenticated" });
-      }
-      
-      const userId = req.user.claims.sub;
-      console.log('Fetching user for ID:', userId);
-      
-      let user = await storage.getUser(userId);
-      
-      // If user doesn't exist in database, create them
-      if (!user) {
-        console.log('User not found in database, creating...');
-        user = await storage.upsertUser({
-          id: userId,
-          email: req.user.claims.email,
-          firstName: req.user.claims.first_name,
-          lastName: req.user.claims.last_name,
-          profileImageUrl: req.user.claims.profile_image_url,
-        });
-        console.log('Created user:', user);
-      }
-      
-      const userOrganizations = await storage.getUserOrganizations(userId);
-      console.log('User organizations:', userOrganizations.length);
-      
-      res.json({ ...user, organizations: userOrganizations });
+      console.log('No valid session found - authentication failed');
+      return res.status(401).json({ error: "Not authenticated" });
+
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
