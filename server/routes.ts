@@ -1322,9 +1322,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {
     try {
-      console.log('Auth check - isAuthenticated:', req.isAuthenticated());
-      console.log('Auth check - user:', req.user ? 'exists' : 'null');
-      console.log('Auth check - session:', req.session ? 'exists' : 'null');
+      console.log('=== AUTH DEBUG ===');
+      console.log('Session ID:', req.sessionID);
+      console.log('Session exists:', !!req.session);
+      console.log('Session data:', req.session);
+      console.log('isAuthenticated():', req.isAuthenticated());
+      console.log('req.user exists:', !!req.user);
+      console.log('req.user data:', req.user);
+      console.log('==================');
       
       if (!req.isAuthenticated() || !req.user) {
         console.log('User not authenticated');
