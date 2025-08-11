@@ -1316,6 +1316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('Session ID:', req.sessionID);
     console.log('Session exists:', !!req.session);
     console.log('Session data:', req.session);
+    console.log('Cookies:', req.headers.cookie);
     console.log('isAuthenticated():', req.isAuthenticated ? req.isAuthenticated() : 'function not available');
     console.log('req.user exists:', !!req.user);
     console.log('req.user data:', req.user);
@@ -1324,21 +1325,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({
       sessionExists: !!req.session,
       sessionId: req.sessionID,
+      cookies: req.headers.cookie,
       isAuthenticated: req.isAuthenticated ? req.isAuthenticated() : false,
       userExists: !!req.user,
       user: req.user
     });
   });
 
+  // Test endpoint to set and read session
+  app.get('/api/debug/session-test', (req: any, res) => {
+    if (!req.session.testData) {
+      req.session.testData = { timestamp: Date.now(), test: 'session working' };
+      res.json({ message: 'Session data set', sessionId: req.sessionID });
+    } else {
+      res.json({ message: 'Session data found', data: req.session.testData, sessionId: req.sessionID });
+    }
+  });
+
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {
     try {
-      console.log('=== AUTH DEBUG ===');
+      console.log('=== AUTH USER DEBUG ===');
       console.log('Session ID:', req.sessionID);
       console.log('Session exists:', !!req.session);
+      console.log('Session data:', req.session);
       console.log('isAuthenticated():', req.isAuthenticated ? req.isAuthenticated() : 'function not available');
       console.log('req.user exists:', !!req.user);
-      console.log('==================');
+      console.log('req.user data:', req.user);
+      console.log('=======================');
       
       if (!req.isAuthenticated || !req.isAuthenticated() || !req.user) {
         console.log('User not authenticated');

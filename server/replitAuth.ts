@@ -31,17 +31,28 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
-  return session({
+  
+  const sessionConfig = {
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    name: 'connect.sid',
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Force false for development debugging
       maxAge: sessionTtl,
+      sameSite: 'lax' as const,
     },
+  };
+  
+  console.log('Session configuration:', {
+    secure: sessionConfig.cookie.secure,
+    env: process.env.NODE_ENV,
+    sameSite: sessionConfig.cookie.sameSite
   });
+  
+  return session(sessionConfig);
 }
 
 function updateUserSession(
@@ -130,6 +141,8 @@ export async function setupAuth(app: Express) {
           return res.redirect("/api/login");
         }
         console.log('User successfully logged in');
+        console.log('Session after login:', req.session);
+        console.log('isAuthenticated after login:', req.isAuthenticated());
         return res.redirect("/");
       });
     })(req, res, next);
