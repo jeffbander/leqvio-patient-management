@@ -1356,16 +1356,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Auth routes
+  // Auth routes - bypass middleware for testing
   app.get('/api/auth/user', async (req: any, res) => {
     try {
       console.log('=== AUTH USER DEBUG ===');
       console.log('Session ID:', req.sessionID);
+      console.log('Headers cookies:', req.headers.cookie);
+      console.log('Parsed cookies:', req.cookies);
       console.log('Session exists:', !!req.session);
-      console.log('Session data:', req.session);
+      console.log('Session data:', JSON.stringify(req.session, null, 2));
       console.log('isAuthenticated():', req.isAuthenticated ? req.isAuthenticated() : 'function not available');
       console.log('req.user exists:', !!req.user);
       console.log('req.user data:', req.user);
+      
+      // Try to get user from database directly if session exists but user not found
+      if (req.session && req.session.passport && req.session.passport.user && !req.user) {
+        console.log('Found session data but no req.user - trying direct user retrieval');
+        const sessionUser = req.session.passport.user;
+        console.log('Session user data:', sessionUser);
+        
+        try {
+          const userId = sessionUser.claims.sub;
+          const dbUser = await storage.getUser(userId);
+          console.log('Found user in database:', !!dbUser);
+          
+          if (dbUser) {
+            // Return user data directly
+            return res.json(dbUser);
+          }
+        } catch (error) {
+          console.error('Error getting user from database:', error);
+        }
+      }
+      
       console.log('=======================');
       
       if (!req.isAuthenticated || !req.isAuthenticated() || !req.user) {
