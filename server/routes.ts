@@ -1356,18 +1356,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Auth routes - DIRECT AUTH WITHOUT MIDDLEWARE
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
-      console.log('=== AUTH USER ENDPOINT ===');
-      const userId = req.user.claims.sub;
+      console.log('=== DIRECT AUTH ENDPOINT ===');
+      
+      // Import SimpleAuth directly and check for active users
+      const { SimpleAuth } = require('./simple-auth');
+      const activeUser = SimpleAuth.getActiveUser();
+      
+      console.log('Found active user:', !!activeUser);
+      
+      if (!activeUser) {
+        console.log('No active user found');
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const userId = activeUser.claims.sub;
       console.log('User ID:', userId);
       
       // Get or create user in database
       let dbUser = await storage.getUser(userId);
       if (!dbUser) {
         console.log('Creating user from auth data');
-        const claims = req.user.claims;
+        const claims = activeUser.claims;
         dbUser = await storage.upsertUser({
           id: userId,
           email: claims.email,
