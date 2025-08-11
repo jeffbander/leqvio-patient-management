@@ -10,7 +10,7 @@ import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio,
 import { generateLEQVIOPDF } from "./pdf-generator";
 import { googleSheetsService } from "./google-sheets-service";
 import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupSimpleAuth, isAuthenticated } from "./simple-auth";
 // Using the openai instance directly instead of a service object
 
 // Helper function to extract insurance information from Epic text using OpenAI
@@ -244,7 +244,7 @@ const analyticsMiddleware = (req: any, res: any, next: any) => {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
-  await setupAuth(app);
+  await setupSimpleAuth(app);
   // Apply analytics middleware to all routes
   app.use(analyticsMiddleware);
   
@@ -1356,51 +1356,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Auth routes - DIRECT DATABASE AUTHENTICATION BYPASS
-  app.get('/api/auth/user', async (req: any, res) => {
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      console.log('=== AUTH USER ENDPOINT CALLED ===');
+      console.log('=== AUTH USER ENDPOINT ===');
+      const userId = req.user.claims.sub;
+      console.log('User ID:', userId);
       
-      // DIRECT FIX: Since sessions work but cookies don't, get user directly from recent session
-      try {
-        const { pool } = require('./db');
-        const result = await pool.query(
-          'SELECT sid, sess FROM sessions WHERE sess::text LIKE \'%passport%\' AND expire > NOW() ORDER BY expire DESC LIMIT 1'
-        );
-        
-        if (result.rows && result.rows.length > 0) {
-          const sessionData = JSON.parse(result.rows[0].sess);
-          console.log('Found valid session, extracting user...');
-          
-          if (sessionData && sessionData.passport && sessionData.passport.user) {
-            const userId = sessionData.passport.user.claims.sub;
-            console.log('User ID from session:', userId);
-            
-            // Check if user exists, if not create them
-            let dbUser = await storage.getUser(userId);
-            if (!dbUser) {
-              console.log('Creating user from session data');
-              const claims = sessionData.passport.user.claims;
-              dbUser = await storage.upsertUser({
-                id: userId,
-                email: claims.email,
-                firstName: claims.first_name,
-                lastName: claims.last_name,
-                profileImageUrl: null
-              });
-            }
-            
-            console.log('Returning authenticated user:', dbUser.email);
-            return res.json(dbUser);
-          }
-        }
-      } catch (error) {
-        console.error('Database query error:', error);
+      // Get or create user in database
+      let dbUser = await storage.getUser(userId);
+      if (!dbUser) {
+        console.log('Creating user from auth data');
+        const claims = req.user.claims;
+        dbUser = await storage.upsertUser({
+          id: userId,
+          email: claims.email,
+          firstName: claims.first_name,
+          lastName: claims.last_name,
+          profileImageUrl: null
+        });
       }
       
-      console.log('No valid session found - authentication failed');
-      return res.status(401).json({ error: "Not authenticated" });
-
+      const userOrganizations = await storage.getUserOrganizations(userId);
+      console.log('User organizations:', userOrganizations.length);
+      
+      res.json({ ...dbUser, organizations: userOrganizations });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
