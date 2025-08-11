@@ -1261,7 +1261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Send email with PDF attachment
           await sgMail.send({
             to: recipientEmail,
-            from: 'noreply@providerloop.com', // Replace with your verified sender
+            from: 'response@providerloop.com', // Using verified sender email
             subject: 'LEQVIO Patient Registration Form',
             text: `Patient registration for ${newPatient.firstName} ${newPatient.lastName} has been completed. Please find the signed enrollment form attached.`,
             html: `
@@ -1287,8 +1287,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           await storage.updateESignatureFormEmailStatus(formRecord.id, recipientEmail);
-        } catch (emailError) {
+        } catch (emailError: any) {
           console.error('Failed to send email:', emailError);
+          console.error('SendGrid error details:', emailError?.response?.body?.errors || 'No additional error details');
           // Continue even if email fails
         }
       }
