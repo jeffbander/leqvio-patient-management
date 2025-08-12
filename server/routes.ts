@@ -14,6 +14,67 @@ import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
 import { registerUser, loginUser, requireAuth, getUserFromSession } from "./password-auth";
 // Using the openai instance directly instead of a service object
 
+// Helper function to add insurance changes to patient notes
+async function addInsuranceChangeToNotes(patientId: number, logEntry: string, organizationId: number) {
+  try {
+    const currentPatient = await storage.getPatient(patientId, organizationId);
+    if (!currentPatient) return;
+    
+    const currentNotes = currentPatient.notes || '';
+    let updatedNotes = '';
+    
+    const notesSection = '=== NOTES ===';
+    const voicemailSection = '=== VOICEMAILS ===';  
+    const insuranceSection = '=== INSURANCE & AUTH UPDATES ===';
+    
+    // Extract existing sections
+    let existingNotes = '';
+    let existingVoicemails = '';
+    let existingInsurance = '';
+    
+    if (currentNotes.includes(notesSection)) {
+      const noteStart = currentNotes.indexOf(notesSection) + notesSection.length;
+      const voicemailStart = currentNotes.indexOf(voicemailSection);
+      const insuranceStart = currentNotes.indexOf(insuranceSection);
+      
+      if (voicemailStart > -1) {
+        existingNotes = currentNotes.substring(noteStart, voicemailStart).trim();
+      } else if (insuranceStart > -1) {
+        existingNotes = currentNotes.substring(noteStart, insuranceStart).trim();
+      } else {
+        existingNotes = currentNotes.substring(noteStart).trim();
+      }
+      
+      if (voicemailStart > -1) {
+        const voicemailEnd = insuranceStart > -1 ? insuranceStart : currentNotes.length;
+        existingVoicemails = currentNotes.substring(voicemailStart + voicemailSection.length, voicemailEnd).trim();
+      }
+      
+      if (insuranceStart > -1) {
+        existingInsurance = currentNotes.substring(insuranceStart + insuranceSection.length).trim();
+      }
+    } else {
+      existingNotes = currentNotes;
+    }
+    
+    // Add new insurance log entry
+    if (existingInsurance) {
+      existingInsurance = `${logEntry}\n\n${existingInsurance}`;
+    } else {
+      existingInsurance = logEntry;
+    }
+    
+    // Rebuild organized notes
+    if (existingNotes) updatedNotes += `${notesSection}\n${existingNotes}\n\n`;
+    if (existingVoicemails) updatedNotes += `${voicemailSection}\n${existingVoicemails}\n\n`;
+    updatedNotes += `${insuranceSection}\n${existingInsurance}`;
+    
+    await storage.updatePatient(patientId, { notes: updatedNotes.trim() }, organizationId);
+  } catch (error) {
+    console.error('Error adding insurance change to notes:', error);
+  }
+}
+
 // Helper function to extract insurance information from Epic text using OpenAI
 const extractInsuranceFromEpicText = async (epicText: string) => {
   try {
@@ -2700,21 +2761,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (metadata.secondary.groupNumber) updates.secondaryGroupId = metadata.secondary.groupNumber;
         
         if (Object.keys(updates).length > 0) {
-          // Note: This endpoint needs to be updated to include user authentication
-          console.log('Skipping patient update - requires authentication context');
+          try {
+            const user = await getUserFromSession(req);
+            if (user && user.currentOrganizationId) {
+              await storage.updatePatient(patientId, updates, user.currentOrganizationId);
+              console.log('Patient insurance information automatically updated from Epic screenshot:', updates);
+              
+              // Log the insurance update in patient notes
+              const changeLog = `Updated: Epic insurance data extracted - ${new Date().toLocaleString()}`;
+              const changeDetails = Object.entries(updates).map(([key, value]) => `  ${key}: ${value}`).join('\n');
+              const logEntry = `${changeLog}\n${changeDetails}`;
+              
+              await addInsuranceChangeToNotes(patientId, logEntry, user.currentOrganizationId);
+            }
+          } catch (error) {
+            console.error('Failed to update patient with Epic insurance data:', error);
+          }
         }
       }
       
-      // If we have extracted regular insurance card data, update the patient record
-      else if (metadata.insurer && documentType === 'insurance_screenshot') {
-        const updates: any = {};
-        if (metadata.insurer.name) updates.primaryInsurance = metadata.insurer.name;
-        if (metadata.member.member_id) updates.primaryInsuranceNumber = metadata.member.member_id;
-        if (metadata.insurer.group_number) updates.primaryGroupId = metadata.insurer.group_number;
-        
-        if (Object.keys(updates).length > 0) {
-          // Note: This endpoint needs to be updated to include user authentication
-          console.log('Skipping patient update - requires authentication context');
+      // Handle regular insurance card screenshots
+      if (documentType === 'insurance_screenshot') {
+        try {
+          const base64Image = file.buffer.toString('base64');
+          const insuranceData = await extractInsuranceCardData(base64Image);
+          
+          const updates: any = {};
+          
+          // Map insurance card data to patient fields
+          if (insuranceData.insurer?.name) updates.primaryInsurance = insuranceData.insurer.name;
+          if (insuranceData.member?.member_id) updates.primaryInsuranceNumber = insuranceData.member.member_id;
+          if (insuranceData.insurer?.group_number) updates.primaryGroupId = insuranceData.insurer.group_number;
+          if (insuranceData.member?.subscriber_name) {
+            // Try to extract first/last name if not already set
+            const nameParts = insuranceData.member.subscriber_name.split(' ');
+            if (nameParts.length >= 2 && !updates.firstName) {
+              updates.firstName = nameParts[0];
+              updates.lastName = nameParts.slice(1).join(' ');
+            }
+          }
+          if (insuranceData.insurer?.plan_name) updates.primaryPlan = insuranceData.insurer.plan_name;
+          
+          if (Object.keys(updates).length > 0) {
+            const user = await getUserFromSession(req);
+            if (user && user.currentOrganizationId) {
+              await storage.updatePatient(patientId, updates, user.currentOrganizationId);
+              console.log('Patient insurance information automatically updated from insurance card:', updates);
+              
+              // Log the insurance update in patient notes
+              const changeLog = `Updated: Insurance card data extracted - ${new Date().toLocaleString()}`;
+              const changeDetails = Object.entries(updates).map(([key, value]) => `  ${key}: ${value}`).join('\n');
+              const logEntry = `${changeLog}\n${changeDetails}`;
+              
+              await addInsuranceChangeToNotes(patientId, logEntry, user.currentOrganizationId);
+            }
+          }
+          
+          // Store the extracted insurance data as metadata
+          metadata = insuranceData;
+          extractedData = JSON.stringify(insuranceData);
+        } catch (error) {
+          console.error('Insurance card extraction failed:', error);
+          // Continue without extraction
         }
       }
       
