@@ -43,13 +43,20 @@ export function OrganizationSwitcher() {
 
   const switchOrganizationMutation = useMutation({
     mutationFn: async (organizationId: number) => {
-      return await apiRequest("/api/user/switch-organization", {
+      const response = await fetch("/api/user/switch-organization", {
         method: "POST",
-        body: JSON.stringify({ organizationId }),
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ organizationId }),
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      
+      return await response.json();
     },
     onSuccess: () => {
       // Invalidate all organization-related queries
