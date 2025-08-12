@@ -3,13 +3,33 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
+// Organizations table
+export const organizations = pgTable("organizations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
   name: text("name"),
   password: text("password").notNull(), // Hashed password for authentication
+  organizationId: integer("organization_id").references(() => organizations.id),
+  role: text("role").default("member").notNull(), // 'owner', 'admin', 'member'
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastLoginAt: timestamp("last_login_at"),
+});
+
+// Organization memberships for handling multiple organization membership
+export const organizationMemberships = pgTable("organization_memberships", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  organizationId: integer("organization_id").references(() => organizations.id).notNull(),
+  role: text("role").default("member").notNull(), // 'owner', 'admin', 'member'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const loginTokens = pgTable("login_tokens", {
@@ -128,7 +148,7 @@ export type InsertApiAnalytics = z.infer<typeof insertApiAnalyticsSchema>;
 export const patients = pgTable("patients", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id), // Link each patient to a user
-  organizationId: integer("organization_id"),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id), // Link each patient to an organization
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   dateOfBirth: text("date_of_birth").notNull(),
@@ -212,14 +232,40 @@ export const appointments = pgTable("appointments", {
 });
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  users: many(users),
   patients: many(patients),
+  memberships: many(organizationMemberships),
+}));
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [users.organizationId],
+    references: [organizations.id],
+  }),
+  patients: many(patients),
+  memberships: many(organizationMemberships),
+}));
+
+export const organizationMembershipsRelations = relations(organizationMemberships, ({ one }) => ({
+  user: one(users, {
+    fields: [organizationMemberships.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [organizationMemberships.organizationId],
+    references: [organizations.id],
+  }),
 }));
 
 export const patientsRelations = relations(patients, ({ one, many }) => ({
   user: one(users, {
     fields: [patients.userId],
     references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [patients.organizationId],
+    references: [organizations.id],
   }),
   documents: many(patientDocuments),
   eSignatureForms: many(eSignatureForms),
@@ -248,10 +294,37 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
 }));
 
 // Insert schemas for new tables
+// Organization schemas
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertOrganizationMembershipSchema = createInsertSchema(organizationMemberships).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Organization registration schema (creates org + user)
+export const organizationRegisterSchema = z.object({
+  organizationName: z.string().min(1),
+  organizationDescription: z.string().optional(),
+  email: z.string().email(),
+  name: z.string().min(1),
+  password: z.string().min(6),
+});
+
+// User invitation schema
+export const userInviteSchema = z.object({
+  email: z.string().email(),
+  role: z.enum(["owner", "admin", "member"]).default("member"),
+});
+
 export const insertPatientSchema = createInsertSchema(patients).omit({
   id: true,
   userId: true, // Will be set from authenticated user context
-  organizationId: true,
+  organizationId: true, // Will be set from authenticated user context
   createdAt: true,
   updatedAt: true,
 }).extend({
@@ -276,6 +349,14 @@ export const insertAppointmentSchema = createInsertSchema(appointments).omit({
 }).extend({
   status: z.string().default("Scheduled"),
 });
+
+// Organization types
+export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type OrganizationMembership = typeof organizationMemberships.$inferSelect;
+export type InsertOrganizationMembership = z.infer<typeof insertOrganizationMembershipSchema>;
+export type OrganizationRegister = z.infer<typeof organizationRegisterSchema>;
+export type UserInvite = z.infer<typeof userInviteSchema>;
 
 // Types for new tables
 export type Patient = typeof patients.$inferSelect;

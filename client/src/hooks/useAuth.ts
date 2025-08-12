@@ -5,6 +5,8 @@ export interface User {
   id: number;
   email: string;
   name?: string;
+  organizationId?: number;
+  role?: string;
   createdAt: string;
   lastLoginAt?: string;
 }
@@ -15,8 +17,10 @@ export interface LoginData {
 }
 
 export interface RegisterData {
-  name: string;
+  organizationName: string;
+  organizationDescription?: string;
   email: string;
+  name: string;
   password: string;
 }
 

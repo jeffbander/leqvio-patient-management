@@ -1,5 +1,7 @@
 import { 
   users, 
+  organizations,
+  organizationMemberships,
   loginTokens,
   automationLogs, 
   customChains,
@@ -10,6 +12,10 @@ import {
   appointments,
   type User, 
   type InsertUser,
+  type Organization,
+  type InsertOrganization,
+  type OrganizationMembership,
+  type InsertOrganizationMembership,
   type LoginToken,
   type InsertLoginToken,
   type AutomationLog,
@@ -28,9 +34,17 @@ import {
   type InsertAppointment
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, gte } from "drizzle-orm";
+import { eq, desc, gte, and } from "drizzle-orm";
 
 export interface IStorage {
+  // Organization management
+  createOrganization(organization: InsertOrganization): Promise<Organization>;
+  getOrganization(id: number): Promise<Organization | undefined>;
+  getOrganizationMembers(organizationId: number): Promise<User[]>;
+  addOrganizationMember(membership: InsertOrganizationMembership): Promise<OrganizationMembership>;
+  removeOrganizationMember(userId: number, organizationId: number): Promise<void>;
+  updateMemberRole(userId: number, organizationId: number, role: string): Promise<void>;
+
   // User management
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -65,12 +79,13 @@ export interface IStorage {
   getErrorRateStats(timeRange?: string): Promise<any>;
   
   // Patient Management
-  createPatient(patient: InsertPatient, userId: number): Promise<Patient>;
-  getPatient(id: number, userId: number): Promise<Patient | undefined>;
-  getUserPatients(userId: number): Promise<Patient[]>;
+  createPatient(patient: InsertPatient, userId: number, organizationId: number): Promise<Patient>;
+  getPatient(id: number, organizationId: number): Promise<Patient | undefined>;
+  getOrganizationPatients(organizationId: number): Promise<Patient[]>;
+  getUserPatients(userId: number): Promise<Patient[]>; // Keep for backward compatibility
   getAllPatients(): Promise<Patient[]>; // Keep for backward compatibility
-  updatePatient(id: number, patient: Partial<InsertPatient>, userId: number): Promise<Patient | undefined>;
-  updatePatientStatus(id: number, status: string, userId: number): Promise<Patient | undefined>;
+  updatePatient(id: number, patient: Partial<InsertPatient>, organizationId: number): Promise<Patient | undefined>;
+  updatePatientStatus(id: number, status: string, organizationId: number): Promise<Patient | undefined>;
   
   // Patient Documents
   createPatientDocument(document: InsertPatientDocument): Promise<PatientDocument>;
@@ -90,6 +105,36 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Organization methods
+  async createOrganization(organization: InsertOrganization): Promise<Organization> {
+    const [org] = await db.insert(organizations).values(organization).returning();
+    return org;
+  }
+
+  async getOrganization(id: number): Promise<Organization | undefined> {
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
+    return org;
+  }
+
+  async getOrganizationMembers(organizationId: number): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.organizationId, organizationId));
+  }
+
+  async addOrganizationMember(membership: InsertOrganizationMembership): Promise<OrganizationMembership> {
+    const [member] = await db.insert(organizationMemberships).values(membership).returning();
+    return member;
+  }
+
+  async removeOrganizationMember(userId: number, organizationId: number): Promise<void> {
+    await db.delete(organizationMemberships)
+      .where(and(eq(organizationMemberships.userId, userId), eq(organizationMemberships.organizationId, organizationId)));
+  }
+
+  async updateMemberRole(userId: number, organizationId: number, role: string): Promise<void> {
+    await db.update(organizationMemberships)
+      .set({ role })
+      .where(and(eq(organizationMemberships.userId, userId), eq(organizationMemberships.organizationId, organizationId)));
+  }
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
@@ -462,15 +507,19 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Patient Management methods
-  async createPatient(patient: InsertPatient, userId: number): Promise<Patient> {
-    const [newPatient] = await db.insert(patients).values({ ...patient, userId }).returning();
+  async createPatient(patient: InsertPatient, userId: number, organizationId: number): Promise<Patient> {
+    const [newPatient] = await db.insert(patients).values({ ...patient, userId, organizationId }).returning();
     return newPatient;
   }
 
-  async getPatient(id: number, userId: number): Promise<Patient | undefined> {
+  async getPatient(id: number, organizationId: number): Promise<Patient | undefined> {
     const [patient] = await db.select().from(patients).where(eq(patients.id, id));
-    // Only return patient if it belongs to the user
-    return patient && patient.userId === userId ? patient : undefined;
+    // Only return patient if it belongs to the organization
+    return patient && patient.organizationId === organizationId ? patient : undefined;
+  }
+
+  async getOrganizationPatients(organizationId: number): Promise<Patient[]> {
+    return db.select().from(patients).where(eq(patients.organizationId, organizationId)).orderBy(desc(patients.createdAt));
   }
 
   async getUserPatients(userId: number): Promise<Patient[]> {
@@ -481,9 +530,9 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(patients).orderBy(desc(patients.createdAt));
   }
 
-  async updatePatient(id: number, patient: Partial<InsertPatient>, userId: number): Promise<Patient | undefined> {
-    // Check if patient belongs to user first
-    const existingPatient = await this.getPatient(id, userId);
+  async updatePatient(id: number, patient: Partial<InsertPatient>, organizationId: number): Promise<Patient | undefined> {
+    // Check if patient belongs to organization first
+    const existingPatient = await this.getPatient(id, organizationId);
     if (!existingPatient) return undefined;
 
     const [updatedPatient] = await db
@@ -494,9 +543,9 @@ export class DatabaseStorage implements IStorage {
     return updatedPatient;
   }
 
-  async updatePatientStatus(id: number, status: string, userId: number): Promise<Patient | undefined> {
-    // Check if patient belongs to user first
-    const existingPatient = await this.getPatient(id, userId);
+  async updatePatientStatus(id: number, status: string, organizationId: number): Promise<Patient | undefined> {
+    // Check if patient belongs to organization first
+    const existingPatient = await this.getPatient(id, organizationId);
     if (!existingPatient) return undefined;
 
     const [updatedPatient] = await db
