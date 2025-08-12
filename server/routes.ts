@@ -1576,11 +1576,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Patient Management Routes
   
   // Create a new patient
-  app.post('/api/patients', requireAuth, async (req, res) => {
+  app.post('/api/patients', async (req, res) => {
+    const userId = (req.session as any).userId;
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
     try {
-      const user = getUserFromSession(req);
+      const user = await storage.getUser(userId);
       if (!user) {
-        return res.status(401).json({ error: 'Authentication required' });
+        return res.status(401).json({ message: 'Authentication required' });
       }
 
       const patientData = req.body;
@@ -1663,11 +1668,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's patients
-  app.get('/api/patients', requireAuth, async (req, res) => {
+  app.get('/api/patients', async (req, res) => {
+    const userId = (req.session as any).userId;
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
     try {
-      const user = getUserFromSession(req);
+      const user = await storage.getUser(userId);
       if (!user) {
-        return res.status(401).json({ error: 'Authentication required' });
+        return res.status(401).json({ message: 'Authentication required' });
       }
 
       if (!user.organizationId) {
