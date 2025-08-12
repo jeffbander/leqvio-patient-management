@@ -387,9 +387,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Organization Management Routes
-  app.get('/api/organization', requireAuth, async (req, res) => {
+  app.get('/api/organization', async (req, res) => {
+    const userId = (req.session as any).userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
     try {
-      const user = getUserFromSession(req);
+      const user = await storage.getUser(userId);
       if (!user || !user.organizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
@@ -406,9 +411,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/organization', requireAuth, async (req, res) => {
+  app.put('/api/organization', async (req, res) => {
+    const userId = (req.session as any).userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
     try {
-      const user = getUserFromSession(req);
+      const user = await storage.getUser(userId);
       if (!user || !user.organizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
@@ -428,9 +438,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/organization/members', requireAuth, async (req, res) => {
+  app.get('/api/organization/members', async (req, res) => {
+    const userId = (req.session as any).userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
     try {
-      const user = getUserFromSession(req);
+      const user = await storage.getUser(userId);
       if (!user || !user.organizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
@@ -443,9 +458,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/organization/invite', requireAuth, async (req, res) => {
+  app.post('/api/organization/invite', async (req, res) => {
+    const userId = (req.session as any).userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
     try {
-      const user = getUserFromSession(req);
+      const user = await storage.getUser(userId);
       if (!user || !user.organizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
@@ -491,9 +511,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/organization/members/:userId', requireAuth, async (req, res) => {
+  app.delete('/api/organization/members/:userId', async (req, res) => {
+    const sessionUserId = (req.session as any).userId;
+    if (!sessionUserId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
     try {
-      const user = getUserFromSession(req);
+      const user = await storage.getUser(sessionUserId);
       if (!user || !user.organizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
@@ -503,8 +528,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Insufficient permissions' });
       }
 
-      const userId = parseInt(req.params.userId);
-      const targetUser = await storage.getUser(userId);
+      const targetUserId = parseInt(req.params.userId);
+      const targetUser = await storage.getUser(targetUserId);
       
       if (!targetUser || targetUser.organizationId !== user.organizationId) {
         return res.status(404).json({ error: 'User not found in organization' });
@@ -515,7 +540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Cannot remove organization owner' });
       }
 
-      await storage.removeUserFromOrganization(userId);
+      await storage.removeUserFromOrganization(targetUserId);
       res.json({ message: 'User removed from organization' });
     } catch (error) {
       console.error('Error removing user:', error);
