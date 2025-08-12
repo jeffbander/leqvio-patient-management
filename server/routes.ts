@@ -386,6 +386,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Organization Management Routes
+  app.get('/api/organization', requireAuth, async (req, res) => {
+    try {
+      const user = getUserFromSession(req);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: 'User not associated with an organization' });
+      }
+
+      const organization = await storage.getOrganization(user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ error: 'Organization not found' });
+      }
+
+      res.json(organization);
+    } catch (error) {
+      console.error('Error fetching organization:', error);
+      res.status(500).json({ error: 'Failed to fetch organization' });
+    }
+  });
+
+  app.put('/api/organization', requireAuth, async (req, res) => {
+    try {
+      const user = getUserFromSession(req);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: 'User not associated with an organization' });
+      }
+
+      // Only owners and admins can update organization
+      if (user.role !== 'owner' && user.role !== 'admin') {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+
+      const { name, description } = req.body;
+      const organization = await storage.updateOrganization(user.organizationId, { name, description });
+      
+      res.json(organization);
+    } catch (error) {
+      console.error('Error updating organization:', error);
+      res.status(500).json({ error: 'Failed to update organization' });
+    }
+  });
+
+  app.get('/api/organization/members', requireAuth, async (req, res) => {
+    try {
+      const user = getUserFromSession(req);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: 'User not associated with an organization' });
+      }
+
+      const members = await storage.getOrganizationMembers(user.organizationId);
+      res.json(members);
+    } catch (error) {
+      console.error('Error fetching organization members:', error);
+      res.status(500).json({ error: 'Failed to fetch organization members' });
+    }
+  });
+
+  app.post('/api/organization/invite', requireAuth, async (req, res) => {
+    try {
+      const user = getUserFromSession(req);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: 'User not associated with an organization' });
+      }
+
+      // Only owners and admins can invite users
+      if (user.role !== 'owner' && user.role !== 'admin') {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+
+      const { email, name } = req.body;
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ error: 'User with this email already exists' });
+      }
+
+      // Create user with temporary password (they'll need to reset it)
+      const tempPassword = Math.random().toString(36).substring(2, 15);
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+      const newUser = await storage.createUser({
+        email,
+        password: hashedPassword,
+        name,
+        organizationId: user.organizationId,
+        role: 'user',
+      });
+
+      // In a real system, you'd send an email with login instructions
+      res.json({ 
+        user: { 
+          id: newUser.id, 
+          email: newUser.email, 
+          name: newUser.name, 
+          role: newUser.role 
+        },
+        tempPassword // Remove this in production - send via email instead
+      });
+    } catch (error) {
+      console.error('Error inviting user:', error);
+      res.status(500).json({ error: 'Failed to invite user' });
+    }
+  });
+
+  app.delete('/api/organization/members/:userId', requireAuth, async (req, res) => {
+    try {
+      const user = getUserFromSession(req);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: 'User not associated with an organization' });
+      }
+
+      // Only owners and admins can remove users
+      if (user.role !== 'owner' && user.role !== 'admin') {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+
+      const userId = parseInt(req.params.userId);
+      const targetUser = await storage.getUser(userId);
+      
+      if (!targetUser || targetUser.organizationId !== user.organizationId) {
+        return res.status(404).json({ error: 'User not found in organization' });
+      }
+
+      // Can't remove the owner
+      if (targetUser.role === 'owner') {
+        return res.status(400).json({ error: 'Cannot remove organization owner' });
+      }
+
+      await storage.removeUserFromOrganization(userId);
+      res.json({ message: 'User removed from organization' });
+    } catch (error) {
+      console.error('Error removing user:', error);
+      res.status(500).json({ error: 'Failed to remove user' });
+    }
+  });
+
   // Store debug requests in memory for retrieval (moved to top)
   let debugRequests: any[] = [];
 

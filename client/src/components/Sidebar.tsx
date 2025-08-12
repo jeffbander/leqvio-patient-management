@@ -5,6 +5,7 @@ import {
   Users, 
   FileText, 
   UserPlus,
+  Building2,
   Menu,
   X,
   LogOut
@@ -37,6 +38,11 @@ const navigation = [
     name: 'Extraction',
     href: '/extraction',
     icon: FileText,
+  },
+  {
+    name: 'Organization',
+    href: '/organization',
+    icon: Building2,
   },
 ]
 

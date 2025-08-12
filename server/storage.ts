@@ -40,9 +40,11 @@ export interface IStorage {
   // Organization management
   createOrganization(organization: InsertOrganization): Promise<Organization>;
   getOrganization(id: number): Promise<Organization | undefined>;
+  updateOrganization(organizationId: number, updates: { name?: string; description?: string }): Promise<Organization>;
   getOrganizationMembers(organizationId: number): Promise<User[]>;
   addOrganizationMember(membership: InsertOrganizationMembership): Promise<OrganizationMembership>;
   removeOrganizationMember(userId: number, organizationId: number): Promise<void>;
+  removeUserFromOrganization(userId: number): Promise<void>;
   updateMemberRole(userId: number, organizationId: number, role: string): Promise<void>;
 
   // User management
@@ -116,6 +118,15 @@ export class DatabaseStorage implements IStorage {
     return org;
   }
 
+  async updateOrganization(organizationId: number, updates: { name?: string; description?: string }): Promise<Organization> {
+    const [organization] = await db
+      .update(organizations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(organizations.id, organizationId))
+      .returning();
+    return organization;
+  }
+
   async getOrganizationMembers(organizationId: number): Promise<User[]> {
     return await db.select().from(users).where(eq(users.organizationId, organizationId));
   }
@@ -134,6 +145,13 @@ export class DatabaseStorage implements IStorage {
     await db.update(organizationMemberships)
       .set({ role })
       .where(and(eq(organizationMemberships.userId, userId), eq(organizationMemberships.organizationId, organizationId)));
+  }
+
+  async removeUserFromOrganization(userId: number): Promise<void> {
+    await db
+      .update(users)
+      .set({ organizationId: null, role: null as any })
+      .where(eq(users.id, userId));
   }
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
