@@ -31,6 +31,7 @@ Providerloop Chains is a comprehensive patient management system with integrated
 - Temporary password persistence: Organization admins can now view temporary passwords for newly invited users even after sending the invitation - passwords are displayed in the organization management interface until the user logs in for the first time
 - Multi-organization support: Users can now belong to multiple organizations and switch between them to access different patient databases. Added organization switcher component in dashboard header for easy switching between organizations.
 - Sidebar UI improvement: Made sidebar thinner (reduced from 256px to 192px width) with more compact spacing and padding for better screen real estate utilization.
+- Patients table optimization: Made table full-width with percentage-based column sizing to eliminate horizontal scrolling, reduced padding and font sizes for better content density and screen utilization.
 
 ## System Architecture
 

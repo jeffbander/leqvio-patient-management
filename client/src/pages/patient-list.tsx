@@ -281,7 +281,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       onClick={handleRowClick}
     >
       {/* Patient Info */}
-      <TableCell className="px-3 py-2 whitespace-nowrap font-medium">
+      <TableCell className="w-[18%] px-2 py-2 font-medium">
         <div className="flex items-center gap-2">
           <div 
             className="flex-1 cursor-pointer hover:bg-blue-50 p-2 -m-2 rounded transition-colors"
@@ -320,7 +320,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Auth Status */}
-      <TableCell className="px-3 py-2 whitespace-nowrap">
+      <TableCell className="w-[12%] px-2 py-2">
         <Select 
           value={patient.authStatus || 'Pending Review'} 
           onValueChange={(value) => onAuthStatusChange(patient.id, value)}
@@ -344,7 +344,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Auth Info */}
-      <TableCell className="px-3 py-2 whitespace-nowrap text-sm">
+      <TableCell className="w-[14%] px-2 py-2 text-xs">
         <div className="space-y-1">
           <div>Start: {patient.startDate || ''}</div>
           <div>End: {patient.endDate || ''}</div>
@@ -354,7 +354,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Schedule Status */}
-      <TableCell className="px-3 py-2 whitespace-nowrap">
+      <TableCell className="w-[12%] px-2 py-2">
         <Select 
           value={patient.scheduleStatus || 'Pending Auth'} 
           onValueChange={(value) => onScheduleStatusChange(patient.id, value)}
@@ -378,7 +378,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Dose # */}
-      <TableCell className="px-3 py-2 whitespace-nowrap">
+      <TableCell className="w-[6%] px-2 py-2">
         <div className="flex items-center gap-2">
           {isEditingDose ? (
             <div className="flex items-center gap-1">
@@ -417,7 +417,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Last Apt */}
-      <TableCell className="px-3 py-2 whitespace-nowrap text-sm">
+      <TableCell className="w-[10%] px-2 py-2 text-xs">
         {lastAppointment ? (
           <div className="space-y-1">
             <div className="font-medium">{lastAppointment.appointmentDate}</div>
@@ -449,7 +449,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Next Apt */}
-      <TableCell className="px-3 py-2 whitespace-nowrap text-sm">
+      <TableCell className="w-[10%] px-2 py-2 text-xs">
         {nextAppointment ? (
           <div>{nextAppointment.appointmentDate}</div>
         ) : (
@@ -458,8 +458,8 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Notes */}
-      <TableCell className="px-3 py-2 text-sm">
-        <div className="space-y-1 max-w-md">
+      <TableCell className="w-[18%] px-2 py-2 text-xs">
+        <div className="space-y-1">
           <div className="flex items-start gap-2">
             <div className="flex-1 min-h-6 p-1 bg-gray-50 rounded border">
               {patient.notes ? (
@@ -931,7 +931,7 @@ export default function PatientList() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="w-full px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">LEQVIO Patient Management</h1>
         <p className="text-gray-600">View and manage all LEQVIO patients</p>
@@ -1044,32 +1044,32 @@ export default function PatientList() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="rounded-lg overflow-hidden border">
-              <Table className="min-w-full">
+            <div className="rounded-lg overflow-hidden border w-full">
+              <Table className="w-full table-auto">
                 <TableHeader>
                   <TableRow className="bg-gray-50 border-b border-gray-200 hover:bg-gray-50">
-                    <TableHead className="w-48 min-w-48 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <TableHead className="w-[18%] px-2 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-semibold hover:bg-transparent text-xs uppercase tracking-wider"
                         onClick={() => handleSort('firstName')}
                       >
-                        Patient Info {getSortIcon('firstName')}
+                        Patient {getSortIcon('firstName')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-32 min-w-32 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Auth Status</TableHead>
-                    <TableHead className="w-36 min-w-36 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Auth Info</TableHead>
-                    <TableHead className="w-32 min-w-32 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Schedule Status</TableHead>
-                    <TableHead className="w-16 min-w-16 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <TableHead className="w-[12%] px-2 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Auth Status</TableHead>
+                    <TableHead className="w-[14%] px-2 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Auth Info</TableHead>
+                    <TableHead className="w-[12%] px-2 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Schedule</TableHead>
+                    <TableHead className="w-[6%] px-2 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-semibold hover:bg-transparent text-xs uppercase tracking-wider"
                         onClick={() => handleSort('doseNumber')}
                       >
-                        Dose # {getSortIcon('doseNumber')}
+                        Dose {getSortIcon('doseNumber')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-24 min-w-24 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <TableHead className="w-[10%] px-2 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-semibold hover:bg-transparent text-xs uppercase tracking-wider"
@@ -1078,7 +1078,7 @@ export default function PatientList() {
                         Last Apt {getSortIcon('lastAppointment')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-24 min-w-24 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <TableHead className="w-[10%] px-2 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-semibold hover:bg-transparent text-xs uppercase tracking-wider"
@@ -1087,7 +1087,7 @@ export default function PatientList() {
                         Next Apt {getSortIcon('nextAppointment')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-60 min-w-60 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Notes</TableHead>
+                    <TableHead className="w-[18%] px-2 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Notes</TableHead>
                   </TableRow>
                 </TableHeader>
               <TableBody>
