@@ -279,11 +279,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
       
-      // Create user with organization
+      // Create user with organization set as current
       const user = await storage.createUser({
         email,
         password: hashedPassword,
         name,
+        currentOrganizationId: organization.id,
+      });
+      
+      // Create organization membership with owner role
+      await storage.addOrganizationMember({
+        userId: user.id,
         organizationId: organization.id,
         role: 'owner',
       });
@@ -294,13 +300,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update last login
       await storage.updateUserLastLogin(user.id);
       
+      // Get user's current organization with role
+      const currentOrg = await storage.getUserCurrentOrganization(user.id);
+      
       res.json({ 
         user: { 
           id: user.id, 
           email: user.email, 
           name: user.name, 
           organizationId: user.currentOrganizationId,
-          role: user.role 
+          role: currentOrg?.role || 'owner' 
         },
         organization
       });
@@ -337,13 +346,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateUser(user.id, { tempPassword: null });
       }
       
+      // Get user's current organization with role
+      const currentOrg = await storage.getUserCurrentOrganization(user.id);
+      
       res.json({ 
         user: { 
           id: user.id, 
           email: user.email, 
           name: user.name, 
           organizationId: user.currentOrganizationId,
-          role: user.role 
+          role: currentOrg?.role || 'user' 
         }
       });
     } catch (error) {
@@ -407,11 +419,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'User not found' });
       }
       
+      // Get user's current organization role
+      const currentOrg = await storage.getUserCurrentOrganization(userId);
+      
       res.json({
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role,
+        role: currentOrg?.role || 'user',
         organizationId: user.currentOrganizationId,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt
@@ -443,12 +458,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updatedUser = await storage.updateUserProfile(userId, { name, email });
       
+      // Get user's current organization role
+      const currentOrg = await storage.getUserCurrentOrganization(userId);
+      
       res.json({
         id: updatedUser.id,
         email: updatedUser.email,
         name: updatedUser.name,
-        role: updatedUser.role,
-        organizationId: updatedUser.organizationId,
+        role: currentOrg?.role || 'user',
+        organizationId: updatedUser.currentOrganizationId,
         createdAt: updatedUser.createdAt,
         lastLoginAt: updatedUser.lastLoginAt
       });
@@ -507,8 +525,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'User not found' });
       }
       
+      // Get user's current organization role
+      const currentOrg = await storage.getUserCurrentOrganization(userId);
+      
       // Check if user is organization owner
-      if (user.role === 'owner') {
+      if (currentOrg?.role === 'owner' && user.currentOrganizationId) {
         // Check if there are other members in the organization
         const orgMembers = await storage.getOrganizationMembers(user.currentOrganizationId);
         if (orgMembers.length > 1) {
@@ -575,8 +596,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
 
+      // Get user's current organization role
+      const currentOrg = await storage.getUserCurrentOrganization(userId);
+      
       // Only owners and admins can update organization
-      if (user.role !== 'owner' && user.role !== 'admin') {
+      if (currentOrg?.role !== 'owner' && currentOrg?.role !== 'admin') {
         return res.status(403).json({ error: 'Insufficient permissions' });
       }
 
@@ -671,6 +695,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const updatedUser = await storage.getUser(existingUser.id);
         
+        if (!updatedUser) {
+          return res.status(500).json({ error: 'Failed to get updated user information' });
+        }
+        
         console.log('Added existing user to organization:', { id: updatedUser.id, email: updatedUser.email });
         
         res.json({ 
@@ -740,24 +768,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
 
+      // Get user's current organization role
+      const currentOrg = await storage.getUserCurrentOrganization(sessionUserId);
+      
       // Only owners and admins can remove users
-      if (user.role !== 'owner' && user.role !== 'admin') {
+      if (currentOrg?.role !== 'owner' && currentOrg?.role !== 'admin') {
         return res.status(403).json({ error: 'Insufficient permissions' });
       }
 
       const targetUserId = parseInt(req.params.userId);
       const targetUser = await storage.getUser(targetUserId);
       
-      if (!targetUser || targetUser.organizationId !== user.currentOrganizationId) {
+      if (!targetUser || targetUser.currentOrganizationId !== user.currentOrganizationId) {
         return res.status(404).json({ error: 'User not found in organization' });
       }
 
+      // Get target user's role
+      const targetUserOrg = await storage.getUserCurrentOrganization(targetUserId);
+
       // Can't remove the owner
-      if (targetUser.role === 'owner') {
+      if (targetUserOrg?.role === 'owner') {
         return res.status(400).json({ error: 'Cannot remove organization owner' });
       }
 
-      await storage.removeUserFromOrganization(targetUserId);
+      await storage.removeUserFromOrganization(targetUserId, user.currentOrganizationId);
       res.json({ message: 'User removed from organization' });
     } catch (error) {
       console.error('Error removing user:', error);
@@ -2322,7 +2356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const patientId = parseInt(req.params.id);
       const { status } = req.body;
-      const updatedPatient = await storage.updatePatientStatus(patientId, status, user.currentOrganizationId);
+      const updatedPatient = await storage.updatePatientStatus(patientId, status, user.currentOrganizationId!);
       
       if (!updatedPatient) {
         return res.status(404).json({ error: 'Patient not found' });
@@ -3133,7 +3167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error switching organization:', error);
-      if (error.message === 'User is not a member of this organization') {
+      if (error instanceof Error && error.message === 'User is not a member of this organization') {
         return res.status(403).json({ error: error.message });
       }
       res.status(500).json({ error: 'Failed to switch organization' });

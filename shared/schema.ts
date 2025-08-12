@@ -90,10 +90,10 @@ export const automationLogsRelations = relations(automationLogs, ({ one }) => ({
 export const customChainsRelations = relations(customChains, ({ one }) => ({}));
 export const apiAnalyticsRelations = relations(apiAnalytics, ({ one }) => ({}));
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  email: true,
-  name: true,
-  password: true,
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  lastLoginAt: true,
 });
 
 // Schema for user login (without password in response)
