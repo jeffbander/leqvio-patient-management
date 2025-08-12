@@ -153,9 +153,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async removeUserFromOrganization(userId: number): Promise<void> {
+    // When removing a user from an organization, we set their organizationId to null
+    // but keep their role as 'user' (the default) since role cannot be null
     await db
       .update(users)
-      .set({ organizationId: null, role: null as any })
+      .set({ organizationId: null, role: "user" })
       .where(eq(users.id, userId));
   }
   async getUser(id: number): Promise<User | undefined> {
