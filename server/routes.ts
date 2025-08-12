@@ -470,21 +470,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
 
-      // Only owners and admins can invite users
-      if (user.role !== 'owner' && user.role !== 'admin') {
-        return res.status(403).json({ error: 'Insufficient permissions' });
+      console.log('User attempting to invite:', { id: user.id, role: user.role, email: user.email });
+
+      // Only owners and admins can invite users (owners are default)
+      if (!user.role || user.role === 'user') {
+        console.log('Permission denied - user role:', user.role);
+        return res.status(403).json({ error: 'Insufficient permissions. Only organization owners can invite users.' });
       }
 
       const { email, name } = req.body;
+      console.log('Invite request data:', { email, name });
       
+      if (!email || !name) {
+        return res.status(400).json({ error: 'Email and name are required' });
+      }
+
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
+        console.log('User already exists:', email);
         return res.status(400).json({ error: 'User with this email already exists' });
       }
 
       // Create user with temporary password (they'll need to reset it)
       const tempPassword = Math.random().toString(36).substring(2, 15);
+      console.log('Generated temp password for new user');
+      
       const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
       const newUser = await storage.createUser({
@@ -494,6 +505,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         organizationId: user.organizationId,
         role: 'user',
       });
+
+      console.log('Successfully created new user:', { id: newUser.id, email: newUser.email });
 
       // In a real system, you'd send an email with login instructions
       res.json({ 

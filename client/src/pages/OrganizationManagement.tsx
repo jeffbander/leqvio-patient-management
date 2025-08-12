@@ -59,21 +59,29 @@ export default function OrganizationManagement() {
   // Invite user mutation
   const inviteUserMutation = useMutation({
     mutationFn: async (userData: { email: string; name: string }) => {
-      return apiRequest("/api/organization/invite", {
+      console.log("Inviting user:", userData);
+      const response = await apiRequest("/api/organization/invite", {
         method: "POST",
         body: JSON.stringify(userData),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
+      console.log("Invite response:", response);
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Invite success:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/organization/members"] });
       setInviteEmail("");
       setInviteName("");
       toast({
         title: "Success",
-        description: "User invited successfully",
+        description: `User invited successfully. Temporary password: ${data.tempPassword}`,
       });
     },
     onError: (error: any) => {
+      console.error("Invite error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to invite user",
