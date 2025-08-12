@@ -2733,6 +2733,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const extraction = await extractEpicInsuranceData(base64Image);
           extractedData = JSON.stringify(extraction);
           metadata = extraction;
+          
+          // Automatically map and update patient insurance fields
+          const user = await getUserFromSession(req);
+          if (user && user.currentOrganizationId) {
+            const updates: any = {};
+            
+            // Map Epic insurance data to patient fields
+            if (extraction.primary?.payer) updates.primaryInsurance = extraction.primary.payer;
+            if (extraction.primary?.subscriberId) updates.primaryInsuranceNumber = extraction.primary.subscriberId;
+            if (extraction.primary?.groupNumber) updates.primaryGroupId = extraction.primary.groupNumber;
+            if (extraction.primary?.plan) updates.primaryPlan = extraction.primary.plan;
+            
+            if (extraction.secondary?.payer) updates.secondaryInsurance = extraction.secondary.payer;
+            if (extraction.secondary?.subscriberId) updates.secondaryInsuranceNumber = extraction.secondary.subscriberId;
+            if (extraction.secondary?.groupNumber) updates.secondaryGroupId = extraction.secondary.groupNumber;
+            if (extraction.secondary?.plan) updates.secondaryPlan = extraction.secondary.plan;
+            
+            if (Object.keys(updates).length > 0) {
+              await storage.updatePatient(patientId, updates, user.currentOrganizationId);
+              console.log('Patient insurance information automatically updated from Epic screenshot:', updates);
+              
+              // Log the insurance update in patient notes
+              const changeLog = `Updated: Epic screenshot insurance data - ${new Date().toLocaleString()}`;
+              const changeDetails = Object.entries(updates).map(([key, value]) => `  ${key}: ${value}`).join('\n');
+              const logEntry = `${changeLog}\n${changeDetails}`;
+              
+              await addInsuranceChangeToNotes(patientId, logEntry, user.currentOrganizationId);
+              
+              // Store the updated fields to return to frontend
+              metadata.updatedFields = updates;
+            }
+          }
         } catch (ocrError) {
           console.error('Epic insurance extraction failed:', ocrError);
           // Continue without extraction
@@ -2785,41 +2817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata
       });
       
-      // If we have extracted Epic insurance data, update the patient record with both primary and secondary
-      if (metadata.primary && documentType === 'epic_insurance_screenshot') {
-        const updates: any = {};
-        
-        // Update primary insurance fields
-        if (metadata.primary.payer) updates.primaryInsurance = metadata.primary.payer;
-        if (metadata.primary.plan) updates.primaryPlan = metadata.primary.plan;
-        if (metadata.primary.subscriberId) updates.primaryInsuranceNumber = metadata.primary.subscriberId;
-        if (metadata.primary.groupNumber) updates.primaryGroupId = metadata.primary.groupNumber;
-        
-        // Update secondary insurance fields  
-        if (metadata.secondary.payer) updates.secondaryInsurance = metadata.secondary.payer;
-        if (metadata.secondary.plan) updates.secondaryPlan = metadata.secondary.plan;
-        if (metadata.secondary.subscriberId) updates.secondaryInsuranceNumber = metadata.secondary.subscriberId;
-        if (metadata.secondary.groupNumber) updates.secondaryGroupId = metadata.secondary.groupNumber;
-        
-        if (Object.keys(updates).length > 0) {
-          try {
-            const user = await getUserFromSession(req);
-            if (user && user.currentOrganizationId) {
-              await storage.updatePatient(patientId, updates, user.currentOrganizationId);
-              console.log('Patient insurance information automatically updated from Epic screenshot:', updates);
-              
-              // Log the insurance update in patient notes
-              const changeLog = `Updated: Epic insurance data extracted - ${new Date().toLocaleString()}`;
-              const changeDetails = Object.entries(updates).map(([key, value]) => `  ${key}: ${value}`).join('\n');
-              const logEntry = `${changeLog}\n${changeDetails}`;
-              
-              await addInsuranceChangeToNotes(patientId, logEntry, user.currentOrganizationId);
-            }
-          } catch (error) {
-            console.error('Failed to update patient with Epic insurance data:', error);
-          }
-        }
-      }
+      // Note: Epic insurance data mapping is now handled above in the extraction block
       
       // Handle regular insurance card screenshots
       if (documentType === 'insurance_screenshot') {
@@ -2869,7 +2867,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Save extracted data for later processing - don't trigger AIGENTS automatically
       
-      res.json({ document, extractedData: metadata });
+      res.json({ 
+        document, 
+        extractedData: metadata,
+        updatedFields: metadata.updatedFields || null
+      });
     } catch (error) {
       console.error('Error creating patient document:', error);
       res.status(500).json({ error: 'Failed to create patient document' });

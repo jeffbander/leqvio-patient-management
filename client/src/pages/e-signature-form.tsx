@@ -102,14 +102,39 @@ export default function ESignatureForm() {
       })
       
       if (!response.ok) throw new Error('Upload failed')
-      return response.json()
+      const result = await response.json()
+      
+      // If this is an Epic insurance screenshot, automatically extract and apply the data
+      if (documentType === 'epic_insurance_screenshot' && result.extractedData) {
+        try {
+          // The extraction already happened server-side, just show success message
+          toast({
+            title: "Epic insurance data extracted and applied!",
+            description: "Insurance information has been automatically updated from the Epic screenshot."
+          })
+          return result
+        } catch (extractError) {
+          console.error('Epic extraction error:', extractError)
+        }
+      }
+      
+      return result
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setSubmissionState('success') // Return to success state after upload
-      toast({
-        title: "Document uploaded successfully!",
-        description: "The document has been added to the patient record."
-      })
+      
+      // Show different messages based on document type
+      if (data?.extractedData && data?.updatedFields) {
+        toast({
+          title: "Document uploaded and data extracted!",
+          description: "The document has been uploaded and insurance information has been automatically updated."
+        })
+      } else {
+        toast({
+          title: "Document uploaded successfully!",
+          description: "The document has been added to the patient record."
+        })
+      }
     },
     onError: () => {
       setSubmissionState('success') // Return to success state even if upload fails
@@ -385,7 +410,7 @@ export default function ESignatureForm() {
               </div>
               
               {/* Upload Status */}
-              {submissionState === 'uploading' && (
+              {uploadDocumentMutation.isPending && (
                 <div className="text-center py-4">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
                   <p className="text-sm text-gray-600">Uploading document...</p>
