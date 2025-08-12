@@ -721,6 +721,10 @@ interface EpicInsuranceData {
 }
 
 export async function extractEpicInsuranceData(base64Image: string): Promise<EpicInsuranceData> {
+  return extractEpicInsuranceDataWithFormat(base64Image, 'png');
+}
+
+export async function extractEpicInsuranceDataWithFormat(base64Image: string, imageFormat: string = 'png'): Promise<EpicInsuranceData> {
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -785,7 +789,7 @@ EXTRACTION RULES:
             {
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
+                url: `data:image/${imageFormat};base64,${base64Image}`
               }
             }
           ],

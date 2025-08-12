@@ -280,16 +280,16 @@ const analyticsMiddleware = (req: any, res: any, next: any) => {
         responseTime,
         userAgent: req.get('User-Agent') || '',
         ipAddress: req.ip || req.connection?.remoteAddress || '',
-        chainType: req.body?.chain_to_run || req.body?.chainType || '', // Change null to empty string
-        uniqueId: req.body?.uniqueId || req.body?.["Chain Run ID"] || '', // Change null to empty string
+        chainType: req.body?.chain_to_run || req.body?.chainType || null,
+        uniqueId: req.body?.uniqueId || req.body?.["Chain Run ID"] || null,
         requestSize: req.get('Content-Length') ? parseInt(req.get('Content-Length')) : 0,
         responseSize,
         errorMessage: res.statusCode >= 400 ? (
           typeof data === 'object' && data ? 
             (data.error || data.message || 'Unknown error') : 
             'Unknown error'
-        ) : '', // Change null to empty string
-        requestData: req.method !== 'GET' ? req.body : {} // Change null to empty object
+        ) : null,
+        requestData: req.method !== 'GET' ? req.body : null
       };
 
       // Store analytics asynchronously
@@ -2728,9 +2728,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (documentType === 'epic_insurance_screenshot') {
         const base64Image = file.buffer.toString('base64');
         
+        // Detect image format for OpenAI compatibility
+        const mimeType = file.mimetype || 'image/png';
+        let imageFormat = 'png';
+        
+        if (mimeType.includes('jpeg') || mimeType.includes('jpg')) {
+          imageFormat = 'jpeg';
+        } else if (mimeType.includes('webp')) {
+          imageFormat = 'webp';
+        } else if (mimeType.includes('gif')) {
+          imageFormat = 'gif';
+        }
+        
         try {
-          const { extractEpicInsuranceData } = await import('./openai-service');
-          const extraction = await extractEpicInsuranceData(base64Image);
+          const { extractEpicInsuranceDataWithFormat } = await import('./openai-service');
+          const extraction = await extractEpicInsuranceDataWithFormat(base64Image, imageFormat);
           extractedData = JSON.stringify(extraction);
           metadata = extraction;
           
