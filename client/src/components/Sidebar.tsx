@@ -6,10 +6,12 @@ import {
   FileText, 
   UserPlus,
   Menu,
-  X
+  X,
+  LogOut
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
+import { useAuth } from '@/hooks/useAuth'
 
 interface SidebarProps {
   className?: string
@@ -41,6 +43,7 @@ const navigation = [
 export function Sidebar({ className }: SidebarProps) {
   const [location] = useLocation()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { user, logout } = useAuth()
 
   return (
     <>
@@ -128,8 +131,22 @@ export function Sidebar({ className }: SidebarProps) {
             })}
           </nav>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-gray-200">
+          {/* User Info & Logout */}
+          <div className="p-4 border-t border-gray-200 space-y-3">
+            {user && (
+              <div className="text-sm text-gray-600">
+                Logged in as: <span className="font-medium">{user.email}</span>
+              </div>
+            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => logout()}
+              className="w-full"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
             <div className="text-xs text-gray-500 text-center">
               Providerloop Chains v1.0
             </div>

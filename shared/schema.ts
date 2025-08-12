@@ -7,6 +7,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
   name: text("name"),
+  password: text("password").notNull(), // Hashed password for authentication
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastLoginAt: timestamp("last_login_at"),
 });
@@ -71,6 +72,20 @@ export const apiAnalyticsRelations = relations(apiAnalytics, ({ one }) => ({}));
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   name: true,
+  password: true,
+});
+
+// Schema for user login (without password in response)
+export const userLoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
+// Schema for user registration
+export const userRegisterSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(1),
+  password: z.string().min(6),
 });
 
 export const insertLoginTokenSchema = createInsertSchema(loginTokens).omit({
@@ -97,6 +112,8 @@ export const insertApiAnalyticsSchema = createInsertSchema(apiAnalytics).omit({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type UserLogin = z.infer<typeof userLoginSchema>;
+export type UserRegister = z.infer<typeof userRegisterSchema>;
 export type LoginToken = typeof loginTokens.$inferSelect;
 export type InsertLoginToken = z.infer<typeof insertLoginTokenSchema>;
 export type AutomationLog = typeof automationLogs.$inferSelect;
@@ -110,6 +127,7 @@ export type InsertApiAnalytics = z.infer<typeof insertApiAnalyticsSchema>;
 
 export const patients = pgTable("patients", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id), // Link each patient to a user
   organizationId: integer("organization_id"),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
@@ -194,7 +212,15 @@ export const appointments = pgTable("appointments", {
 });
 
 // Relations
-export const patientsRelations = relations(patients, ({ many }) => ({
+export const usersRelations = relations(users, ({ many }) => ({
+  patients: many(patients),
+}));
+
+export const patientsRelations = relations(patients, ({ one, many }) => ({
+  user: one(users, {
+    fields: [patients.userId],
+    references: [users.id],
+  }),
   documents: many(patientDocuments),
   eSignatureForms: many(eSignatureForms),
   appointments: many(appointments),
@@ -224,6 +250,7 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
 // Insert schemas for new tables
 export const insertPatientSchema = createInsertSchema(patients).omit({
   id: true,
+  userId: true, // Will be set from authenticated user context
   organizationId: true,
   createdAt: true,
   updatedAt: true,

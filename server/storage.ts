@@ -65,11 +65,12 @@ export interface IStorage {
   getErrorRateStats(timeRange?: string): Promise<any>;
   
   // Patient Management
-  createPatient(patient: InsertPatient): Promise<Patient>;
-  getPatient(id: number): Promise<Patient | undefined>;
-  getAllPatients(): Promise<Patient[]>;
-  updatePatient(id: number, patient: Partial<InsertPatient>): Promise<Patient | undefined>;
-  updatePatientStatus(id: number, status: string): Promise<Patient | undefined>;
+  createPatient(patient: InsertPatient, userId: number): Promise<Patient>;
+  getPatient(id: number, userId: number): Promise<Patient | undefined>;
+  getUserPatients(userId: number): Promise<Patient[]>;
+  getAllPatients(): Promise<Patient[]>; // Keep for backward compatibility
+  updatePatient(id: number, patient: Partial<InsertPatient>, userId: number): Promise<Patient | undefined>;
+  updatePatientStatus(id: number, status: string, userId: number): Promise<Patient | undefined>;
   
   // Patient Documents
   createPatientDocument(document: InsertPatientDocument): Promise<PatientDocument>;
@@ -461,21 +462,30 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Patient Management methods
-  async createPatient(patient: InsertPatient): Promise<Patient> {
-    const [newPatient] = await db.insert(patients).values(patient).returning();
+  async createPatient(patient: InsertPatient, userId: number): Promise<Patient> {
+    const [newPatient] = await db.insert(patients).values({ ...patient, userId }).returning();
     return newPatient;
   }
 
-  async getPatient(id: number): Promise<Patient | undefined> {
+  async getPatient(id: number, userId: number): Promise<Patient | undefined> {
     const [patient] = await db.select().from(patients).where(eq(patients.id, id));
-    return patient;
+    // Only return patient if it belongs to the user
+    return patient && patient.userId === userId ? patient : undefined;
+  }
+
+  async getUserPatients(userId: number): Promise<Patient[]> {
+    return db.select().from(patients).where(eq(patients.userId, userId)).orderBy(desc(patients.createdAt));
   }
 
   async getAllPatients(): Promise<Patient[]> {
     return db.select().from(patients).orderBy(desc(patients.createdAt));
   }
 
-  async updatePatient(id: number, patient: Partial<InsertPatient>): Promise<Patient | undefined> {
+  async updatePatient(id: number, patient: Partial<InsertPatient>, userId: number): Promise<Patient | undefined> {
+    // Check if patient belongs to user first
+    const existingPatient = await this.getPatient(id, userId);
+    if (!existingPatient) return undefined;
+
     const [updatedPatient] = await db
       .update(patients)
       .set({ ...patient, updatedAt: new Date() })
@@ -484,7 +494,11 @@ export class DatabaseStorage implements IStorage {
     return updatedPatient;
   }
 
-  async updatePatientStatus(id: number, status: string): Promise<Patient | undefined> {
+  async updatePatientStatus(id: number, status: string, userId: number): Promise<Patient | undefined> {
+    // Check if patient belongs to user first
+    const existingPatient = await this.getPatient(id, userId);
+    if (!existingPatient) return undefined;
+
     const [updatedPatient] = await db
       .update(patients)
       .set({ status, updatedAt: new Date() })
