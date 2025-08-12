@@ -527,8 +527,29 @@ export class DatabaseStorage implements IStorage {
 
   // API Analytics methods
   async createApiAnalytics(analytics: InsertApiAnalytics): Promise<ApiAnalytics> {
-    const [newAnalytics] = await db.insert(apiAnalytics).values(analytics).returning();
-    return newAnalytics;
+    try {
+      // Sanitize data to avoid null values that cause DB issues
+      const sanitizedData = {
+        endpoint: analytics.endpoint || '',
+        method: analytics.method || 'GET',
+        statusCode: analytics.statusCode || 200,
+        responseTime: analytics.responseTime || 0,
+        userAgent: analytics.userAgent || '',
+        ipAddress: analytics.ipAddress || '',
+        chainType: analytics.chainType || '',
+        uniqueId: analytics.uniqueId || '',
+        requestSize: analytics.requestSize || 0,
+        responseSize: analytics.responseSize || 0,
+        errorMessage: analytics.errorMessage || '',
+        requestData: analytics.requestData || {}
+      };
+      
+      const [newAnalytics] = await db.insert(apiAnalytics).values(sanitizedData).returning();
+      return newAnalytics;
+    } catch (error) {
+      console.error('Error creating API analytics:', error);
+      throw error;
+    }
   }
 
   async getApiAnalytics(timeRange: string = '24h'): Promise<ApiAnalytics[]> {
