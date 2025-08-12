@@ -81,14 +81,14 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed left-0 top-0 z-40 h-full w-64 transform bg-white border-r border-gray-200 transition-transform duration-200 ease-in-out",
+        "fixed left-0 top-0 z-40 h-full w-48 transform bg-white border-r border-gray-200 transition-transform duration-200 ease-in-out",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         "md:translate-x-0 md:static md:inset-0",
         className
       )}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
+          <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <img 
@@ -116,7 +116,7 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
+          <nav className="flex-1 px-3 py-4 space-y-1">
             {navigation.map((item) => {
               const isActive = location === item.href || 
                 (item.href === '/patients' && location.startsWith('/patient/') && location !== '/patient/new')
@@ -125,7 +125,7 @@ export function Sidebar({ className }: SidebarProps) {
                 <Link key={item.name} href={item.href}>
                   <div
                     className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer",
+                      "flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer",
                       isActive
                         ? "bg-blue-100 text-blue-700 border border-blue-200"
                         : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
@@ -133,7 +133,7 @@ export function Sidebar({ className }: SidebarProps) {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <item.icon className={cn(
-                      "mr-3 h-4 w-4",
+                      "mr-2 h-4 w-4 flex-shrink-0",
                       isActive ? "text-blue-700" : "text-gray-400"
                     )} />
                     {item.name}
@@ -144,10 +144,10 @@ export function Sidebar({ className }: SidebarProps) {
           </nav>
 
           {/* User Info & Logout */}
-          <div className="p-4 border-t border-gray-200 space-y-3">
+          <div className="p-3 border-t border-gray-200 space-y-2">
             {user && (
-              <div className="text-sm text-gray-600">
-                Logged in as: <span className="font-medium">{user.email}</span>
+              <div className="text-xs text-gray-600 truncate">
+                <span className="font-medium">{user.email}</span>
               </div>
             )}
             <Button 
