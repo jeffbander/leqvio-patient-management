@@ -60,15 +60,22 @@ export default function OrganizationManagement() {
   const inviteUserMutation = useMutation({
     mutationFn: async (userData: { email: string; name: string }) => {
       console.log("Inviting user:", userData);
-      const response = await apiRequest("/api/organization/invite", {
+      const response = await fetch("/api/organization/invite", {
         method: "POST",
-        body: JSON.stringify(userData),
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify(userData),
       });
-      console.log("Invite response:", response);
-      return response;
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log("Invite response:", result);
+      return result;
     },
     onSuccess: (data) => {
       console.log("Invite success:", data);
@@ -93,10 +100,20 @@ export default function OrganizationManagement() {
   // Update organization mutation
   const updateOrgMutation = useMutation({
     mutationFn: async (orgData: { name: string; description: string }) => {
-      return apiRequest("/api/organization", {
+      const response = await fetch("/api/organization", {
         method: "PUT",
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(orgData),
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/organization"] });
@@ -118,9 +135,19 @@ export default function OrganizationManagement() {
   // Remove user mutation
   const removeUserMutation = useMutation({
     mutationFn: async (userId: number) => {
-      return apiRequest(`/api/organization/members/${userId}`, {
+      const response = await fetch(`/api/organization/members/${userId}`, {
         method: "DELETE",
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/organization/members"] });
