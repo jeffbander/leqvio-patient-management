@@ -212,14 +212,14 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 space-y-4">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">Overview of patient management metrics and status</p>
       </div>
 
       {/* Key Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
@@ -247,7 +247,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Upcoming Appointments</DialogTitle>
               <DialogDescription>
@@ -259,29 +259,30 @@ export default function Dashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Patient</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="py-2">Patient</TableHead>
+                      <TableHead className="py-2">Date</TableHead>
+                      <TableHead className="py-2">Status</TableHead>
+                      <TableHead className="py-2 w-24">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {metrics.upcomingAppointmentsList.map((appointment: AppointmentWithPatient) => (
                       <TableRow key={appointment.id}>
-                        <TableCell className="font-medium">{appointment.patientName}</TableCell>
-                        <TableCell>{format(new Date(appointment.appointmentDate), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>
-                          <Badge className="bg-blue-100 text-blue-800">
+                        <TableCell className="font-medium py-2">{appointment.patientName}</TableCell>
+                        <TableCell className="py-2">{format(new Date(appointment.appointmentDate), 'MMM dd')}</TableCell>
+                        <TableCell className="py-2">
+                          <Badge className="bg-blue-100 text-blue-800 text-xs">
                             {appointment.status || 'Scheduled'}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <Button 
                             variant="outline" 
                             size="sm"
+                            className="h-7 px-2 text-xs"
                             onClick={() => window.location.href = `/patient/${appointment.patientId}`}
                           >
-                            View Patient
+                            View
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -313,7 +314,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Overdue Appointments</DialogTitle>
               <DialogDescription>
@@ -325,11 +326,11 @@ export default function Dashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Patient</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Days Overdue</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="py-2">Patient</TableHead>
+                      <TableHead className="py-2">Date</TableHead>
+                      <TableHead className="py-2">Status</TableHead>
+                      <TableHead className="py-2 w-20">Days</TableHead>
+                      <TableHead className="py-2 w-24">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -337,21 +338,22 @@ export default function Dashboard() {
                       const daysOverdue = Math.floor((new Date().getTime() - new Date(appointment.appointmentDate).getTime()) / (1000 * 60 * 60 * 24))
                       return (
                         <TableRow key={appointment.id}>
-                          <TableCell className="font-medium">{appointment.patientName}</TableCell>
-                          <TableCell>{format(new Date(appointment.appointmentDate), 'MMM dd, yyyy')}</TableCell>
-                          <TableCell>
-                            <Badge className="bg-red-100 text-red-800">
+                          <TableCell className="font-medium py-2">{appointment.patientName}</TableCell>
+                          <TableCell className="py-2">{format(new Date(appointment.appointmentDate), 'MMM dd')}</TableCell>
+                          <TableCell className="py-2">
+                            <Badge className="bg-red-100 text-red-800 text-xs">
                               {appointment.status || 'Scheduled'}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-red-600 font-medium">{daysOverdue} days</TableCell>
-                          <TableCell>
+                          <TableCell className="text-red-600 font-medium py-2">{daysOverdue}d</TableCell>
+                          <TableCell className="py-2">
                             <Button 
                               variant="outline" 
                               size="sm"
+                              className="h-7 px-2 text-xs"
                               onClick={() => window.location.href = `/patient/${appointment.patientId}`}
                             >
-                              View Patient
+                              View
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -381,7 +383,7 @@ export default function Dashboard() {
       </div>
 
       {/* Status Breakdowns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Authorization Status</CardTitle>
@@ -414,7 +416,7 @@ export default function Dashboard() {
       </div>
 
       {/* Additional Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
