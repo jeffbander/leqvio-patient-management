@@ -281,7 +281,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       onClick={handleRowClick}
     >
       {/* Patient Info */}
-      <TableCell className="px-6 py-4 whitespace-nowrap font-medium">
+      <TableCell className="px-3 py-2 whitespace-nowrap font-medium">
         <div className="flex items-center gap-2">
           <div 
             className="flex-1 cursor-pointer hover:bg-blue-50 p-2 -m-2 rounded transition-colors"
@@ -320,7 +320,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Auth Status */}
-      <TableCell className="px-6 py-4 whitespace-nowrap">
+      <TableCell className="px-3 py-2 whitespace-nowrap">
         <Select 
           value={patient.authStatus || 'Pending Review'} 
           onValueChange={(value) => onAuthStatusChange(patient.id, value)}
@@ -344,7 +344,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Auth Info */}
-      <TableCell className="px-6 py-4 whitespace-nowrap text-sm">
+      <TableCell className="px-3 py-2 whitespace-nowrap text-sm">
         <div className="space-y-1">
           <div>Start: {patient.startDate || ''}</div>
           <div>End: {patient.endDate || ''}</div>
@@ -354,7 +354,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Schedule Status */}
-      <TableCell className="px-6 py-4 whitespace-nowrap">
+      <TableCell className="px-3 py-2 whitespace-nowrap">
         <Select 
           value={patient.scheduleStatus || 'Pending Auth'} 
           onValueChange={(value) => onScheduleStatusChange(patient.id, value)}
@@ -378,7 +378,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Dose # */}
-      <TableCell className="px-6 py-4 whitespace-nowrap">
+      <TableCell className="px-3 py-2 whitespace-nowrap">
         <div className="flex items-center gap-2">
           {isEditingDose ? (
             <div className="flex items-center gap-1">
@@ -417,7 +417,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Last Apt */}
-      <TableCell className="px-6 py-4 whitespace-nowrap text-sm">
+      <TableCell className="px-3 py-2 whitespace-nowrap text-sm">
         {lastAppointment ? (
           <div className="space-y-1">
             <div className="font-medium">{lastAppointment.appointmentDate}</div>
@@ -449,7 +449,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Next Apt */}
-      <TableCell className="px-6 py-4 whitespace-nowrap text-sm">
+      <TableCell className="px-3 py-2 whitespace-nowrap text-sm">
         {nextAppointment ? (
           <div>{nextAppointment.appointmentDate}</div>
         ) : (
@@ -458,10 +458,10 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
       </TableCell>
 
       {/* Notes */}
-      <TableCell className="px-6 py-4 text-sm">
-        <div className="space-y-2 max-w-lg">
+      <TableCell className="px-3 py-2 text-sm">
+        <div className="space-y-1 max-w-md">
           <div className="flex items-start gap-2">
-            <div className="flex-1 min-h-8 p-2 bg-gray-50 rounded border">
+            <div className="flex-1 min-h-6 p-1 bg-gray-50 rounded border">
               {patient.notes ? (
                 <div className="whitespace-pre-line text-gray-700 text-sm leading-relaxed">
                   {getNotesPreview()}
@@ -471,7 +471,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
               )}
             </div>
           </div>
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-1">
             <div className="text-xs text-gray-500 flex-1">
               {patient.lastVoicemailAt && `Voicemail Left: ${format(new Date(patient.lastVoicemailAt), 'MM/dd/yyyy HH:mm')}`}
             </div>
@@ -482,7 +482,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
                 e.stopPropagation()
                 onRecordVoicemail()
               }}
-              className="flex items-center gap-1 text-xs whitespace-nowrap"
+              className="flex items-center gap-1 text-xs whitespace-nowrap h-6 px-2"
             >
               <Mic className="h-3 w-3" />
               Left Voicemail
@@ -1048,7 +1048,7 @@ export default function PatientList() {
               <Table className="min-w-full">
                 <TableHeader>
                   <TableRow className="bg-gray-50 border-b border-gray-200 hover:bg-gray-50">
-                    <TableHead className="w-64 min-w-64 px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <TableHead className="w-48 min-w-48 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-semibold hover:bg-transparent text-xs uppercase tracking-wider"
@@ -1057,10 +1057,10 @@ export default function PatientList() {
                         Patient Info {getSortIcon('firstName')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-40 min-w-40 px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Auth Status</TableHead>
-                    <TableHead className="w-48 min-w-48 px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Auth Info</TableHead>
-                    <TableHead className="w-40 min-w-40 px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Schedule Status</TableHead>
-                    <TableHead className="w-20 min-w-20 px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <TableHead className="w-32 min-w-32 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Auth Status</TableHead>
+                    <TableHead className="w-36 min-w-36 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Auth Info</TableHead>
+                    <TableHead className="w-32 min-w-32 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Schedule Status</TableHead>
+                    <TableHead className="w-16 min-w-16 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-semibold hover:bg-transparent text-xs uppercase tracking-wider"
@@ -1069,7 +1069,7 @@ export default function PatientList() {
                         Dose # {getSortIcon('doseNumber')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-32 min-w-32 px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <TableHead className="w-24 min-w-24 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-semibold hover:bg-transparent text-xs uppercase tracking-wider"
@@ -1078,7 +1078,7 @@ export default function PatientList() {
                         Last Apt {getSortIcon('lastAppointment')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-32 min-w-32 px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <TableHead className="w-24 min-w-24 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       <Button 
                         variant="ghost" 
                         className="flex items-center justify-start p-0 h-auto font-semibold hover:bg-transparent text-xs uppercase tracking-wider"
@@ -1087,7 +1087,7 @@ export default function PatientList() {
                         Next Apt {getSortIcon('nextAppointment')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-80 min-w-80 px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Notes</TableHead>
+                    <TableHead className="w-60 min-w-60 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Notes</TableHead>
                   </TableRow>
                 </TableHeader>
               <TableBody>
