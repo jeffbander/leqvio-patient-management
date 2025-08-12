@@ -595,11 +595,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const user = await storage.getUser(userId);
-      if (!user || !user.organizationId) {
+      if (!user || !user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
 
-      const members = await storage.getOrganizationMembers(user.organizationId);
+      const members = await storage.getOrganizationMembers(user.currentOrganizationId);
       res.json(members);
     } catch (error) {
       console.error('Error fetching organization members:', error);
@@ -615,16 +615,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const user = await storage.getUser(userId);
-      if (!user || !user.organizationId) {
+      if (!user || !user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
 
-      console.log('User attempting to invite:', { id: user.id, role: user.role, email: user.email });
+      // Get user's role in current organization
+      const currentOrg = await storage.getUserCurrentOrganization(userId);
+      if (!currentOrg) {
+        return res.status(400).json({ error: 'No current organization selected' });
+      }
 
-      // Only owners and admins can invite users (owners are default)
-      if (!user.role || user.role === 'user') {
-        console.log('Permission denied - user role:', user.role);
-        return res.status(403).json({ error: 'Insufficient permissions. Only organization owners can invite users.' });
+      console.log('User attempting to invite:', { id: user.id, role: currentOrg.role, email: user.email });
+
+      // Only owners and admins can invite users
+      if (currentOrg.role === 'user') {
+        console.log('Permission denied - user role:', currentOrg.role);
+        return res.status(403).json({ error: 'Insufficient permissions. Only organization owners and admins can invite users.' });
       }
 
       const { email, name } = req.body;
@@ -639,21 +645,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingUser) {
         console.log('User already exists:', email);
         
-        // Check if user is already in this organization
-        if (existingUser.organizationId === user.organizationId) {
+        // Check if user is already a member of this organization
+        const userOrgs = await storage.getUserOrganizations(existingUser.id);
+        const isMemberOfCurrentOrg = userOrgs.some(org => org.organization.id === user.currentOrganizationId && org.isActive);
+        
+        if (isMemberOfCurrentOrg) {
           return res.status(400).json({ error: 'User is already a member of this organization' });
         }
         
-        // Check if user is in another organization
-        if (existingUser.organizationId && existingUser.organizationId !== user.organizationId) {
-          return res.status(400).json({ error: 'User is already a member of another organization' });
+        // Add existing user to organization via membership
+        await storage.addOrganizationMember({
+          userId: existingUser.id,
+          organizationId: user.currentOrganizationId,
+          role: 'user',
+          isActive: true
+        });
+
+        // Set as current organization if user doesn't have one
+        if (!existingUser.currentOrganizationId) {
+          await storage.switchUserOrganization(existingUser.id, user.currentOrganizationId);
         }
         
-        // Add existing user to organization
-        const updatedUser = await storage.updateUser(existingUser.id, {
-          organizationId: user.organizationId,
-          role: 'user'
-        });
+        const updatedUser = await storage.getUser(existingUser.id);
         
         console.log('Added existing user to organization:', { id: updatedUser.id, email: updatedUser.email });
         
@@ -662,7 +675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             id: updatedUser.id, 
             email: updatedUser.email, 
             name: updatedUser.name, 
-            role: updatedUser.role 
+            role: 'user' // Role is now stored in membership, not user table
           },
           isExisting: true,
           message: 'Existing user added to organization'
@@ -680,9 +693,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email,
         password: hashedPassword,
         name,
-        organizationId: user.organizationId,
-        role: 'user',
+        currentOrganizationId: user.currentOrganizationId,
         tempPassword, // Store the temporary password for display
+      });
+
+      // Create organization membership
+      await storage.addOrganizationMember({
+        userId: newUser.id,
+        organizationId: user.currentOrganizationId,
+        role: 'user',
+        isActive: true
       });
 
       console.log('Successfully created new user:', { id: newUser.id, email: newUser.email });
@@ -693,7 +713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: newUser.id, 
           email: newUser.email, 
           name: newUser.name, 
-          role: newUser.role 
+          role: 'user' // Role is now stored in membership, not user table
         },
         tempPassword,
         isExisting: false,
@@ -3064,6 +3084,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: 'Failed to process patient data',
         details: (error as Error).message 
       });
+    }
+  });
+
+  // Multi-organization API endpoints
+  app.get('/api/user/organizations', async (req, res) => {
+    const userId = (req.session as any).userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    try {
+      const organizations = await storage.getUserOrganizations(userId);
+      const currentOrg = await storage.getUserCurrentOrganization(userId);
+      
+      res.json({
+        organizations,
+        currentOrganization: currentOrg
+      });
+    } catch (error) {
+      console.error('Error fetching user organizations:', error);
+      res.status(500).json({ error: 'Failed to fetch organizations' });
+    }
+  });
+
+  app.post('/api/user/switch-organization', async (req, res) => {
+    const userId = (req.session as any).userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    try {
+      const { organizationId } = req.body;
+      
+      if (!organizationId) {
+        return res.status(400).json({ error: 'Organization ID is required' });
+      }
+      
+      await storage.switchUserOrganization(userId, organizationId);
+      const newCurrentOrg = await storage.getUserCurrentOrganization(userId);
+      
+      res.json({
+        message: 'Organization switched successfully',
+        currentOrganization: newCurrentOrg
+      });
+    } catch (error) {
+      console.error('Error switching organization:', error);
+      if (error.message === 'User is not a member of this organization') {
+        return res.status(403).json({ error: error.message });
+      }
+      res.status(500).json({ error: 'Failed to switch organization' });
     }
   });
 

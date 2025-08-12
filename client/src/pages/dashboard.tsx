@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Users, Calendar, FileText, TrendingUp, Clock, AlertTriangle, ExternalLink } from 'lucide-react'
 import { format } from 'date-fns'
+import { OrganizationSwitcher } from "@/components/OrganizationSwitcher"
 
 interface PatientMetrics {
   totalPatients: number
@@ -213,9 +214,14 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 space-y-4">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of patient management metrics and status</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">Overview of patient management metrics and status</p>
+        </div>
+        <div className="flex items-center space-x-4">
+          <OrganizationSwitcher />
+        </div>
       </div>
 
       {/* Key Metrics Cards */}

@@ -44,7 +44,12 @@ export interface IStorage {
   getOrganizationMembers(organizationId: number): Promise<User[]>;
   addOrganizationMember(membership: InsertOrganizationMembership): Promise<OrganizationMembership>;
   removeOrganizationMember(userId: number, organizationId: number): Promise<void>;
-  removeUserFromOrganization(userId: number): Promise<void>;
+  removeUserFromOrganization(userId: number, organizationId: number): Promise<void>;
+  
+  // Multi-organization support
+  getUserOrganizations(userId: number): Promise<Array<{ organization: Organization; role: string; isActive: boolean }>>;
+  switchUserOrganization(userId: number, organizationId: number): Promise<void>;
+  getUserCurrentOrganization(userId: number): Promise<{ organization: Organization; role: string } | null>;
   updateMemberRole(userId: number, organizationId: number, role: string): Promise<void>;
 
   // User management
@@ -133,7 +138,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOrganizationMembers(organizationId: number): Promise<User[]> {
-    return await db.select().from(users).where(eq(users.organizationId, organizationId));
+    const memberships = await db
+      .select({
+        user: users,
+        membership: organizationMemberships
+      })
+      .from(organizationMemberships)
+      .leftJoin(users, eq(organizationMemberships.userId, users.id))
+      .where(and(
+        eq(organizationMemberships.organizationId, organizationId),
+        eq(organizationMemberships.isActive, true)
+      ));
+
+    return memberships.map(m => ({
+      ...m.user!,
+      role: m.membership.role, // Use role from membership, not user table
+      tempPassword: m.user!.tempPassword // Include temp password for display
+    }));
   }
 
   async addOrganizationMember(membership: InsertOrganizationMembership): Promise<OrganizationMembership> {
@@ -152,13 +173,24 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(organizationMemberships.userId, userId), eq(organizationMemberships.organizationId, organizationId)));
   }
 
-  async removeUserFromOrganization(userId: number): Promise<void> {
-    // When removing a user from an organization, we set their organizationId to null
-    // but keep their role as 'user' (the default) since role cannot be null
+  async removeUserFromOrganization(userId: number, organizationId: number): Promise<void> {
+    // Deactivate the membership instead of deleting it
     await db
-      .update(users)
-      .set({ organizationId: null, role: "user" })
-      .where(eq(users.id, userId));
+      .update(organizationMemberships)
+      .set({ isActive: false })
+      .where(and(
+        eq(organizationMemberships.userId, userId),
+        eq(organizationMemberships.organizationId, organizationId)
+      ));
+    
+    // If this was the user's current organization, clear it
+    const user = await this.getUser(userId);
+    if (user?.currentOrganizationId === organizationId) {
+      await db
+        .update(users)
+        .set({ currentOrganizationId: null })
+        .where(eq(users.id, userId));
+    }
   }
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -192,6 +224,72 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ lastLoginAt: new Date() })
       .where(eq(users.id, id));
+  }
+
+  // Multi-organization support methods
+  async getUserOrganizations(userId: number): Promise<Array<{ organization: Organization; role: string; isActive: boolean }>> {
+    const memberships = await db
+      .select({
+        organization: organizations,
+        membership: organizationMemberships
+      })
+      .from(organizationMemberships)
+      .leftJoin(organizations, eq(organizationMemberships.organizationId, organizations.id))
+      .where(eq(organizationMemberships.userId, userId));
+
+    return memberships.map(m => ({
+      organization: m.organization!,
+      role: m.membership.role,
+      isActive: m.membership.isActive
+    }));
+  }
+
+  async switchUserOrganization(userId: number, organizationId: number): Promise<void> {
+    // Verify user is a member of this organization
+    const membership = await db
+      .select()
+      .from(organizationMemberships)
+      .where(and(
+        eq(organizationMemberships.userId, userId),
+        eq(organizationMemberships.organizationId, organizationId),
+        eq(organizationMemberships.isActive, true)
+      ))
+      .limit(1);
+
+    if (membership.length === 0) {
+      throw new Error('User is not a member of this organization');
+    }
+
+    await db
+      .update(users)
+      .set({ currentOrganizationId: organizationId })
+      .where(eq(users.id, userId));
+  }
+
+  async getUserCurrentOrganization(userId: number): Promise<{ organization: Organization; role: string } | null> {
+    const result = await db
+      .select({
+        organization: organizations,
+        membership: organizationMemberships
+      })
+      .from(users)
+      .leftJoin(organizations, eq(users.currentOrganizationId, organizations.id))
+      .leftJoin(organizationMemberships, and(
+        eq(organizationMemberships.userId, users.id),
+        eq(organizationMemberships.organizationId, organizations.id),
+        eq(organizationMemberships.isActive, true)
+      ))
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (result.length === 0 || !result[0].organization || !result[0].membership) {
+      return null;
+    }
+
+    return {
+      organization: result[0].organization,
+      role: result[0].membership.role
+    };
   }
 
   async updateUserProfile(id: number, updates: { name: string; email: string }): Promise<User> {

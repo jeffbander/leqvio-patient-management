@@ -17,8 +17,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name"),
   password: text("password").notNull(), // Hashed password for authentication
-  organizationId: integer("organization_id").references(() => organizations.id),
-  role: text("role").default("user").notNull(), // 'owner', 'admin', 'user'
+  currentOrganizationId: integer("current_organization_id").references(() => organizations.id), // Currently selected organization
   tempPassword: text("temp_password"), // Store temporary password for display (only for newly invited users)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastLoginAt: timestamp("last_login_at"),
@@ -31,6 +30,7 @@ export const organizationMemberships = pgTable("organization_memberships", {
   organizationId: integer("organization_id").references(() => organizations.id).notNull(),
   role: text("role").default("user").notNull(), // 'owner', 'admin', 'user'
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  isActive: boolean("is_active").default(true).notNull(), // For soft delete of memberships
 });
 
 export const loginTokens = pgTable("login_tokens", {
@@ -240,8 +240,8 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
-  organization: one(organizations, {
-    fields: [users.organizationId],
+  currentOrganization: one(organizations, {
+    fields: [users.currentOrganizationId],
     references: [organizations.id],
   }),
   patients: many(patients),
