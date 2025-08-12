@@ -2043,7 +2043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Export patients as CSV (MUST be before /:id route)
   app.get('/api/patients/export/csv', requireAuth, async (req, res) => {
     try {
-      const user = getUserFromSession(req);
+      const user = await getUserFromSession(req);
       if (!user) {
         return res.status(401).json({ error: 'Authentication required' });
       }
@@ -2184,7 +2184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update patient
   app.patch('/api/patients/:id', requireAuth, async (req, res) => {
     try {
-      const user = getUserFromSession(req);
+      const user = await getUserFromSession(req);
       if (!user) {
         return res.status(401).json({ error: 'Authentication required' });
       }
@@ -2350,7 +2350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update patient status
   app.patch('/api/patients/:id/status', requireAuth, async (req, res) => {
     try {
-      const user = getUserFromSession(req);
+      const user = await getUserFromSession(req);
       if (!user) {
         return res.status(401).json({ error: 'Authentication required' });
       }
@@ -2456,7 +2456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/patients/:id/appointments', requireAuth, async (req, res) => {
     try {
-      const user = getUserFromSession(req);
+      const user = await getUserFromSession(req);
       if (!user) {
         return res.status(401).json({ error: 'Authentication required' });
       }
@@ -2494,17 +2494,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedAppointment = await storage.updateAppointment(appointmentId, req.body);
       
       if (updatedAppointment) {
-        // Get patient to access organization ID
-        const patient = await storage.getPatient(updatedAppointment.patientId);
+        // First get patient info to find which organization it belongs to
+        const patients = await storage.getAllPatients();
+        const patient = patients.find(p => p.id === updatedAppointment.patientId);
+        
         if (patient) {
-          // Check authorization status if appointment date was updated
-          if (req.body.appointmentDate) {
-            await checkAuthorizationStatus(updatedAppointment.patientId, patient.organizationId);
-          }
-          
-          // Check schedule status if appointment status was updated
-          if (req.body.status) {
-            await checkScheduleStatus(updatedAppointment.patientId, patient.organizationId);
+          // Get the full patient data with organization ID
+          const fullPatient = await storage.getPatient(updatedAppointment.patientId, patient.organizationId!);
+          if (fullPatient) {
+            // Check authorization status if appointment date was updated
+            if (req.body.appointmentDate) {
+              await checkAuthorizationStatus(updatedAppointment.patientId, patient.organizationId!);
+            }
+            
+            // Check schedule status if appointment status was updated
+            if (req.body.status) {
+              await checkScheduleStatus(updatedAppointment.patientId, patient.organizationId!);
+            }
           }
         }
       }

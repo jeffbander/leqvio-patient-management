@@ -65,12 +65,30 @@ export async function loginUser(credentials: UserLogin): Promise<AuthResult> {
 }
 
 export function requireAuth(req: any, res: any, next: any) {
-  if (!req.session?.user) {
+  if (!req.session?.userId) {
     return res.status(401).json({ message: "Authentication required" });
   }
   next();
 }
 
-export function getUserFromSession(req: any): User | null {
-  return req.session?.user || null;
+export async function getUserFromSession(req: any): Promise<User | null> {
+  const userId = req.session?.userId;
+  if (!userId) {
+    return null;
+  }
+  
+  try {
+    const { storage } = await import("./storage");
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return null;
+    }
+    
+    // Don't return password in response
+    const { password: _, ...userWithoutPassword } = user;
+    return userWithoutPassword as User;
+  } catch (error) {
+    console.error("Error getting user from session:", error);
+    return null;
+  }
 }
