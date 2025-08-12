@@ -2729,38 +2729,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (documentType === 'epic_insurance_screenshot') {
         const base64Image = file.buffer.toString('base64');
         
-        // Detect image format for OpenAI compatibility
+        console.log('Processing Epic insurance screenshot...');
         console.log('Original file mimetype:', file.mimetype);
         console.log('Original file name:', file.originalname);
         console.log('File size:', file.buffer.length);
-        console.log('First 16 bytes:', Array.from(file.buffer.slice(0, 16)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-        
-        // Use file extension as primary method, fallback to magic bytes
-        let detectedFormat = 'png'; // Safe default
-        
-        // Try file extension first
-        if (file.originalname) {
-          const ext = file.originalname.toLowerCase().split('.').pop();
-          if (ext === 'jpg' || ext === 'jpeg') detectedFormat = 'jpeg';
-          else if (ext === 'png') detectedFormat = 'png'; 
-          else if (ext === 'gif') detectedFormat = 'gif';
-          else if (ext === 'webp') detectedFormat = 'webp';
-        }
-        
-        // Fallback to MIME type
-        if (file.mimetype) {
-          const mime = file.mimetype.toLowerCase();
-          if (mime.includes('jpeg') || mime.includes('jpg')) detectedFormat = 'jpeg';
-          else if (mime.includes('png')) detectedFormat = 'png';
-          else if (mime.includes('gif')) detectedFormat = 'gif';
-          else if (mime.includes('webp')) detectedFormat = 'webp';
-        }
-        
-        console.log('Final detected format:', detectedFormat);
         
         try {
-          const { extractEpicInsuranceDataWithFormat } = await import('./openai-service');
-          const extraction = await extractEpicInsuranceDataWithFormat(base64Image, detectedFormat);
+          const { extractEpicInsuranceData } = await import('./openai-service');
+          const extraction = await extractEpicInsuranceData(base64Image);
           extractedData = JSON.stringify(extraction);
           metadata = extraction;
           
@@ -2854,31 +2830,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const base64Image = file.buffer.toString('base64');
           
-          // Use same image format detection as Epic screenshots
-          let detectedFormat = 'png'; // Safe default
-          
-          // Try file extension first
-          if (file.originalname) {
-            const ext = file.originalname.toLowerCase().split('.').pop();
-            if (ext === 'jpg' || ext === 'jpeg') detectedFormat = 'jpeg';
-            else if (ext === 'png') detectedFormat = 'png'; 
-            else if (ext === 'gif') detectedFormat = 'gif';
-            else if (ext === 'webp') detectedFormat = 'webp';
-          }
-          
-          // Fallback to MIME type
-          if (file.mimetype) {
-            const mime = file.mimetype.toLowerCase();
-            if (mime.includes('jpeg') || mime.includes('jpg')) detectedFormat = 'jpeg';
-            else if (mime.includes('png')) detectedFormat = 'png';
-            else if (mime.includes('gif')) detectedFormat = 'gif';
-            else if (mime.includes('webp')) detectedFormat = 'webp';
-          }
-          
-          console.log('Insurance card detected format:', detectedFormat);
-          
-          const { extractInsuranceCardDataWithFormat } = await import('./openai-service');
-          const insuranceData = await extractInsuranceCardDataWithFormat(base64Image, detectedFormat);
+          const { extractInsuranceCardData } = await import('./openai-service');
+          const insuranceData = await extractInsuranceCardData(base64Image);
           
           const updates: any = {};
           
