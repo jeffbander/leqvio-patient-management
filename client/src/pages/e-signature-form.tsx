@@ -44,7 +44,6 @@ export default function ESignatureForm() {
     firstName: '',
     lastName: '',
     dateOfBirth: '',
-    gender: '',
     orderingMD: '',
     diagnosis: [] as string[], // Changed to array for multiple selections
     phone: '',
@@ -64,11 +63,7 @@ export default function ESignatureForm() {
     recipientEmail: '',
     copayProgram: false,
     ongoingSupport: false,
-    // LEQVIO Copay Program fields
-    leqvioCvgStatus: '',
-    leqvioEffectiveFrom: '',
-    leqvioSubscriber: '',
-    leqvioSubscriberId: ''
+
   })
 
   const createPatientMutation = useMutation({
@@ -186,7 +181,6 @@ export default function ESignatureForm() {
     if (!formData.firstName.trim()) errors.push("First Name")
     if (!formData.lastName.trim()) errors.push("Last Name")
     if (!formData.dateOfBirth.trim()) errors.push("Date of Birth")
-    if (!formData.gender.trim()) errors.push("Gender")
     if (!formData.orderingMD.trim()) errors.push("Ordering MD")
     if (!formData.cellPhone.trim()) errors.push("Cell Phone")
     if (formData.diagnosis.length === 0) errors.push("Diagnosis (select at least one)")
@@ -212,11 +206,7 @@ export default function ESignatureForm() {
       diagnosis: formData.diagnosis.join(', '), // Convert array to comma-separated string for backend
       signatureData,
       status: 'started',
-      leqvioCopayProgram: formData.copayProgram,
-      leqvioCvgStatus: formData.copayProgram ? formData.leqvioCvgStatus : null,
-      leqvioEffectiveFrom: formData.copayProgram ? formData.leqvioEffectiveFrom : null,
-      leqvioSubscriber: formData.copayProgram ? formData.leqvioSubscriber : null,
-      leqvioSubscriberId: formData.copayProgram ? formData.leqvioSubscriberId : null
+      leqvioCopayProgram: formData.copayProgram
     })
   }
 
@@ -278,25 +268,7 @@ export default function ESignatureForm() {
                   <p className="text-sm text-red-600 mt-1">Date of birth is required</p>
                 )}
               </div>
-              <div>
-                <Label htmlFor="gender">Gender *</Label>
-                <select
-                  id="gender"
-                  name="gender"
-                  value={formData.gender}
-                  onChange={handleInputChange}
-                  className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${!formData.gender.trim() ? 'border-red-300 focus:border-red-500' : ''}`}
-                  required
-                >
-                  <option value="">Select gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-                {!formData.gender.trim() && (
-                  <p className="text-sm text-red-600 mt-1">Gender is required</p>
-                )}
-              </div>
+
               <div>
                 <Label htmlFor="phone">Home Phone</Label>
                 <Input
@@ -592,54 +564,7 @@ export default function ESignatureForm() {
                 </div>
               </div>
 
-              {/* Conditional LEQVIO Copay Program fields */}
-              {formData.copayProgram && (
-                <div className="mt-4 p-4 border rounded-lg bg-blue-50">
-                  <h4 className="font-medium mb-3 text-blue-900">LEQVIO Copay Program Information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="leqvioCvgStatus">Coverage Status</Label>
-                      <Input
-                        id="leqvioCvgStatus"
-                        name="leqvioCvgStatus"
-                        value={formData.leqvioCvgStatus}
-                        onChange={handleInputChange}
-                        placeholder="e.g., Active, Pending"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="leqvioEffectiveFrom">Effective From</Label>
-                      <Input
-                        id="leqvioEffectiveFrom"
-                        name="leqvioEffectiveFrom"
-                        type="date"
-                        value={formData.leqvioEffectiveFrom}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="leqvioSubscriber">Subscriber</Label>
-                      <Input
-                        id="leqvioSubscriber"
-                        name="leqvioSubscriber"
-                        value={formData.leqvioSubscriber}
-                        onChange={handleInputChange}
-                        placeholder="Subscriber name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="leqvioSubscriberId">Subscriber ID</Label>
-                      <Input
-                        id="leqvioSubscriberId"
-                        name="leqvioSubscriberId"
-                        value={formData.leqvioSubscriberId}
-                        onChange={handleInputChange}
-                        placeholder="Subscriber ID number"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
+
 
               <div className="flex items-start space-x-2">
                 <Checkbox

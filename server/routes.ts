@@ -376,13 +376,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'User not found' });
       }
       
+      // Get user's current organization role
+      const currentOrg = await storage.getUserCurrentOrganization(userId);
+      
       res.json({ 
         user: { 
           id: user.id, 
           email: user.email, 
           name: user.name, 
-          organizationId: user.organizationId,
-          role: user.role 
+          currentOrganizationId: user.currentOrganizationId,
+          role: currentOrg?.role || 'user'
         }
       });
     } catch (error) {
