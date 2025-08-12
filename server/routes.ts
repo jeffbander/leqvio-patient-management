@@ -2732,22 +2732,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Detect image format for OpenAI compatibility
         console.log('Original file mimetype:', file.mimetype);
         console.log('Original file name:', file.originalname);
+        console.log('File size:', file.buffer.length);
+        console.log('First 16 bytes:', Array.from(file.buffer.slice(0, 16)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
         
-        // Check file signature (magic bytes) for more reliable format detection
-        const fileBuffer = file.buffer;
-        let detectedFormat = 'png'; // Default fallback
+        // Use file extension as primary method, fallback to magic bytes
+        let detectedFormat = 'png'; // Safe default
         
-        if (fileBuffer[0] === 0xFF && fileBuffer[1] === 0xD8) {
-          detectedFormat = 'jpeg';
-        } else if (fileBuffer[0] === 0x89 && fileBuffer[1] === 0x50 && fileBuffer[2] === 0x4E && fileBuffer[3] === 0x47) {
-          detectedFormat = 'png';
-        } else if (fileBuffer[0] === 0x47 && fileBuffer[1] === 0x49 && fileBuffer[2] === 0x46) {
-          detectedFormat = 'gif';
-        } else if (fileBuffer.slice(8, 12).toString() === 'WEBP') {
-          detectedFormat = 'webp';
+        // Try file extension first
+        if (file.originalname) {
+          const ext = file.originalname.toLowerCase().split('.').pop();
+          if (ext === 'jpg' || ext === 'jpeg') detectedFormat = 'jpeg';
+          else if (ext === 'png') detectedFormat = 'png'; 
+          else if (ext === 'gif') detectedFormat = 'gif';
+          else if (ext === 'webp') detectedFormat = 'webp';
         }
         
-        console.log('Detected image format:', detectedFormat);
+        // Fallback to MIME type
+        if (file.mimetype) {
+          const mime = file.mimetype.toLowerCase();
+          if (mime.includes('jpeg') || mime.includes('jpg')) detectedFormat = 'jpeg';
+          else if (mime.includes('png')) detectedFormat = 'png';
+          else if (mime.includes('gif')) detectedFormat = 'gif';
+          else if (mime.includes('webp')) detectedFormat = 'webp';
+        }
+        
+        console.log('Final detected format:', detectedFormat);
         
         try {
           const { extractEpicInsuranceDataWithFormat } = await import('./openai-service');
@@ -2846,17 +2855,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const base64Image = file.buffer.toString('base64');
           
           // Use same image format detection as Epic screenshots
-          const fileBuffer = file.buffer;
-          let detectedFormat = 'png';
+          let detectedFormat = 'png'; // Safe default
           
-          if (fileBuffer[0] === 0xFF && fileBuffer[1] === 0xD8) {
-            detectedFormat = 'jpeg';
-          } else if (fileBuffer[0] === 0x89 && fileBuffer[1] === 0x50 && fileBuffer[2] === 0x4E && fileBuffer[3] === 0x47) {
-            detectedFormat = 'png';
-          } else if (fileBuffer[0] === 0x47 && fileBuffer[1] === 0x49 && fileBuffer[2] === 0x46) {
-            detectedFormat = 'gif';
-          } else if (fileBuffer.slice(8, 12).toString() === 'WEBP') {
-            detectedFormat = 'webp';
+          // Try file extension first
+          if (file.originalname) {
+            const ext = file.originalname.toLowerCase().split('.').pop();
+            if (ext === 'jpg' || ext === 'jpeg') detectedFormat = 'jpeg';
+            else if (ext === 'png') detectedFormat = 'png'; 
+            else if (ext === 'gif') detectedFormat = 'gif';
+            else if (ext === 'webp') detectedFormat = 'webp';
+          }
+          
+          // Fallback to MIME type
+          if (file.mimetype) {
+            const mime = file.mimetype.toLowerCase();
+            if (mime.includes('jpeg') || mime.includes('jpg')) detectedFormat = 'jpeg';
+            else if (mime.includes('png')) detectedFormat = 'png';
+            else if (mime.includes('gif')) detectedFormat = 'gif';
+            else if (mime.includes('webp')) detectedFormat = 'webp';
           }
           
           console.log('Insurance card detected format:', detectedFormat);
