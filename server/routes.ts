@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import session from "express-session";
 import fetch from "node-fetch";
+import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema, userLoginSchema, userRegisterSchema, insertPatientSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
