@@ -18,7 +18,7 @@ export const users = pgTable("users", {
   name: text("name"),
   password: text("password").notNull(), // Hashed password for authentication
   organizationId: integer("organization_id").references(() => organizations.id),
-  role: text("role").default("member").notNull(), // 'owner', 'admin', 'member'
+  role: text("role").default("user").notNull(), // 'owner', 'admin', 'user'
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastLoginAt: timestamp("last_login_at"),
 });
@@ -28,7 +28,7 @@ export const organizationMemberships = pgTable("organization_memberships", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
   organizationId: integer("organization_id").references(() => organizations.id).notNull(),
-  role: text("role").default("member").notNull(), // 'owner', 'admin', 'member'
+  role: text("role").default("user").notNull(), // 'owner', 'admin', 'user'
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

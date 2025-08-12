@@ -489,10 +489,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
         console.log('User already exists:', email);
-        return res.status(400).json({ error: 'User with this email already exists' });
+        
+        // Check if user is already in this organization
+        if (existingUser.organizationId === user.organizationId) {
+          return res.status(400).json({ error: 'User is already a member of this organization' });
+        }
+        
+        // Check if user is in another organization
+        if (existingUser.organizationId && existingUser.organizationId !== user.organizationId) {
+          return res.status(400).json({ error: 'User is already a member of another organization' });
+        }
+        
+        // Add existing user to organization
+        const updatedUser = await storage.updateUser(existingUser.id, {
+          organizationId: user.organizationId,
+          role: 'user'
+        });
+        
+        console.log('Added existing user to organization:', { id: updatedUser.id, email: updatedUser.email });
+        
+        res.json({ 
+          user: { 
+            id: updatedUser.id, 
+            email: updatedUser.email, 
+            name: updatedUser.name, 
+            role: updatedUser.role 
+          },
+          isExisting: true,
+          message: 'Existing user added to organization'
+        });
+        return;
       }
 
-      // Create user with temporary password (they'll need to reset it)
+      // Create new user with temporary password
       const tempPassword = Math.random().toString(36).substring(2, 15);
       console.log('Generated temp password for new user');
       
@@ -516,7 +545,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: newUser.name, 
           role: newUser.role 
         },
-        tempPassword // Remove this in production - send via email instead
+        tempPassword,
+        isExisting: false,
+        message: 'New user created and added to organization'
       });
     } catch (error) {
       console.error('Error inviting user:', error);

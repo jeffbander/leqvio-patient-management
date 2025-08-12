@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Building2, UserPlus, Settings } from "lucide-react";
+import { Users, Building2, UserPlus, Settings, Copy, Check } from "lucide-react";
 
 interface OrganizationMember {
   id: number;
@@ -33,6 +33,13 @@ export default function OrganizationManagement() {
   const [editingOrg, setEditingOrg] = useState(false);
   const [orgName, setOrgName] = useState("");
   const [orgDescription, setOrgDescription] = useState("");
+  const [lastInviteResult, setLastInviteResult] = useState<{
+    tempPassword?: string;
+    user: OrganizationMember;
+    isExisting: boolean;
+    message: string;
+  } | null>(null);
+  const [copiedPassword, setCopiedPassword] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -82,9 +89,11 @@ export default function OrganizationManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/organization/members"] });
       setInviteEmail("");
       setInviteName("");
+      setLastInviteResult(data);
+      setCopiedPassword(false);
       toast({
         title: "Success",
-        description: `User invited successfully. Temporary password: ${data.tempPassword}`,
+        description: data.message,
       });
     },
     onError: (error: any) => {
@@ -176,6 +185,24 @@ export default function OrganizationManagement() {
       return;
     }
     inviteUserMutation.mutate({ email: inviteEmail, name: inviteName });
+  };
+
+  const copyPasswordToClipboard = async (password: string) => {
+    try {
+      await navigator.clipboard.writeText(password);
+      setCopiedPassword(true);
+      toast({
+        title: "Copied!",
+        description: "Temporary password copied to clipboard",
+      });
+      setTimeout(() => setCopiedPassword(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to copy password",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleUpdateOrg = (e: React.FormEvent) => {
@@ -335,6 +362,47 @@ export default function OrganizationManagement() {
               {inviteUserMutation.isPending ? "Inviting..." : "Send Invitation"}
             </Button>
           </form>
+          
+          {/* Display temporary password for new users */}
+          {lastInviteResult && lastInviteResult.tempPassword && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-yellow-800">
+                    {lastInviteResult.isExisting ? "User Added" : "User Created"}
+                  </h4>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Temporary password for {lastInviteResult.user.email}:
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <code className="px-2 py-1 bg-yellow-100 text-yellow-900 rounded font-mono">
+                      {lastInviteResult.tempPassword}
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => copyPasswordToClipboard(lastInviteResult.tempPassword!)}
+                      disabled={copiedPassword}
+                    >
+                      {copiedPassword ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                      {copiedPassword ? "Copied" : "Copy"}
+                    </Button>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setLastInviteResult(null)}
+                >
+                  ×
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
