@@ -16,6 +16,7 @@ interface PatientMetrics {
   totalAppointments: number
   recentVoicemails: number
   patientsWithDocuments: number
+  appointmentsPerMonth: number
   upcomingAppointmentsList?: AppointmentWithPatient[]
   overdueAppointmentsList?: AppointmentWithPatient[]
 }
@@ -128,6 +129,27 @@ export default function Dashboard() {
       return voicemailDate >= lastWeek
     }).length
 
+    // Calculate appointments per month (last 12 months)
+    const twelveMonthsAgo = new Date()
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
+    
+    const recentAppointments = appointmentsArray.filter((apt: Appointment) => {
+      const aptDate = new Date(apt.appointmentDate)
+      return aptDate >= twelveMonthsAgo
+    })
+    
+    // Group appointments by month and calculate average
+    const monthlyAppointments: { [key: string]: number } = {}
+    recentAppointments.forEach((apt: Appointment) => {
+      const monthKey = new Date(apt.appointmentDate).toISOString().substring(0, 7) // YYYY-MM format
+      monthlyAppointments[monthKey] = (monthlyAppointments[monthKey] || 0) + 1
+    })
+    
+    const monthsWithAppointments = Object.keys(monthlyAppointments).length
+    const appointmentsPerMonth = monthsWithAppointments > 0 
+      ? Math.round(recentAppointments.length / Math.max(monthsWithAppointments, 1))
+      : 0
+
     return {
       totalPatients: patientsArray.length,
       authStatusBreakdown,
@@ -137,6 +159,7 @@ export default function Dashboard() {
       totalAppointments: appointmentsArray.length,
       recentVoicemails,
       patientsWithDocuments: Math.floor(patientsArray.length * 0.8), // Placeholder estimate
+      appointmentsPerMonth,
       upcomingAppointmentsList,
       overdueAppointmentsList
     }
@@ -418,14 +441,12 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average per Patient</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Appointments per Month</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {metrics.totalPatients > 0 ? (metrics.totalAppointments / metrics.totalPatients).toFixed(1) : 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Appointments per patient</p>
+            <div className="text-2xl font-bold">{metrics.appointmentsPerMonth}</div>
+            <p className="text-xs text-muted-foreground">Average over last 12 months</p>
           </CardContent>
         </Card>
       </div>
