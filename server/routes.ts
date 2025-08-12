@@ -2710,12 +2710,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create patient document with OCR extraction
-  app.post('/api/patients/:id/documents', upload.single('file'), async (req, res) => {
+  // Create patient document with OCR extraction - use upload.any() to handle any field name
+  app.post('/api/patients/:id/documents', upload.any(), async (req, res) => {
     try {
       const patientId = parseInt(req.params.id);
       const { documentType } = req.body;
-      const file = req.file;
+      const file = req.files?.[0]; // Get first file from files array
       
       if (!file) {
         return res.status(400).json({ error: 'No file uploaded' });
