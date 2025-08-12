@@ -2715,7 +2715,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const patientId = parseInt(req.params.id);
       const { documentType } = req.body;
-      const file = req.files?.[0]; // Get first file from files array
+      const files = req.files as Express.Multer.File[] | undefined;
+      const file = files?.[0]; // Get first file from files array
       
       if (!file) {
         return res.status(400).json({ error: 'No file uploaded' });
@@ -2843,7 +2844,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (documentType === 'insurance_screenshot') {
         try {
           const base64Image = file.buffer.toString('base64');
-          const insuranceData = await extractInsuranceCardData(base64Image);
+          
+          // Use same image format detection as Epic screenshots
+          const fileBuffer = file.buffer;
+          let detectedFormat = 'png';
+          
+          if (fileBuffer[0] === 0xFF && fileBuffer[1] === 0xD8) {
+            detectedFormat = 'jpeg';
+          } else if (fileBuffer[0] === 0x89 && fileBuffer[1] === 0x50 && fileBuffer[2] === 0x4E && fileBuffer[3] === 0x47) {
+            detectedFormat = 'png';
+          } else if (fileBuffer[0] === 0x47 && fileBuffer[1] === 0x49 && fileBuffer[2] === 0x46) {
+            detectedFormat = 'gif';
+          } else if (fileBuffer.slice(8, 12).toString() === 'WEBP') {
+            detectedFormat = 'webp';
+          }
+          
+          console.log('Insurance card detected format:', detectedFormat);
+          
+          const { extractInsuranceCardDataWithFormat } = await import('./openai-service');
+          const insuranceData = await extractInsuranceCardDataWithFormat(base64Image, detectedFormat);
           
           const updates: any = {};
           

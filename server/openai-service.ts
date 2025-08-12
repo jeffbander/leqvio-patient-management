@@ -426,6 +426,10 @@ Rules:
 }
 
 export async function extractInsuranceCardData(base64Image: string): Promise<ExtractedInsuranceData> {
+  return extractInsuranceCardDataWithFormat(base64Image, 'png');
+}
+
+export async function extractInsuranceCardDataWithFormat(base64Image: string, imageFormat: string = 'png'): Promise<ExtractedInsuranceData> {
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -512,7 +516,7 @@ EXTRACTION RULES:
             {
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
+                url: `data:image/${imageFormat};base64,${base64Image}`
               }
             }
           ],
