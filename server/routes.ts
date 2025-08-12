@@ -329,8 +329,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create session
       (req.session as any).userId = user.id;
       
-      // Update last login
+      // Update last login and clear temp password
       await storage.updateUserLastLogin(user.id);
+      
+      // Clear temporary password on first successful login
+      if (user.tempPassword) {
+        await storage.updateUser(user.id, { tempPassword: null });
+      }
       
       res.json({ 
         user: { 
@@ -677,6 +682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name,
         organizationId: user.organizationId,
         role: 'user',
+        tempPassword, // Store the temporary password for display
       });
 
       console.log('Successfully created new user:', { id: newUser.id, email: newUser.email });

@@ -19,6 +19,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(), // Hashed password for authentication
   organizationId: integer("organization_id").references(() => organizations.id),
   role: text("role").default("user").notNull(), // 'owner', 'admin', 'user'
+  tempPassword: text("temp_password"), // Store temporary password for display (only for newly invited users)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastLoginAt: timestamp("last_login_at"),
 });

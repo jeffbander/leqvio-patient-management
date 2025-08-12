@@ -18,6 +18,7 @@ interface OrganizationMember {
   role: string;
   createdAt: string;
   lastLoginAt?: string;
+  tempPassword?: string;
 }
 
 interface Organization {
@@ -447,6 +448,36 @@ export default function OrganizationManagement() {
                           </span>
                         )}
                       </div>
+                      {/* Show temporary password if user hasn't logged in yet */}
+                      {member.tempPassword && !member.lastLoginAt && (
+                        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="text-sm text-yellow-700 font-medium">
+                                Temporary Password:
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <code className="px-2 py-1 bg-yellow-100 text-yellow-900 rounded text-sm font-mono">
+                                  {member.tempPassword}
+                                </code>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => copyPasswordToClipboard(member.tempPassword!)}
+                                  disabled={copiedPassword}
+                                  className="h-6 px-2"
+                                >
+                                  {copiedPassword ? (
+                                    <Check className="h-3 w-3" />
+                                  ) : (
+                                    <Copy className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     {member.role !== 'owner' && (
                       <Button
