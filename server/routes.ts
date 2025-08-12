@@ -2490,14 +2490,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedAppointment = await storage.updateAppointment(appointmentId, req.body);
       
       if (updatedAppointment) {
-        // Check authorization status if appointment date was updated
-        if (req.body.appointmentDate) {
-          await checkAuthorizationStatus(updatedAppointment.patientId);
-        }
-        
-        // Check schedule status if appointment status was updated
-        if (req.body.status) {
-          await checkScheduleStatus(updatedAppointment.patientId);
+        // Get patient to access organization ID
+        const patient = await storage.getPatient(updatedAppointment.patientId);
+        if (patient) {
+          // Check authorization status if appointment date was updated
+          if (req.body.appointmentDate) {
+            await checkAuthorizationStatus(updatedAppointment.patientId, patient.organizationId);
+          }
+          
+          // Check schedule status if appointment status was updated
+          if (req.body.status) {
+            await checkScheduleStatus(updatedAppointment.patientId, patient.organizationId);
+          }
         }
       }
       
@@ -2527,10 +2531,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const patient of patients) {
         const previousStatus = patient.scheduleStatus;
-        await checkScheduleStatus(patient.id);
+        await checkScheduleStatus(patient.id, patient.organizationId);
         
         // Check if status was actually updated
-        const updatedPatient = await storage.getPatient(patient.id);
+        const updatedPatient = await storage.getPatient(patient.id, patient.organizationId);
         if (updatedPatient && updatedPatient.scheduleStatus !== previousStatus) {
           updatedCount++;
         }
