@@ -299,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: user.id, 
           email: user.email, 
           name: user.name, 
-          organizationId: user.organizationId,
+          organizationId: user.currentOrganizationId,
           role: user.role 
         },
         organization
@@ -342,7 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: user.id, 
           email: user.email, 
           name: user.name, 
-          organizationId: user.organizationId,
+          organizationId: user.currentOrganizationId,
           role: user.role 
         }
       });
@@ -412,7 +412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: user.email,
         name: user.name,
         role: user.role,
-        organizationId: user.organizationId,
+        organizationId: user.currentOrganizationId,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt
       });
@@ -510,7 +510,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user is organization owner
       if (user.role === 'owner') {
         // Check if there are other members in the organization
-        const orgMembers = await storage.getOrganizationMembers(user.organizationId);
+        const orgMembers = await storage.getOrganizationMembers(user.currentOrganizationId);
         if (orgMembers.length > 1) {
           return res.status(400).json({ 
             error: 'Cannot delete account. As organization owner, you must transfer ownership or remove all other members first.' 
@@ -518,7 +518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // If owner is the only member, delete the organization too
-        await storage.deleteOrganization(user.organizationId);
+        await storage.deleteOrganization(user.currentOrganizationId);
       }
       
       // Delete user account
@@ -547,11 +547,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const user = await storage.getUser(userId);
-      if (!user || !user.organizationId) {
+      if (!user || !user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
 
-      const organization = await storage.getOrganization(user.organizationId);
+      const organization = await storage.getOrganization(user.currentOrganizationId);
       if (!organization) {
         return res.status(404).json({ error: 'Organization not found' });
       }
@@ -571,7 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const user = await storage.getUser(userId);
-      if (!user || !user.organizationId) {
+      if (!user || !user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
 
@@ -581,7 +581,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { name, description } = req.body;
-      const organization = await storage.updateOrganization(user.organizationId, { name, description });
+      const organization = await storage.updateOrganization(user.currentOrganizationId, { name, description });
       
       res.json(organization);
     } catch (error) {
@@ -736,7 +736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const user = await storage.getUser(sessionUserId);
-      if (!user || !user.organizationId) {
+      if (!user || !user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
 
@@ -748,7 +748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const targetUserId = parseInt(req.params.userId);
       const targetUser = await storage.getUser(targetUserId);
       
-      if (!targetUser || targetUser.organizationId !== user.organizationId) {
+      if (!targetUser || targetUser.organizationId !== user.currentOrganizationId) {
         return res.status(404).json({ error: 'User not found in organization' });
       }
 
@@ -1768,11 +1768,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedPatient = insertPatientSchema.parse(patientInfo);
       
       // Create patient with user ID
-      if (!user.organizationId) {
+      if (!user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
       
-      const newPatient = await storage.createPatient(validatedPatient, user.id, user.organizationId);
+      const newPatient = await storage.createPatient(validatedPatient, user.id, user.currentOrganizationId);
       
       // If signature data provided, create e-signature form and send PDF
       if (signatureData && recipientEmail) {
@@ -1853,11 +1853,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: 'Authentication required' });
       }
 
-      if (!user.organizationId) {
+      if (!user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
 
-      const patients = await storage.getOrganizationPatients(user.organizationId);
+      const patients = await storage.getOrganizationPatients(user.currentOrganizationId);
       res.json(patients);
     } catch (error) {
       console.error('Error fetching patients:', error);
@@ -2014,11 +2014,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      if (!user.organizationId) {
+      if (!user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
       
-      const patients = await storage.getOrganizationPatients(user.organizationId);
+      const patients = await storage.getOrganizationPatients(user.currentOrganizationId);
       
       // Get automation logs for all patients to include AI analysis
       const patientsWithAnalysis = await Promise.all(
@@ -2128,12 +2128,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      if (!user.organizationId) {
+      if (!user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
       
       const patientId = parseInt(req.params.id);
-      const patient = await storage.getPatient(patientId, user.organizationId);
+      const patient = await storage.getPatient(patientId, user.currentOrganizationId);
       
       if (!patient) {
         return res.status(404).json({ error: 'Patient not found' });
@@ -2157,12 +2157,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const patientId = parseInt(req.params.id);
       const updates = req.body;
       
-      if (!user.organizationId) {
+      if (!user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
       
       // Get current patient data to check for voicemail logging
-      const currentPatient = await storage.getPatient(patientId, user.organizationId);
+      const currentPatient = await storage.getPatient(patientId, user.currentOrganizationId);
       if (!currentPatient) {
         return res.status(404).json({ error: 'Patient not found' });
       }
@@ -2294,7 +2294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.notes = organizeNotes(existingNotes, changeNote, 'INSURANCE_UPDATES');
       }
       
-      const updatedPatient = await storage.updatePatient(patientId, updates, user.organizationId);
+      const updatedPatient = await storage.updatePatient(patientId, updates, user.currentOrganizationId);
       
       if (!updatedPatient) {
         return res.status(404).json({ error: 'Patient not found' });
@@ -2322,7 +2322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const patientId = parseInt(req.params.id);
       const { status } = req.body;
-      const updatedPatient = await storage.updatePatientStatus(patientId, status, user.organizationId);
+      const updatedPatient = await storage.updatePatientStatus(patientId, status, user.currentOrganizationId);
       
       if (!updatedPatient) {
         return res.status(404).json({ error: 'Patient not found' });
@@ -2343,13 +2343,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      if (!user.organizationId) {
+      if (!user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
       
       const patientId = parseInt(req.params.id);
       // Verify patient belongs to organization
-      const patient = await storage.getPatient(patientId, user.organizationId);
+      const patient = await storage.getPatient(patientId, user.currentOrganizationId);
       if (!patient) {
         return res.status(404).json({ error: 'Patient not found' });
       }
@@ -2370,13 +2370,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      if (!user.organizationId) {
+      if (!user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
       
       const patientId = parseInt(req.params.id);
       // Verify patient belongs to organization
-      const patient = await storage.getPatient(patientId, user.organizationId);
+      const patient = await storage.getPatient(patientId, user.currentOrganizationId);
       if (!patient) {
         return res.status(404).json({ error: 'Patient not found' });
       }
@@ -2397,13 +2397,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      if (!user.organizationId) {
+      if (!user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
       
       const patientId = parseInt(req.params.id);
       // Verify patient belongs to organization
-      const patient = await storage.getPatient(patientId, user.organizationId);
+      const patient = await storage.getPatient(patientId, user.currentOrganizationId);
       if (!patient) {
         return res.status(404).json({ error: 'Patient not found' });
       }
@@ -2423,13 +2423,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      if (!user.organizationId) {
+      if (!user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
       
       const patientId = parseInt(req.params.id);
       // Verify patient belongs to organization
-      const patient = await storage.getPatient(patientId, user.organizationId);
+      const patient = await storage.getPatient(patientId, user.currentOrganizationId);
       if (!patient) {
         return res.status(404).json({ error: 'Patient not found' });
       }
@@ -2438,10 +2438,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const appointment = await storage.createAppointment(appointmentData);
       
       // Check authorization status after creating appointment
-      await checkAuthorizationStatus(patientId, user.organizationId);
+      await checkAuthorizationStatus(patientId, user.currentOrganizationId);
       
       // Check schedule status after creating appointment
-      await checkScheduleStatus(patientId, user.organizationId);
+      await checkScheduleStatus(patientId, user.currentOrganizationId);
       
       res.json(appointment);
     } catch (error) {
