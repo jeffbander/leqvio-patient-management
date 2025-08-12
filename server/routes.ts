@@ -2155,14 +2155,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get specific patient
-  app.get('/api/patients/:id', requireAuth, async (req, res) => {
+  app.get('/api/patients/:id', async (req, res) => {
     try {
-      const user = getUserFromSession(req);
-      if (!user) {
+      const userId = (req.session as any).userId;
+      if (!userId) {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      if (!user.currentOrganizationId) {
+      const user = await storage.getUser(userId);
+      if (!user || !user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
       
@@ -2370,14 +2371,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get patient documents
-  app.get('/api/patients/:id/documents', requireAuth, async (req, res) => {
+  app.get('/api/patients/:id/documents', async (req, res) => {
     try {
-      const user = getUserFromSession(req);
-      if (!user) {
+      const userId = (req.session as any).userId;
+      if (!userId) {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      if (!user.currentOrganizationId) {
+      const user = await storage.getUser(userId);
+      if (!user || !user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
       
@@ -2397,14 +2399,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get automation logs for a specific patient
-  app.get('/api/patients/:id/automation-logs', requireAuth, async (req, res) => {
+  app.get('/api/patients/:id/automation-logs', async (req, res) => {
     try {
-      const user = getUserFromSession(req);
-      if (!user) {
+      const userId = (req.session as any).userId;
+      if (!userId) {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      if (!user.currentOrganizationId) {
+      const user = await storage.getUser(userId);
+      if (!user || !user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
       
@@ -2424,14 +2427,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Appointment routes
-  app.get('/api/patients/:id/appointments', requireAuth, async (req, res) => {
+  app.get('/api/patients/:id/appointments', async (req, res) => {
     try {
-      const user = getUserFromSession(req);
-      if (!user) {
+      const userId = (req.session as any).userId;
+      if (!userId) {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      if (!user.currentOrganizationId) {
+      const user = await storage.getUser(userId);
+      if (!user || !user.currentOrganizationId) {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
       
