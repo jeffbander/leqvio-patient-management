@@ -32,6 +32,7 @@ Providerloop Chains is a comprehensive patient management system with integrated
 - Multi-organization support: Users can now belong to multiple organizations and switch between them to access different patient databases. Added organization switcher component in dashboard header for easy switching between organizations.
 - Sidebar UI improvement: Made sidebar thinner (reduced from 256px to 192px width) with more compact spacing and padding for better screen real estate utilization.
 - Patients table optimization: Made table full-width with percentage-based column sizing to eliminate horizontal scrolling, reduced padding and font sizes for better content density and screen utilization.
+- E-signature form document upload: After completing the LEQVIO enrollment form, users now see a success screen with document upload options including insurance cards, Epic screenshots, clinical documents, and other files before redirecting to patient detail page.
 
 ## System Architecture
 

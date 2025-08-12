@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { apiRequest } from '@/lib/queryClient'
-import { FileText, Send, Loader2, Pen } from 'lucide-react'
+import { FileText, Send, Loader2, Pen, Upload, CheckCircle, ArrowRight, Camera, Image } from 'lucide-react'
 import { useLocation } from 'wouter'
 
 // ICD-10 Diagnosis Codes for LEQVIO
@@ -38,6 +38,8 @@ export default function ESignatureForm() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [hasSignature, setHasSignature] = useState(false)
+  const [submissionState, setSubmissionState] = useState<'form' | 'success' | 'uploading'>('form')
+  const [createdPatient, setCreatedPatient] = useState<any>(null)
 
   // Form fields
   const [formData, setFormData] = useState({
@@ -72,11 +74,12 @@ export default function ESignatureForm() {
       return res.json()
     },
     onSuccess: (patient) => {
+      setCreatedPatient(patient)
+      setSubmissionState('success')
       toast({
         title: "Success",
         description: "Patient created and PDF sent successfully!"
       })
-      setLocation(`/patient/${patient.id}`)
     },
     onError: (error) => {
       toast({
@@ -86,6 +89,52 @@ export default function ESignatureForm() {
       })
     }
   })
+
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async ({ file, documentType }: { file: File; documentType: string }) => {
+      const formData = new FormData()
+      formData.append('document', file)
+      formData.append('documentType', documentType)
+      
+      const response = await fetch(`/api/patients/${createdPatient.id}/documents`, {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!response.ok) throw new Error('Upload failed')
+      return response.json()
+    },
+    onSuccess: () => {
+      setSubmissionState('success') // Return to success state after upload
+      toast({
+        title: "Document uploaded successfully!",
+        description: "The document has been added to the patient record."
+      })
+    },
+    onError: () => {
+      setSubmissionState('success') // Return to success state even if upload fails
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload document. Please try again.",
+        variant: "destructive"
+      })
+    }
+  })
+
+  // File upload handlers
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, documentType: string) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setSubmissionState('uploading')
+      uploadDocumentMutation.mutate({ file, documentType })
+    }
+  }
+
+  const goToPatientDetail = () => {
+    if (createdPatient) {
+      setLocation(`/patient/${createdPatient.id}`)
+    }
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -208,6 +257,156 @@ export default function ESignatureForm() {
       status: 'started',
       leqvioCopayProgram: formData.copayProgram
     })
+  }
+
+  // Success state - show document upload options
+  if (submissionState === 'success') {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="max-w-2xl mx-auto px-4">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+              </div>
+              <CardTitle className="text-2xl text-gray-900">Patient Successfully Created!</CardTitle>
+              <CardDescription>
+                {createdPatient?.firstName} {createdPatient?.lastName} has been added to the system and the LEQVIO PDF has been sent.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-4">
+                  Would you like to upload additional documents for this patient?
+                </p>
+              </div>
+              
+              {/* Document Upload Options */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <Image className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                      <h3 className="font-medium mb-2">Insurance Card</h3>
+                      <p className="text-sm text-gray-600 mb-4">Upload front/back of insurance card</p>
+                      <Label htmlFor="insurance-upload" className="cursor-pointer">
+                        <Button variant="outline" className="w-full" asChild>
+                          <span>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Choose File
+                          </span>
+                        </Button>
+                      </Label>
+                      <Input
+                        id="insurance-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleFileUpload(e, 'insurance_screenshot')}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <Camera className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                      <h3 className="font-medium mb-2">Epic Screenshot</h3>
+                      <p className="text-sm text-gray-600 mb-4">Upload Epic system screenshot</p>
+                      <Label htmlFor="epic-upload" className="cursor-pointer">
+                        <Button variant="outline" className="w-full" asChild>
+                          <span>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Choose File
+                          </span>
+                        </Button>
+                      </Label>
+                      <Input
+                        id="epic-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleFileUpload(e, 'epic_insurance_screenshot')}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <FileText className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                      <h3 className="font-medium mb-2">Clinical Document</h3>
+                      <p className="text-sm text-gray-600 mb-4">Upload medical records or notes</p>
+                      <Label htmlFor="clinical-upload" className="cursor-pointer">
+                        <Button variant="outline" className="w-full" asChild>
+                          <span>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Choose File
+                          </span>
+                        </Button>
+                      </Label>
+                      <Input
+                        id="clinical-upload"
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt,image/*"
+                        className="hidden"
+                        onChange={(e) => handleFileUpload(e, 'clinical_note')}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <FileText className="h-8 w-8 mx-auto mb-2 text-orange-600" />
+                      <h3 className="font-medium mb-2">Other Document</h3>
+                      <p className="text-sm text-gray-600 mb-4">Upload any other related document</p>
+                      <Label htmlFor="other-upload" className="cursor-pointer">
+                        <Button variant="outline" className="w-full" asChild>
+                          <span>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Choose File
+                          </span>
+                        </Button>
+                      </Label>
+                      <Input
+                        id="other-upload"
+                        type="file"
+                        accept="*/*"
+                        className="hidden"
+                        onChange={(e) => handleFileUpload(e, 'other')}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {/* Upload Status */}
+              {submissionState === 'uploading' && (
+                <div className="text-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Uploading document...</p>
+                </div>
+              )}
+              
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <Button onClick={goToPatientDetail} className="flex-1">
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Go to Patient Detail
+                </Button>
+                <Button variant="outline" onClick={() => setLocation('/patients')} className="flex-1">
+                  Back to Patient List
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
