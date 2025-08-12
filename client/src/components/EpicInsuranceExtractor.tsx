@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Clipboard, Loader2, FileText } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 interface EpicInsuranceData {
   primaryInsurance?: string
@@ -26,26 +26,41 @@ interface EpicInsuranceExtractorProps {
 export const EpicInsuranceExtractor = ({ patientId, onDataExtracted }: EpicInsuranceExtractorProps) => {
   const [epicText, setEpicText] = useState('')
   const [extractedData, setExtractedData] = useState<EpicInsuranceData | null>(null)
+  const [lastResponse, setLastResponse] = useState<any>(null)
   
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
   const extractMutation = useMutation({
     mutationFn: async (text: string) => {
       const response = await fetch('/api/extract-epic-insurance-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ epicText: text })
+        body: JSON.stringify({ epicText: text, patientId: patientId })
       })
       if (!response.ok) throw new Error('Extraction failed')
       return response.json()
     },
     onSuccess: (data) => {
       setExtractedData(data.extractedData)
+      setLastResponse(data)
       onDataExtracted(data.extractedData)
-      toast({
-        title: "Insurance information extracted!",
-        description: "Review the extracted data and apply changes as needed."
-      })
+      
+      // Check if patient was automatically updated
+      if (data.updatedFields && Object.keys(data.updatedFields).length > 0) {
+        // Invalidate patient data to refresh the UI
+        queryClient.invalidateQueries({ queryKey: ['/api/patients', patientId] })
+        
+        toast({
+          title: "Insurance information extracted and applied!",
+          description: "Patient insurance details have been automatically updated."
+        })
+      } else {
+        toast({
+          title: "Insurance information extracted!",
+          description: "Review the extracted data and apply changes as needed."
+        })
+      }
     },
     onError: () => {
       toast({
@@ -236,7 +251,7 @@ export const EpicInsuranceExtractor = ({ patientId, onDataExtracted }: EpicInsur
               )}
             </div>
             
-            {patientId && (
+            {patientId && (!lastResponse?.updatedFields || Object.keys(lastResponse.updatedFields).length === 0) && (
               <Button 
                 onClick={() => applyMutation.mutate()}
                 disabled={applyMutation.isPending}
@@ -251,6 +266,14 @@ export const EpicInsuranceExtractor = ({ patientId, onDataExtracted }: EpicInsur
                   'Apply to Patient Record'
                 )}
               </Button>
+            )}
+            
+            {patientId && lastResponse?.updatedFields && Object.keys(lastResponse.updatedFields).length > 0 && (
+              <div className="mt-4 p-2 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-sm text-green-700">
+                  ✓ Patient record has been automatically updated with extracted insurance information
+                </p>
+              </div>
             )}
           </div>
         )}

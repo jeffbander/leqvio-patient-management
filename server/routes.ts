@@ -2623,9 +2623,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Epic insurance text extraction endpoint
-  app.post('/api/extract-epic-insurance-text', async (req, res) => {
+  app.post('/api/extract-epic-insurance-text', requireAuth, async (req, res) => {
     try {
-      const { epicText } = req.body;
+      const { epicText, patientId } = req.body;
       
       if (!epicText || typeof epicText !== 'string') {
         return res.status(400).json({ error: 'Epic text is required' });
@@ -2633,6 +2633,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Use OpenAI to extract insurance information from Epic text
       const extractedData = await extractInsuranceFromEpicText(epicText);
+      
+      // If patientId is provided, automatically update the patient fields
+      if (patientId && Object.keys(extractedData).length > 0) {
+        try {
+          const user = await getUserFromSession(req);
+          if (user && user.currentOrganizationId) {
+            // Map the extracted Epic insurance data to patient fields
+            const updates: any = {};
+            
+            if (extractedData.primaryInsurance) updates.primaryInsurance = extractedData.primaryInsurance;
+            if (extractedData.primaryMemberId) updates.primaryInsuranceNumber = extractedData.primaryMemberId;
+            if (extractedData.primaryGroupNumber) updates.primaryGroupId = extractedData.primaryGroupNumber;
+            if (extractedData.secondaryInsurance) updates.secondaryInsurance = extractedData.secondaryInsurance;
+            if (extractedData.secondaryMemberId) updates.secondaryInsuranceNumber = extractedData.secondaryMemberId;
+            if (extractedData.secondaryGroupNumber) updates.secondaryGroupId = extractedData.secondaryGroupNumber;
+            if (extractedData.copay) updates.copay = extractedData.copay;
+            if (extractedData.deductible) updates.deductible = extractedData.deductible;
+            
+            if (Object.keys(updates).length > 0) {
+              await storage.updatePatient(parseInt(patientId), updates, user.currentOrganizationId);
+              console.log('Patient insurance information automatically updated from Epic copy-paste:', updates);
+              
+              // Log the insurance update in patient notes
+              const changeLog = `Updated: Epic insurance copy-paste data - ${new Date().toLocaleString()}`;
+              const changeDetails = Object.entries(updates).map(([key, value]) => `  ${key}: ${value}`).join('\n');
+              const logEntry = `${changeLog}\n${changeDetails}`;
+              
+              await addInsuranceChangeToNotes(parseInt(patientId), logEntry, user.currentOrganizationId);
+            }
+            
+            return res.json({ 
+              extractedData, 
+              updatedFields: updates,
+              message: 'Insurance data extracted and patient updated successfully'
+            });
+          }
+        } catch (updateError) {
+          console.error('Failed to update patient with Epic insurance data:', updateError);
+          // Still return the extracted data even if update fails
+        }
+      }
       
       res.json({ extractedData });
     } catch (error) {
