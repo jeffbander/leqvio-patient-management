@@ -11,6 +11,7 @@ import PatientList from "@/pages/patient-list";
 import PatientDetail from "@/pages/patient-detail";
 import ESignatureForm from "@/pages/e-signature-form";
 import OrganizationManagement from "@/pages/OrganizationManagement";
+import AccountManagement from "@/pages/AccountManagement";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 
@@ -24,6 +25,7 @@ function AuthenticatedRouter() {
         <Route path="/patient/:id" component={PatientDetail} />
         <Route path="/extraction" component={MedicalDatabaseExtraction} />
         <Route path="/organization" component={OrganizationManagement} />
+        <Route path="/account" component={AccountManagement} />
         <Route>
           <Redirect to="/dashboard" />
         </Route>

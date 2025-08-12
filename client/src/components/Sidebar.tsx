@@ -8,7 +8,8 @@ import {
   Building2,
   Menu,
   X,
-  LogOut
+  LogOut,
+  User
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
@@ -43,6 +44,11 @@ const navigation = [
     name: 'Organization',
     href: '/organization',
     icon: Building2,
+  },
+  {
+    name: 'Account',
+    href: '/account',
+    icon: User,
   },
 ]
 

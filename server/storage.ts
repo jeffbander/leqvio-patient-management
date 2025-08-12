@@ -53,6 +53,10 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<InsertUser>): Promise<User>;
   updateUserLastLogin(id: number): Promise<void>;
+  updateUserProfile(id: number, updates: { name: string; email: string }): Promise<User>;
+  updateUserPassword(id: number, hashedPassword: string): Promise<void>;
+  deleteUser(id: number): Promise<void>;
+  deleteOrganization(id: number): Promise<void>;
   
   // Login tokens
   createLoginToken(token: InsertLoginToken): Promise<LoginToken>;
@@ -186,6 +190,30 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ lastLoginAt: new Date() })
       .where(eq(users.id, id));
+  }
+
+  async updateUserProfile(id: number, updates: { name: string; email: string }): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ name: updates.name, email: updates.email })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async updateUserPassword(id: number, hashedPassword: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, id));
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
+
+  async deleteOrganization(id: number): Promise<void> {
+    await db.delete(organizations).where(eq(organizations.id, id));
   }
 
   async createLoginToken(token: InsertLoginToken): Promise<LoginToken> {
