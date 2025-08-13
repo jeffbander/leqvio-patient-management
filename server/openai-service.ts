@@ -887,8 +887,28 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
           }
           
           // Use Vision API to extract data (PNG format from pdf2pic)
-          const extractedData = await extractPatientDataFromImage(base64Image, "png");
+          const visionData = await extractPatientDataFromImage(base64Image, "png");
           console.log("Vision API extraction successful");
+          
+          // Convert vision API result to PDF extraction format
+          const extractedData = {
+            patient_first_name: visionData.firstName || "",
+            patient_last_name: visionData.lastName || "",
+            date_of_birth: visionData.dateOfBirth || "",
+            patient_address: visionData.address || "",
+            patient_city: "",
+            patient_state: "",
+            patient_zip: "",
+            patient_home_phone: "",
+            patient_cell_phone: "",
+            patient_email: "",
+            provider_name: "",
+            account_number: "",
+            diagnosis: "ASCVD",
+            signature_date: "",
+            confidence: visionData.confidence || 0.8
+          };
+          
           return extractedData;
         } else {
           console.log("Invalid base64 image generated, skipping Vision API");
@@ -903,16 +923,42 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
     try {
       const pdfParse = await import('pdf-parse');
       console.log("Trying pdf-parse text extraction");
+      console.log("PDF buffer size:", pdfBuffer.length, "bytes");
       
-      const pdfData = await pdfParse.default(pdfBuffer);
+      // Use pdf-parse with explicit options to avoid internal path issues
+      const pdfData = await pdfParse.default(pdfBuffer, {
+        max: 0, // Parse all pages
+        version: '1.10.100'
+      });
+      
+      console.log("PDF parse successful, extracted text length:", pdfData.text?.length || 0);
       
       if (pdfData.text && pdfData.text.length > 50) {
         console.log("PDF text extracted, processing with AI");
+        console.log("First 200 characters of extracted text:", pdfData.text.substring(0, 200));
+        return await extractPatientInfoFromPDFText(pdfData.text);
+      } else if (pdfData.text && pdfData.text.length > 10) {
+        console.log("PDF text is short but trying AI extraction anyway");
         return await extractPatientInfoFromPDFText(pdfData.text);
       }
       
     } catch (parseError) {
       console.log("pdf-parse extraction failed:", (parseError as Error).message);
+      console.log("Error stack:", parseError.stack);
+      
+      // If pdf-parse fails, try alternative approach with different import
+      try {
+        console.log("Trying alternative pdf-parse approach");
+        const pdf = require('pdf-parse');
+        const pdfData = await pdf(pdfBuffer);
+        
+        if (pdfData.text && pdfData.text.length > 10) {
+          console.log("Alternative pdf-parse successful, text length:", pdfData.text.length);
+          return await extractPatientInfoFromPDFText(pdfData.text);
+        }
+      } catch (altError) {
+        console.log("Alternative pdf-parse also failed:", (altError as Error).message);
+      }
     }
     
     // Method 3: Basic binary text extraction with enhanced patterns
@@ -946,7 +992,8 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
     }
     
     extractedText = Array.from(textParts).join(' ');
-    console.log("Extracted text length:", extractedText.length);
+    console.log("Binary extracted text length:", extractedText.length);
+    console.log("First 200 characters of binary extraction:", extractedText.substring(0, 200));
     
     if (extractedText.length > 50) {
       return await extractPatientInfoFromPDFText(extractedText);
