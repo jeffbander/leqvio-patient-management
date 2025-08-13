@@ -730,7 +730,7 @@ export class DatabaseStorage implements IStorage {
       
       // Check if authorization has already expired
       if (authEndDate < currentDate) {
-        return "Expired";
+        return "Needs Renewal";
       }
       
       // Check if authorization expires within a week

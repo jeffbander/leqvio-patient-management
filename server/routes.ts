@@ -249,9 +249,9 @@ const checkAuthorizationStatus = async (patientId: number, organizationId: numbe
     // Check if authorization has already expired
     if (authEndDate < currentDate) {
       await storage.updatePatient(patientId, {
-        authStatus: "Expired"
+        authStatus: "Needs Renewal"
       }, organizationId);
-      console.log(`Patient ${patientId}: Authorization status updated to "Expired" - auth expired on ${patient.endDate}`);
+      console.log(`Patient ${patientId}: Authorization status updated to "Needs Renewal" - auth expired on ${patient.endDate}`);
       return;
     }
 
@@ -271,7 +271,7 @@ const checkAuthorizationStatus = async (patientId: number, organizationId: numbe
 
     // If we get here, all appointments are within auth range and auth is valid
     // Only update if current status indicates a problem that's now resolved
-    if (["APT SCHEDULED W/O AUTH", "Needs Renewal", "Expired"].includes(patient.authStatus || "")) {
+    if (["APT SCHEDULED W/O AUTH", "Needs Renewal"].includes(patient.authStatus || "")) {
       await storage.updatePatient(patientId, {
         authStatus: "Approved",
         scheduleStatus: "Needs Scheduling"
