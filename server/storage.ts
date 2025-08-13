@@ -721,13 +721,32 @@ export class DatabaseStorage implements IStorage {
     const endDate = patient.endDate !== undefined ? patient.endDate : existingPatient?.endDate;
     const currentAuthStatus = existingPatient?.authStatus || "Pending Review";
 
+    // Check expiration status if we have an end date
+    if (endDate && endDate.trim()) {
+      const authEndDate = new Date(endDate);
+      const currentDate = new Date();
+      const oneWeekFromNow = new Date();
+      oneWeekFromNow.setDate(currentDate.getDate() + 7);
+      
+      // Check if authorization has already expired
+      if (authEndDate < currentDate) {
+        return "Expired";
+      }
+      
+      // Check if authorization expires within a week
+      if (authEndDate <= oneWeekFromNow) {
+        return "Needs Renewal";
+      }
+    }
+
     // If auth number is provided but no dates, status should be "Approved"
     if (authNumber && authNumber.trim() && (!startDate || !endDate)) {
       return "Approved";
     }
 
-    // If auth number and dates are provided, status should be "Approved" 
+    // If auth number and dates are provided, check expiration status
     if (authNumber && authNumber.trim() && startDate && startDate.trim() && endDate && endDate.trim()) {
+      // Expiration logic already handled above, so if we reach here it's valid
       return "Approved";
     }
 

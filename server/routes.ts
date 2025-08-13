@@ -233,6 +233,27 @@ const checkAuthorizationStatus = async (patientId: number, organizationId: numbe
     // Parse auth dates (MM/DD/YYYY format)
     const authStartDate = new Date(patient.startDate);
     const authEndDate = new Date(patient.endDate);
+    const currentDate = new Date();
+    const oneWeekFromNow = new Date();
+    oneWeekFromNow.setDate(currentDate.getDate() + 7);
+
+    // Check if authorization expires within a week
+    if (authEndDate <= oneWeekFromNow && authEndDate > currentDate) {
+      await storage.updatePatient(patientId, {
+        authStatus: "Needs Renewal"
+      }, organizationId);
+      console.log(`Patient ${patientId}: Authorization status updated to "Needs Renewal" - auth expires on ${patient.endDate} (within one week)`);
+      return;
+    }
+
+    // Check if authorization has already expired
+    if (authEndDate < currentDate) {
+      await storage.updatePatient(patientId, {
+        authStatus: "Expired"
+      }, organizationId);
+      console.log(`Patient ${patientId}: Authorization status updated to "Expired" - auth expired on ${patient.endDate}`);
+      return;
+    }
 
     // Check if any appointment is outside the auth date range
     for (const appointment of appointments) {
@@ -248,13 +269,13 @@ const checkAuthorizationStatus = async (patientId: number, organizationId: numbe
       }
     }
 
-    // If we get here, all appointments are within auth range
-    // Only update if current status is "APT SCHEDULED W/O AUTH"
-    if (patient.authStatus === "APT SCHEDULED W/O AUTH") {
+    // If we get here, all appointments are within auth range and auth is valid
+    // Only update if current status indicates a problem that's now resolved
+    if (["APT SCHEDULED W/O AUTH", "Needs Renewal", "Expired"].includes(patient.authStatus || "")) {
       await storage.updatePatient(patientId, {
-        authStatus: "Approved" // or whatever the appropriate status should be
+        authStatus: "Approved"
       }, organizationId);
-      console.log(`Patient ${patientId}: Authorization status updated to "Approved" - all appointments are within auth range`);
+      console.log(`Patient ${patientId}: Authorization status updated to "Approved" - all appointments are within auth range and auth is valid`);
     }
   } catch (error) {
     console.error(`Error checking authorization status for patient ${patientId}:`, error);
