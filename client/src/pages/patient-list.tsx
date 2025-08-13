@@ -7,13 +7,11 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { Link } from 'wouter'
 import { Badge } from '@/components/ui/badge'
-import { UserPlus, Search, Eye, FileSpreadsheet, Download, ArrowUpDown, ArrowUp, ArrowDown, Mic, Calendar, Pencil, Copy, Trash2, Loader2 } from 'lucide-react'
+import { UserPlus, Search, Eye, FileSpreadsheet, Download, ArrowUpDown, ArrowUp, ArrowDown, Mic, Calendar, Pencil, Copy } from 'lucide-react'
 import { format } from 'date-fns'
 import { queryClient } from '@/lib/queryClient'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { apiRequest } from '@/lib/queryClient'
 
 interface Patient {
   id: number
@@ -47,7 +45,6 @@ interface PatientRowProps {
   onDoseNumberChange: (patientId: number, newDose: number) => void
   onRecordVoicemail: () => void
   onAppointmentStatusChange: (appointmentId: number, status: string, patientId: number) => void
-  onDeletePatient: (patientId: number) => void
 }
 
 // Helper functions for status styling
@@ -108,10 +105,9 @@ const getAppointmentStatusColor = (status: string) => {
   }
 }
 
-const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDoseNumberChange, onRecordVoicemail, onAppointmentStatusChange, onDeletePatient }: PatientRowProps) => {
+const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDoseNumberChange, onRecordVoicemail, onAppointmentStatusChange }: PatientRowProps) => {
   const [isEditingDose, setIsEditingDose] = useState(false)
   const [doseValue, setDoseValue] = useState(String(patient.doseNumber || 1))
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   const { toast } = useToast()
 
@@ -505,40 +501,7 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
         </div>
       </TableCell>
 
-      {/* Actions Column */}
-      <TableCell className="px-2 py-1">
-        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <AlertDialogTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Patient</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete {patient.firstName} {patient.lastName}? 
-                This action cannot be undone. All patient data, documents, and appointments will be permanently deleted.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => onDeletePatient(patient.id)}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Patient
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </TableCell>
+
 
     </TableRow>
   )
@@ -783,26 +746,7 @@ export default function PatientList() {
     }
   })
 
-  const deletePatientMutation = useMutation({
-    mutationFn: async (patientId: number) => {
-      const res = await apiRequest('DELETE', `/api/patients/${patientId}`)
-      return res.json()
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success", 
-        description: "Patient deleted successfully!"
-      })
-      queryClient.invalidateQueries({ queryKey: ['/api/patients'] })
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete patient",
-        variant: "destructive"
-      })
-    }
-  })
+
 
   const handleDownloadCSV = async () => {
     try {
@@ -1162,8 +1106,7 @@ export default function PatientList() {
                         Next Apt {getSortIcon('nextAppointment')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-[16%] px-2 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Notes</TableHead>
-                    <TableHead className="w-[2%] px-2 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</TableHead>
+                    <TableHead className="w-[18%] px-2 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Notes</TableHead>
                   </TableRow>
                 </TableHeader>
               <TableBody>
@@ -1178,7 +1121,6 @@ export default function PatientList() {
                     onAppointmentStatusChange={(appointmentId, status, patientId) => 
                       updateAppointmentMutation.mutate({ appointmentId, status, patientId })
                     }
-                    onDeletePatient={(patientId) => deletePatientMutation.mutate(patientId)}
                   />
                 ))}
               </TableBody>
