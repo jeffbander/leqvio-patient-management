@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Users, Calendar, FileText, TrendingUp, Clock, AlertTriangle, ExternalLink } from 'lucide-react'
 import { format } from 'date-fns'
 import { OrganizationSwitcher } from "@/components/OrganizationSwitcher"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 interface PatientMetrics {
   totalPatients: number
@@ -18,6 +19,7 @@ interface PatientMetrics {
   recentVoicemails: number
   patientsWithDocuments: number
   appointmentsPerMonth: number
+  monthlyAppointmentsData: Array<{ month: string; appointments: number; shortMonth: string }>
   upcomingAppointmentsList?: AppointmentWithPatient[]
   overdueAppointmentsList?: AppointmentWithPatient[]
 }
@@ -139,16 +141,32 @@ export default function Dashboard() {
       return aptDate >= twelveMonthsAgo
     })
     
-    // Group appointments by month and calculate average
-    const monthlyAppointments: { [key: string]: number } = {}
-    recentAppointments.forEach((apt: Appointment) => {
-      const monthKey = new Date(apt.appointmentDate).toISOString().substring(0, 7) // YYYY-MM format
-      monthlyAppointments[monthKey] = (monthlyAppointments[monthKey] || 0) + 1
-    })
+    // Create array of last 12 months with appointment counts
+    const monthlyAppointmentsData = []
+    const currentDate = new Date()
     
-    const monthsWithAppointments = Object.keys(monthlyAppointments).length
-    const appointmentsPerMonth = monthsWithAppointments > 0 
-      ? Math.round(recentAppointments.length / Math.max(monthsWithAppointments, 1))
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1)
+      const monthKey = date.toISOString().substring(0, 7) // YYYY-MM format
+      const monthName = date.toLocaleString('default', { month: 'long', year: 'numeric' })
+      const shortMonth = date.toLocaleString('default', { month: 'short' })
+      
+      const appointmentCount = recentAppointments.filter((apt: Appointment) => {
+        const aptDate = new Date(apt.appointmentDate)
+        return aptDate.toISOString().substring(0, 7) === monthKey
+      }).length
+      
+      monthlyAppointmentsData.push({
+        month: monthName,
+        shortMonth,
+        appointments: appointmentCount
+      })
+    }
+    
+    // Calculate average appointments per month
+    const totalAppointments = monthlyAppointmentsData.reduce((sum, month) => sum + month.appointments, 0)
+    const appointmentsPerMonth = monthlyAppointmentsData.length > 0 
+      ? Math.round(totalAppointments / monthlyAppointmentsData.length)
       : 0
 
     return {
@@ -161,6 +179,7 @@ export default function Dashboard() {
       recentVoicemails,
       patientsWithDocuments: Math.floor(patientsArray.length * 0.8), // Placeholder estimate
       appointmentsPerMonth,
+      monthlyAppointmentsData,
       upcomingAppointmentsList,
       overdueAppointmentsList
     }
@@ -399,7 +418,7 @@ export default function Dashboard() {
             {Object.entries(metrics.authStatusBreakdown).map(([status, count]) => (
               <div key={status} className="flex items-center justify-between">
                 <Badge className={getAuthStatusColor(status)}>{status}</Badge>
-                <span className="font-medium">{count}</span>
+                <span className="font-medium">{count as number}</span>
               </div>
             ))}
           </CardContent>
@@ -414,7 +433,7 @@ export default function Dashboard() {
             {Object.entries(metrics.scheduleStatusBreakdown).map(([status, count]) => (
               <div key={status} className="flex items-center justify-between">
                 <Badge className={getScheduleStatusColor(status)}>{status}</Badge>
-                <span className="font-medium">{count}</span>
+                <span className="font-medium">{count as number}</span>
               </div>
             ))}
           </CardContent>
@@ -447,14 +466,57 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Appointments per Month</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+        <Card className="col-span-1 md:col-span-3">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Monthly Appointments
+            </CardTitle>
+            <CardDescription>
+              Appointment volume over the past 12 months (Average: {metrics.appointmentsPerMonth} per month)
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.appointmentsPerMonth}</div>
-            <p className="text-xs text-muted-foreground">Average over last 12 months</p>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={metrics.monthlyAppointmentsData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="shortMonth" 
+                    tick={{ fontSize: 12 }}
+                    stroke="#666"
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12 }}
+                    stroke="#666"
+                  />
+                  <Tooltip 
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload
+                        return (
+                          <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+                            <p className="font-medium">{data.month}</p>
+                            <p className="text-blue-600">
+                              {payload[0].value} appointment{payload[0].value !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                        )
+                      }
+                      return null
+                    }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="appointments" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3}
+                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
