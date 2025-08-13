@@ -13,6 +13,8 @@ interface PatientMetrics {
   totalPatients: number
   authStatusBreakdown: { [key: string]: number }
   scheduleStatusBreakdown: { [key: string]: number }
+  authStatusPatients: { [key: string]: Patient[] }
+  scheduleStatusPatients: { [key: string]: Patient[] }
   upcomingAppointments: number
   overdueAppointments: number
   totalAppointments: number
@@ -80,19 +82,25 @@ export default function Dashboard() {
     const patientsArray = patients as Patient[]
     const appointmentsArray = allAppointments as Appointment[]
 
-    // Auth status breakdown
-    const authStatusBreakdown = patientsArray.reduce((acc: any, patient: Patient) => {
+    // Auth status breakdown with patient lists
+    const authStatusBreakdown: { [key: string]: number } = {}
+    const authStatusPatients: { [key: string]: Patient[] } = {}
+    patientsArray.forEach((patient: Patient) => {
       const status = patient.authStatus || 'Pending Review'
-      acc[status] = (acc[status] || 0) + 1
-      return acc
-    }, {})
+      authStatusBreakdown[status] = (authStatusBreakdown[status] || 0) + 1
+      if (!authStatusPatients[status]) authStatusPatients[status] = []
+      authStatusPatients[status].push(patient)
+    })
 
-    // Schedule status breakdown
-    const scheduleStatusBreakdown = patientsArray.reduce((acc: any, patient: Patient) => {
+    // Schedule status breakdown with patient lists
+    const scheduleStatusBreakdown: { [key: string]: number } = {}
+    const scheduleStatusPatients: { [key: string]: Patient[] } = {}
+    patientsArray.forEach((patient: Patient) => {
       const status = patient.scheduleStatus || 'Pending Auth'
-      acc[status] = (acc[status] || 0) + 1
-      return acc
-    }, {})
+      scheduleStatusBreakdown[status] = (scheduleStatusBreakdown[status] || 0) + 1
+      if (!scheduleStatusPatients[status]) scheduleStatusPatients[status] = []
+      scheduleStatusPatients[status].push(patient)
+    })
 
     // Upcoming appointments (next 30 days)
     const next30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
@@ -173,6 +181,8 @@ export default function Dashboard() {
       totalPatients: patientsArray.length,
       authStatusBreakdown,
       scheduleStatusBreakdown,
+      authStatusPatients,
+      scheduleStatusPatients,
       upcomingAppointments: upcomingAppointmentsList.length,
       overdueAppointments: overdueAppointmentsList.length,
       totalAppointments: appointmentsArray.length,
@@ -412,14 +422,76 @@ export default function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Authorization Status</CardTitle>
-            <CardDescription>Current authorization status distribution</CardDescription>
+            <CardDescription>Current authorization status distribution • Click status to view patients</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {Object.entries(metrics.authStatusBreakdown).map(([status, count]) => (
-              <div key={status} className="flex items-center justify-between">
-                <Badge className={getAuthStatusColor(status)}>{status}</Badge>
-                <span className="font-medium">{count as number}</span>
-              </div>
+              <Dialog key={status}>
+                <DialogTrigger asChild>
+                  <div className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors">
+                    <Badge className={getAuthStatusColor(status)}>{status}</Badge>
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium">{count as number}</span>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                  </div>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Patients with Authorization Status: {status}</DialogTitle>
+                    <DialogDescription>
+                      {count as number} patient{(count as number) !== 1 ? 's' : ''} with this authorization status
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="mt-4">
+                    {metrics.authStatusPatients[status] && metrics.authStatusPatients[status].length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="py-2">Patient Name</TableHead>
+                            <TableHead className="py-2">Auth Status</TableHead>
+                            <TableHead className="py-2">Schedule Status</TableHead>
+                            <TableHead className="py-2 w-24">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {metrics.authStatusPatients[status].map((patient: Patient) => (
+                            <TableRow key={patient.id}>
+                              <TableCell className="font-medium py-2">
+                                {patient.lastName}, {patient.firstName}
+                              </TableCell>
+                              <TableCell className="py-2">
+                                <Badge className={getAuthStatusColor(patient.authStatus || 'Pending Review')}>
+                                  {patient.authStatus || 'Pending Review'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="py-2">
+                                <Badge className={getScheduleStatusColor(patient.scheduleStatus || 'Pending Auth')}>
+                                  {patient.scheduleStatus || 'Pending Auth'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="py-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => window.location.href = `/patient/${patient.id}`}
+                                >
+                                  View
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        No patients found with this status
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
             ))}
           </CardContent>
         </Card>
@@ -427,14 +499,76 @@ export default function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Schedule Status</CardTitle>
-            <CardDescription>Current scheduling status distribution</CardDescription>
+            <CardDescription>Current scheduling status distribution • Click status to view patients</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {Object.entries(metrics.scheduleStatusBreakdown).map(([status, count]) => (
-              <div key={status} className="flex items-center justify-between">
-                <Badge className={getScheduleStatusColor(status)}>{status}</Badge>
-                <span className="font-medium">{count as number}</span>
-              </div>
+              <Dialog key={status}>
+                <DialogTrigger asChild>
+                  <div className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors">
+                    <Badge className={getScheduleStatusColor(status)}>{status}</Badge>
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium">{count as number}</span>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                  </div>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Patients with Schedule Status: {status}</DialogTitle>
+                    <DialogDescription>
+                      {count as number} patient{(count as number) !== 1 ? 's' : ''} with this scheduling status
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="mt-4">
+                    {metrics.scheduleStatusPatients[status] && metrics.scheduleStatusPatients[status].length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="py-2">Patient Name</TableHead>
+                            <TableHead className="py-2">Auth Status</TableHead>
+                            <TableHead className="py-2">Schedule Status</TableHead>
+                            <TableHead className="py-2 w-24">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {metrics.scheduleStatusPatients[status].map((patient: Patient) => (
+                            <TableRow key={patient.id}>
+                              <TableCell className="font-medium py-2">
+                                {patient.lastName}, {patient.firstName}
+                              </TableCell>
+                              <TableCell className="py-2">
+                                <Badge className={getAuthStatusColor(patient.authStatus || 'Pending Review')}>
+                                  {patient.authStatus || 'Pending Review'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="py-2">
+                                <Badge className={getScheduleStatusColor(patient.scheduleStatus || 'Pending Auth')}>
+                                  {patient.scheduleStatus || 'Pending Auth'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="py-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => window.location.href = `/patient/${patient.id}`}
+                                >
+                                  View
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        No patients found with this status
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
             ))}
           </CardContent>
         </Card>
