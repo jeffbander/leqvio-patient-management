@@ -18,8 +18,7 @@ interface PatientMetrics {
   upcomingAppointments: number
   overdueAppointments: number
   totalAppointments: number
-  recentVoicemails: number
-  patientsWithDocuments: number
+
   appointmentsPerMonth: number
   monthlyAppointmentsData: Array<{ month: string; appointments: number; shortMonth: string }>
   upcomingAppointmentsList?: AppointmentWithPatient[]
@@ -133,12 +132,7 @@ export default function Dashboard() {
       })
       .sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime())
 
-    // Recent voicemails (last 7 days)
-    const recentVoicemails = patientsArray.filter((patient: Patient) => {
-      if (!patient.lastVoicemailAt) return false
-      const voicemailDate = new Date(patient.lastVoicemailAt)
-      return voicemailDate >= lastWeek
-    }).length
+
 
     // Calculate appointments per month (last 12 months)
     const twelveMonthsAgo = new Date()
@@ -186,8 +180,6 @@ export default function Dashboard() {
       upcomingAppointments: upcomingAppointmentsList.length,
       overdueAppointments: overdueAppointmentsList.length,
       totalAppointments: appointmentsArray.length,
-      recentVoicemails,
-      patientsWithDocuments: Math.floor(patientsArray.length * 0.8), // Placeholder estimate
       appointmentsPerMonth,
       monthlyAppointmentsData,
       upcomingAppointmentsList,
@@ -254,7 +246,7 @@ export default function Dashboard() {
       </div>
 
       {/* Key Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
@@ -407,12 +399,12 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Recent Voicemails</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.recentVoicemails}</div>
-            <p className="text-xs text-muted-foreground">Last 7 days</p>
+            <div className="text-2xl font-bold">{metrics.totalAppointments}</div>
+            <p className="text-xs text-muted-foreground">All time</p>
           </CardContent>
         </Card>
       </div>
@@ -574,33 +566,9 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Additional Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Monthly Appointments Chart */}
+      <div className="grid grid-cols-1 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalAppointments}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Documented Patients</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.patientsWithDocuments}</div>
-            <p className="text-xs text-muted-foreground">
-              {Math.round((metrics.patientsWithDocuments / metrics.totalPatients) * 100)}% of total
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-1 md:col-span-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
