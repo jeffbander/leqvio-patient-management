@@ -1031,3 +1031,99 @@ If any field is not found, use empty string "". Be very careful with name extrac
     return extractedData;
   }
 }
+
+export async function extractPatientInfoFromPDFText(pdfText: string): Promise<any> {
+  try {
+    console.log("Using AI to extract patient info from PDF text");
+    
+    const prompt = `You are a medical data extraction expert. Extract patient information from this text extracted from a LEQVIO enrollment form or medical document.
+
+EXTRACTED TEXT:
+${pdfText}
+
+Extract the following patient information and return as JSON:
+{
+  "patient_first_name": "First name only",
+  "patient_last_name": "Last name only", 
+  "date_of_birth": "MM/DD/YYYY format",
+  "patient_address": "Full street address",
+  "patient_city": "City",
+  "patient_state": "State abbreviation", 
+  "patient_zip": "ZIP code",
+  "patient_home_phone": "Home phone number",
+  "patient_cell_phone": "Cell/mobile phone number",
+  "patient_email": "Email address",
+  "provider_name": "Prescribing physician/provider name",
+  "account_number": "Medical record number or account number",
+  "diagnosis": "Primary diagnosis (e.g., ASCVD, HeFH)",
+  "signature_date": "Date form was signed MM/DD/YYYY",
+  "confidence": 0.9
+}
+
+Look for common medical form fields like:
+- Patient name (first/last)
+- Date of Birth or DOB
+- Address/Street/City/State/ZIP
+- Phone numbers (home/cell/mobile)
+- Email
+- Prescriber/Provider/Doctor name
+- MRN/Account Number/Patient ID
+- Diagnosis codes or conditions
+- Signature date
+
+If any field is not found, use empty string "". Be very careful with name extraction - separate first and last names properly. Return only valid JSON.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: "You are a medical data extraction expert. Extract patient information from medical documents accurately and return only valid JSON."
+        },
+        {
+          role: "user", 
+          content: prompt
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.1,
+      max_tokens: 1000
+    });
+
+    const result = response.choices[0].message.content;
+    const extractedData = JSON.parse(result || '{}');
+    
+    console.log("AI PDF text extraction result:", {
+      patientName: `${extractedData.patient_first_name} ${extractedData.patient_last_name}`,
+      dateOfBirth: extractedData.date_of_birth,
+      provider: extractedData.provider_name,
+      confidence: extractedData.confidence
+    });
+    
+    return extractedData;
+    
+  } catch (error) {
+    console.error('Error in AI PDF text extraction:', error);
+    
+    // Fallback with basic pattern matching
+    const extractedData = {
+      patient_first_name: "",
+      patient_last_name: "",
+      date_of_birth: "",
+      patient_address: "",
+      patient_city: "",
+      patient_state: "",
+      patient_zip: "",
+      patient_home_phone: "",
+      patient_cell_phone: "",
+      patient_email: "",
+      provider_name: "",
+      account_number: "",
+      diagnosis: "ASCVD",
+      signature_date: "",
+      confidence: 0.3
+    };
+    
+    return extractedData;
+  }
+}

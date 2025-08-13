@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema, userLoginSchema, userRegisterSchema, insertPatientSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
-import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio, extractPatientInfoFromScreenshot } from "./openai-service";
+import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio, extractPatientInfoFromScreenshot, extractPatientInfoFromPDFText } from "./openai-service";
 import { generateLEQVIOPDF } from "./pdf-generator";
 import { googleSheetsService } from "./google-sheets-service";
 import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
@@ -1631,19 +1631,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let uploadExtractedData: any = null;
       
       if (fileExtension === 'pdf') {
-        // For PDF files (like LEQVIO forms), convert to base64 and use AI Vision
-        console.log("Processing PDF file for patient creation using AI Vision");
-        const base64Pdf = req.file.buffer.toString('base64');
+        // For PDF files, extract raw text and use AI to parse it
+        console.log("Processing PDF file for patient creation");
         
         try {
-          // Use AI Vision to extract patient data from PDF
-          uploadExtractedData = await extractPatientDataFromImage(base64Pdf, 'leqvio_form');
-          console.log("AI PDF extraction successful:", {
-            name: `${uploadExtractedData.patient_first_name} ${uploadExtractedData.patient_last_name}`,
-            confidence: uploadExtractedData.confidence
-          });
+          // Convert PDF buffer to string and try to extract readable text
+          const pdfString = req.file.buffer.toString('binary');
+          
+          // Simple text extraction from PDF (works for text-based PDFs)
+          let extractedText = '';
+          const textRegex = /\(([^)]+)\)/g;
+          let match;
+          const textParts = [];
+          
+          while ((match = textRegex.exec(pdfString)) !== null) {
+            const text = match[1].replace(/\\[0-9]{3}/g, ' ').trim();
+            if (text.length > 2 && !/^[0-9.]+$/.test(text)) {
+              textParts.push(text);
+            }
+          }
+          
+          extractedText = textParts.join(' ');
+          
+          console.log("Extracted PDF text length:", extractedText.length);
+          
+          if (extractedText.length > 50) {
+            // Use AI to intelligently parse the extracted text
+            uploadExtractedData = await extractPatientInfoFromPDFText(extractedText);
+          } else {
+            // If no meaningful text found, create empty record
+            console.log("No meaningful text extracted from PDF, creating empty patient record");
+            uploadExtractedData = {
+              patient_first_name: "",
+              patient_last_name: "",
+              date_of_birth: "",
+              patient_address: "",
+              patient_city: "",
+              patient_state: "",
+              patient_zip: "",
+              patient_home_phone: "",
+              patient_cell_phone: "",
+              patient_email: "",
+              provider_name: "",
+              account_number: "",
+              diagnosis: "ASCVD",
+              signature_date: "",
+              confidence: 0.2
+            };
+          }
         } catch (error) {
-          console.log("AI Vision extraction failed, using default values");
+          console.log("PDF processing error:", error);
           uploadExtractedData = {
             patient_first_name: "",
             patient_last_name: "",
