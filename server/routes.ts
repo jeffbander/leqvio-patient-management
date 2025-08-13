@@ -1642,10 +1642,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         } catch (error) {
           console.log("PDF processing error:", error);
-          // Instead of empty data, return minimal but valid patient data
+          // Return clearly marked placeholder data when extraction fails
+          const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
           uploadExtractedData = {
-            patient_first_name: "Unknown",
-            patient_last_name: "Patient",
+            patient_first_name: "NEEDS_REVIEW",
+            patient_last_name: `PDF_${timestamp}`,
             date_of_birth: "01/01/1990",
             patient_address: "",
             patient_city: "",
@@ -1682,15 +1683,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if we have enough data to create a patient (allow "Unknown Patient" as valid)
+      // Check if we have enough data to create a patient 
       const firstName = uploadExtractedData.patient_first_name || uploadExtractedData.firstName || '';
       const lastName = uploadExtractedData.patient_last_name || uploadExtractedData.lastName || '';
+      
+      // Filter out common PDF artifacts that might slip through
+      const pdfArtifacts = ['helvetica', 'arial', 'times', 'font', 'subtype', 'type', 'reportlab', 'bold', 'italic', 'regular'];
+      const isFirstNameArtifact = pdfArtifacts.includes(firstName.toLowerCase());
+      const isLastNameArtifact = pdfArtifacts.includes(lastName.toLowerCase());
       
       if (!firstName && !lastName) {
         return res.status(400).json({ 
           error: "Insufficient patient data", 
           details: "Could not extract patient name from the uploaded file." 
         });
+      }
+      
+      // If we detect PDF artifacts as names, replace with placeholder
+      let finalFirstName = firstName;
+      let finalLastName = lastName;
+      
+      if (isFirstNameArtifact || isLastNameArtifact) {
+        console.log("Detected PDF artifacts as names, using placeholders:", { firstName, lastName });
+        const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        finalFirstName = "NEEDS_REVIEW";
+        finalLastName = `PDF_${timestamp}`;
       }
 
       // Normalize extracted data to patient schema format (already extracted above for validation)
@@ -1712,8 +1729,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const patientData = {
-        firstName,
-        lastName,
+        firstName: finalFirstName,
+        lastName: finalLastName,
         dateOfBirth,
         phone: uploadExtractedData.patient_home_phone || uploadExtractedData.homePhone || '',
         cellPhone: uploadExtractedData.patient_cell_phone || uploadExtractedData.cellPhone || '',

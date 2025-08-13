@@ -1103,11 +1103,11 @@ Extract the following patient information and return as JSON:
 }
 
 EXAMPLES OF WHAT TO IGNORE (these are PDF artifacts, NOT patient names):
-- "Subtype" / "Type" 
-- "ReportLab" / "PDF Library"
-- "anonymous" / "unspecified"
-- Technical codes like "JIV", "DclHZNR", "OAp6a"
-- Random character sequences
+- Font names: "Helvetica", "Arial", "Times", "Calibri", "Verdana"
+- PDF metadata: "Subtype", "Type", "ReportLab", "PDF Library"
+- Technical terms: "anonymous", "unspecified", "Creator", "Producer"
+- Technical codes: "JIV", "DclHZNR", "OAp6a", random character sequences
+- Form artifacts: "Bold", "Italic", "Roman", "Regular"
 
 ONLY extract information if you find clear, recognizable patient data. If the text is too garbled, return empty strings. Return only valid JSON.`;
 
@@ -1156,13 +1156,18 @@ ONLY extract information if you find clear, recognizable patient data. If the te
       for (const pattern of namePatterns) {
         const match = pdfText.match(pattern);
         if (match && match[1] && match[2]) {
-          // Filter out common PDF artifacts and non-name words
-          const badWords = ['subtype', 'type', 'form', 'page', 'document', 'pdf', 'report', 'lab', 'www', 'com'];
+          // Filter out common PDF artifacts, font names, and non-name words
+          const badWords = ['subtype', 'type', 'form', 'page', 'document', 'pdf', 'report', 'lab', 'www', 'com', 
+                           'helvetica', 'arial', 'times', 'font', 'bold', 'italic', 'roman', 'sans', 'serif',
+                           'calibri', 'verdana', 'georgia', 'courier', 'trebuchet', 'tahoma', 'impact',
+                           'reportlab', 'library', 'version', 'created', 'producer', 'creator', 'title',
+                           'subject', 'keywords', 'anonymous', 'unspecified', 'default', 'regular'];
           const firstName = match[1].trim().toLowerCase();
           const lastName = match[2].trim().toLowerCase();
           
           if (!badWords.includes(firstName) && !badWords.includes(lastName) && 
-              firstName.length >= 2 && lastName.length >= 2) {
+              firstName.length >= 2 && lastName.length >= 2 && 
+              /^[a-z]+$/.test(firstName) && /^[a-z]+$/.test(lastName)) {
             extractedData.patient_first_name = match[1].trim();
             extractedData.patient_last_name = match[2].trim();
             extractedData.confidence = Math.max(extractedData.confidence || 0.1, 0.5);
