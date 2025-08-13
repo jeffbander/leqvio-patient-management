@@ -1632,8 +1632,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (fileExtension === 'pdf') {
         // For PDF files (like LEQVIO forms), extract text using pdf-parse library
-        const pdfParse = await import('pdf-parse');
-        const pdfData = await pdfParse.default(req.file.buffer);
+        const pdfParse = require('pdf-parse');
+        const pdfData = await pdfParse(req.file.buffer);
         const pdfText = pdfData.text;
         
         console.log("Processing PDF file for patient creation");
