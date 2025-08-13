@@ -744,6 +744,7 @@ export class DatabaseStorage implements IStorage {
       await db.delete(patientDocuments).where(eq(patientDocuments.patientId, id));
       await db.delete(appointments).where(eq(appointments.patientId, id));
       await db.delete(automationLogs).where(eq(automationLogs.patientId, id));
+      await db.delete(eSignatureForms).where(eq(eSignatureForms.patientId, id));
       
       // Delete the patient record
       await db.delete(patients).where(eq(patients.id, id));
