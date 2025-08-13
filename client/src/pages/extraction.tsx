@@ -18,6 +18,7 @@ export default function UploadStartForm() {
   const [createdPatient, setCreatedPatient] = useState<any>(null)
   const [textContent, setTextContent] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
 
   // File upload mutation
   const createPatientFromFileMutation = useMutation({
@@ -99,7 +100,54 @@ export default function UploadStartForm() {
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) {
+    if (file && validateFile(file)) {
+      setSelectedFile(file)
+    }
+  }
+
+  const validateFile = (file: File) => {
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp']
+    const maxSize = 50 * 1024 * 1024 // 50MB
+    
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please select an image file (PNG, JPG, GIF, WEBP)",
+        variant: "destructive"
+      })
+      return false
+    }
+    
+    if (file.size > maxSize) {
+      toast({
+        title: "File Too Large",
+        description: "Please select a file smaller than 50MB",
+        variant: "destructive"
+      })
+      return false
+    }
+    
+    return true
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    
+    const files = Array.from(e.dataTransfer.files)
+    const file = files[0]
+    
+    if (file && validateFile(file)) {
       setSelectedFile(file)
     }
   }
@@ -129,6 +177,7 @@ export default function UploadStartForm() {
     setCreatedPatient(null)
     setSelectedFile(null)
     setTextContent('')
+    setIsDragOver(false)
   }
 
   const goToPatientDetail = () => {
@@ -260,30 +309,48 @@ export default function UploadStartForm() {
                 Upload Medical Document
               </CardTitle>
               <CardDescription>
-                Select a PDF file, medical screenshot, or other document containing patient information
+                Select a medical screenshot or image containing patient information
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
+              <div 
+                className={`border-2 border-dashed rounded-lg p-8 transition-colors ${
+                  isDragOver 
+                    ? 'border-blue-400 bg-blue-50' 
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
                 <div className="text-center">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <Upload className={`mx-auto h-12 w-12 mb-4 ${
+                    isDragOver ? 'text-blue-500' : 'text-gray-400'
+                  }`} />
                   <div className="mb-4">
-                    <label
-                      htmlFor="file-upload"
-                      className="cursor-pointer text-blue-600 hover:text-blue-500 font-medium"
-                    >
-                      Click to select file
-                    </label>
+                    {isDragOver ? (
+                      <p className="text-blue-600 font-medium">Drop your image here</p>
+                    ) : (
+                      <>
+                        <p className="text-gray-600 mb-2">Drag and drop your image here, or</p>
+                        <label
+                          htmlFor="file-upload"
+                          className="cursor-pointer text-blue-600 hover:text-blue-500 font-medium"
+                        >
+                          click to select file
+                        </label>
+                      </>
+                    )}
                     <input
                       id="file-upload"
                       type="file"
                       className="hidden"
-                      accept=".pdf,image/*"
+                      accept="image/*"
                       onChange={handleFileSelect}
                     />
                   </div>
                   <p className="text-gray-500 text-sm">
-                    Supports PDF, PNG, JPG, GIF, WEBP files up to 50MB
+                    Supports PNG, JPG, GIF, WEBP images up to 50MB
                   </p>
                 </div>
               </div>
@@ -313,14 +380,7 @@ export default function UploadStartForm() {
               </div>
 
               {/* Supported File Types */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-red-600" />
-                  <div>
-                    <p className="font-medium">PDF Documents</p>
-                    <p className="text-sm text-gray-600">LEQVIO forms, medical records</p>
-                  </div>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
                 <div className="flex items-center gap-3">
                   <Upload className="h-5 w-5 text-blue-600" />
                   <div>
@@ -331,7 +391,7 @@ export default function UploadStartForm() {
                 <div className="flex items-center gap-3">
                   <FileText className="h-5 w-5 text-green-600" />
                   <div>
-                    <p className="font-medium">Images</p>
+                    <p className="font-medium">Medical Images</p>
                     <p className="text-sm text-gray-600">Insurance cards, documents</p>
                   </div>
                 </div>
