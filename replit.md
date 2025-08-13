@@ -37,6 +37,7 @@ Providerloop Chains is a comprehensive patient management system with integrated
 - Patients table optimization: Made table full-width with percentage-based column sizing to eliminate horizontal scrolling, reduced padding and font sizes for better content density and screen utilization.
 - E-signature form document upload: After completing the LEQVIO enrollment form, users now see a success screen with document upload options including insurance cards, Epic screenshots, clinical documents, and other files before redirecting to patient detail page.
 - Drag-and-drop file uploads: Implemented comprehensive drag-and-drop functionality across all file upload areas using DragDropFileUpload component for improved user experience. Fixed integration issues where drag-and-drop files weren't properly processed by upload handlers.
+- Direct patient creation from document uploads: Replaced automation chain workflow with direct patient creation endpoint `/api/patients/create-from-upload` that extracts patient data from uploaded LEQVIO forms (PDF) or medical screenshots and immediately creates patient records without triggering external automation chains. Created CreatePatientFromUpload component and test page at `/test-upload-patient` for demonstration.
 
 ## System Architecture
 
@@ -64,10 +65,11 @@ Providerloop Chains is a comprehensive patient management system with integrated
     - **automation_logs**: AIGENTS chain execution tracking with webhook payloads
 - **Key Endpoints**:
     - `POST /api/patients` - Create patient with e-signature data
+    - `POST /api/patients/create-from-upload` - Create patient directly from uploaded documents (LEQVIO PDFs, screenshots)
     - `GET /api/patients` - List patients with optional search
     - `PUT /api/patients/:id` - Update patient information
     - `POST /api/patients/:id/documents` - Upload and process documents
-    - `POST /api/extract-patient-info` - OCR extraction for Epic screenshots
+    - `POST /api/extract-patient-info` - OCR extraction for Epic screenshots (data only, no patient creation)
 - **Integrations**: 
     - OpenAI Vision API for comprehensive OCR extraction
     - AIGENTS API for automated workflow triggering

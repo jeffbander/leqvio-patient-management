@@ -10,6 +10,7 @@ import MedicalDatabaseExtraction from "@/pages/medical-database-extraction";
 import PatientList from "@/pages/patient-list";
 import PatientDetail from "@/pages/patient-detail";
 import ESignatureForm from "@/pages/e-signature-form";
+import TestUploadPatient from "@/pages/test-upload-patient";
 import OrganizationManagement from "@/pages/OrganizationManagement";
 import AccountManagement from "@/pages/AccountManagement";
 import Login from "@/pages/Login";
@@ -23,6 +24,7 @@ function AuthenticatedRouter() {
         <Route path="/patients" component={PatientList} />
         <Route path="/patient/new" component={ESignatureForm} />
         <Route path="/patient/:id" component={PatientDetail} />
+        <Route path="/test-upload-patient" component={TestUploadPatient} />
         <Route path="/extraction" component={MedicalDatabaseExtraction} />
         <Route path="/organization" component={OrganizationManagement} />
         <Route path="/account" component={AccountManagement} />

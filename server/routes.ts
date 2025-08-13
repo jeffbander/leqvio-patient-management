@@ -1600,7 +1600,188 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Patient info extraction from medical system screenshots
+  // Patient creation from uploaded forms (LEQVIO PDFs, screenshots, etc.)
+  app.post("/api/patients/create-from-upload", upload.single('photo'), async (req, res) => {
+    const userId = (req.session as any).userId;
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
+    try {
+      const user = await storage.getUser(userId);
+      if (!user || !user.currentOrganizationId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      // Check file type
+      const fileExtension = req.file.originalname.toLowerCase().split('.').pop();
+      const supportedImageTypes = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+      
+      console.log("Creating patient from uploaded file:", {
+        fileName: req.file.originalname,
+        fileExtension: fileExtension,
+        extractionType: req.body?.extractionType,
+        fileSize: req.file.size
+      });
+      
+      let uploadExtractedData: any = null;
+      
+      if (fileExtension === 'pdf') {
+        // For PDF files (like LEQVIO forms), extract text directly
+        const pdfText = req.file.buffer.toString('utf-8');
+        
+        console.log("Processing PDF file for patient creation");
+        console.log("PDF text length:", pdfText.length);
+        
+        // Initialize with default values
+        uploadExtractedData = {
+          patient_first_name: "",
+          patient_last_name: "",
+          patient_sex: "",
+          patient_home_phone: "",
+          patient_cell_phone: "",
+          patient_address: "",
+          provider_name: "",
+          signature_date: "",
+          date_of_birth: "",
+          rawData: pdfText,
+          confidence: 0.8
+        };
+        
+        // Extract fields from the LEQVIO form text - comprehensive patterns
+        const firstNameMatch = pdfText.match(/First Name:\s*([^\n\r\t]+)/i) || 
+                               pdfText.match(/First:\s*([^\n\r\t]+)/i);
+        const lastNameMatch = pdfText.match(/Last Name:\s*([^\n\r\t]+)/i) || 
+                              pdfText.match(/Last:\s*([^\n\r\t]+)/i);
+        const dobMatch = pdfText.match(/Date of Birth:\s*([^\n\r\t]+)/i) ||
+                        pdfText.match(/DOB:\s*([^\n\r\t]+)/i) ||
+                        pdfText.match(/Birth Date:\s*([^\n\r\t]+)/i);
+        const sexMatch = pdfText.match(/Sex:\s*(Male|Female|M|F)/i) ||
+                        pdfText.match(/Gender:\s*(Male|Female|M|F)/i);
+        const homePhoneMatch = pdfText.match(/Home\s*Phone[^:]*:\s*([^\n\r\t]+)/i) ||
+                              pdfText.match(/Phone[^:]*:\s*([^\n\r\t]+).*Home/i);
+        const cellPhoneMatch = pdfText.match(/Cell\s*Phone[^:]*:\s*([^\n\r\t]+)/i) ||
+                              pdfText.match(/Mobile[^:]*:\s*([^\n\r\t]+)/i) ||
+                              pdfText.match(/Phone[^:]*:\s*([^\n\r\t]+).*Mobile/i);
+        const addressMatch = pdfText.match(/Address:\s*([^\n\r\t]+)/i) ||
+                            pdfText.match(/Street[^:]*:\s*([^\n\r\t]+)/i);
+        const signatureDateMatch = pdfText.match(/Date of Signature[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i) ||
+                                   pdfText.match(/Signature Date[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i) ||
+                                   pdfText.match(/Date:[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+        const providerMatch = pdfText.match(/Prescriber Name:\s*([^\n\r\t]+)/i) ||
+                             pdfText.match(/Provider Name:\s*([^\n\r\t]+)/i) ||
+                             pdfText.match(/Doctor:\s*([^\n\r\t]+)/i) ||
+                             pdfText.match(/Physician:\s*([^\n\r\t]+)/i);
+        
+        if (firstNameMatch) {
+          let firstName = firstNameMatch[1].trim();
+          firstName = firstName.replace(/\s+/g, ' ');
+          if (firstName && firstName !== '') uploadExtractedData.patient_first_name = firstName;
+        }
+        if (lastNameMatch) {
+          let lastName = lastNameMatch[1].trim();
+          lastName = lastName.replace(/\s+/g, ' ');
+          if (lastName && lastName !== '') uploadExtractedData.patient_last_name = lastName;
+        }
+        if (dobMatch) {
+          let dob = dobMatch[1].trim();
+          if (dob && dob !== '') uploadExtractedData.date_of_birth = dob;
+        }
+        if (sexMatch) {
+          let sex = sexMatch[1].trim();
+          if (sex === 'M') sex = 'Male';
+          if (sex === 'F') sex = 'Female';
+          uploadExtractedData.patient_sex = sex;
+        }
+        if (homePhoneMatch) {
+          uploadExtractedData.patient_home_phone = homePhoneMatch[1].trim();
+        }
+        if (cellPhoneMatch) {
+          uploadExtractedData.patient_cell_phone = cellPhoneMatch[1].trim();
+        }
+        if (addressMatch) {
+          uploadExtractedData.patient_address = addressMatch[1].trim();
+        }
+        if (signatureDateMatch) {
+          uploadExtractedData.signature_date = signatureDateMatch[1].trim();
+        }
+        if (providerMatch) {
+          uploadExtractedData.provider_name = providerMatch[1].trim();
+        }
+        
+      } else if (supportedImageTypes.includes(fileExtension || '')) {
+        // For image files, extract using OpenAI Vision
+        const base64Image = req.file.buffer.toString('base64');
+        const uploadExtractionType = req.body?.extractionType || 'medical_system';
+        
+        if (uploadExtractionType === 'medical_database') {
+          uploadExtractedData = await extractPatientInfoFromScreenshot(base64Image, 'medical_database');
+        } else if (uploadExtractionType === 'clinical_notes') {
+          uploadExtractedData = await extractPatientInfoFromScreenshot(base64Image, 'clinical_notes');
+        } else {
+          uploadExtractedData = await extractPatientInfoFromScreenshot(base64Image, 'medical_system');
+        }
+      } else {
+        return res.status(400).json({ 
+          error: "Unsupported file format", 
+          details: `Please upload an image file (${supportedImageTypes.join(', ')}) or PDF for LEQVIO forms.` 
+        });
+      }
+
+      // Check if we have enough data to create a patient
+      if (!uploadExtractedData.patient_first_name && !uploadExtractedData.firstName) {
+        return res.status(400).json({ 
+          error: "Insufficient patient data", 
+          details: "Could not extract patient name from the uploaded file." 
+        });
+      }
+
+      // Normalize extracted data to patient schema format
+      const patientData = {
+        firstName: uploadExtractedData.patient_first_name || uploadExtractedData.firstName || '',
+        lastName: uploadExtractedData.patient_last_name || uploadExtractedData.lastName || '',
+        dateOfBirth: uploadExtractedData.date_of_birth || uploadExtractedData.dateOfBirth || '',
+        phone: uploadExtractedData.patient_home_phone || uploadExtractedData.homePhone || '',
+        cellPhone: uploadExtractedData.patient_cell_phone || uploadExtractedData.cellPhone || '',
+        email: uploadExtractedData.patient_email || uploadExtractedData.email || '',
+        address: uploadExtractedData.patient_address || uploadExtractedData.address || '',
+        orderingMD: uploadExtractedData.provider_name || uploadExtractedData.orderingMD || '',
+        mrn: uploadExtractedData.account_number || uploadExtractedData.accountNo || '',
+        campus: 'Mount Sinai West', // Default campus
+        status: 'Pending Auth', // Default status
+        notes: `Created from uploaded ${fileExtension === 'pdf' ? 'LEQVIO form' : 'document'} on ${new Date().toLocaleDateString()}`
+      };
+
+      // Validate patient data
+      const validatedPatient = insertPatientSchema.parse(patientData);
+      
+      // Create patient
+      const newPatient = await storage.createPatient(validatedPatient, user.id, user.currentOrganizationId);
+      
+      console.log("Patient created from uploaded file:", {
+        fileName: req.file.originalname,
+        patientId: newPatient.id,
+        patientName: `${newPatient.firstName} ${newPatient.lastName}`,
+        extractedFields: patientData
+      });
+      
+      res.json({
+        success: true,
+        patient: newPatient,
+        extractedData: uploadExtractedData,
+        message: `Patient ${newPatient.firstName} ${newPatient.lastName} created successfully from uploaded ${fileExtension === 'pdf' ? 'LEQVIO form' : 'document'}`
+      });
+    } catch (error) {
+      console.error('Error creating patient from upload:', error);
+      res.status(500).json({ error: 'Failed to create patient from uploaded file' });
+    }
+  });
+
+  // Patient info extraction from medical system screenshots (updated - no longer creates patients, just extracts)
   app.post("/api/extract-patient-info", upload.single('photo'), async (req, res) => {
     try {
       if (!req.file) {
@@ -1677,63 +1858,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         if (sexMatch) {
           let sex = sexMatch[1].trim();
-          if (sex && sex !== '') extractedData.patient_sex = sex;
+          if (sex === 'M') sex = 'Male';
+          if (sex === 'F') sex = 'Female';
+          extractedData.patient_sex = sex;
         }
         if (homePhoneMatch) {
-          let homePhone = homePhoneMatch[1].trim();
-          homePhone = homePhone.replace(/\s+/g, ' ');
-          if (homePhone && homePhone !== '') extractedData.patient_home_phone = homePhone;
+          extractedData.patient_home_phone = homePhoneMatch[1].trim();
         }
         if (cellPhoneMatch) {
-          let cellPhone = cellPhoneMatch[1].trim();
-          cellPhone = cellPhone.replace(/\s+/g, ' ');
-          if (cellPhone && cellPhone !== '') extractedData.patient_cell_phone = cellPhone;
+          extractedData.patient_cell_phone = cellPhoneMatch[1].trim();
         }
         if (addressMatch) {
-          let address = addressMatch[1].trim();
-          address = address.replace(/\s+/g, ' ');
-          if (address && address !== '') extractedData.patient_address = address;
+          extractedData.patient_address = addressMatch[1].trim();
         }
         if (signatureDateMatch) {
-          let sigDate = signatureDateMatch[1].trim();
-          if (sigDate && sigDate !== '') extractedData.signature_date = sigDate;
+          extractedData.signature_date = signatureDateMatch[1].trim();
         }
         if (providerMatch) {
-          let provider = providerMatch[1].trim();
-          provider = provider.replace(/\s+/g, ' ');
-          if (provider && provider !== '') extractedData.provider_name = provider;
+          extractedData.provider_name = providerMatch[1].trim();
         }
         
-        // Always add sample data for testing the field mapping since this appears to be a blank form
-        console.log("Adding sample data to demonstrate the 8-field mapping for LEQVIO forms");
-        extractedData.patient_first_name = "John";
-        extractedData.patient_last_name = "Doe";
-        extractedData.patient_sex = "Male";
-        extractedData.patient_home_phone = "(555) 123-4567";
-        extractedData.patient_cell_phone = "(555) 987-6543";
-        extractedData.patient_address = "123 Main St, Anytown, ST 12345";
-        extractedData.provider_name = "Dr. Smith";
-        extractedData.signature_date = "01/15/2025";
-        extractedData.confidence = 0.1; // Low confidence for sample data
-        
-        console.log("Sample data applied, fields now contain:", {
-          firstName: extractedData.patient_first_name,
-          lastName: extractedData.patient_last_name,
-          sex: extractedData.patient_sex,
-          homePhone: extractedData.patient_home_phone,
-          cellPhone: extractedData.patient_cell_phone,
-          address: extractedData.patient_address,
-          provider: extractedData.provider_name,
-          signatureDate: extractedData.signature_date
-        });
-        
-        const responseData = {
-          extractedData: extractedData,
-          processingTime_ms: 50,
-          extractionType: extractionType
-        };
-
-        console.log("LEQVIO PDF extraction completed with sample data:", {
+        console.log("LEQVIO PDF extraction completed:", {
           fileName: req.file.originalname,
           extractionType,
           extractedFields: {
@@ -1747,6 +1892,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             signatureDate: extractedData.signature_date
           }
         });
+        
+        const responseData = {
+          extractedData: extractedData,
+          processingTime_ms: 50,
+          extractionType: extractionType
+        };
         
         return res.json(responseData);
       }
