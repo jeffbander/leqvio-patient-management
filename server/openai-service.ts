@@ -999,10 +999,18 @@ export async function extractPatientInfoFromPDFText(pdfText: string): Promise<an
   try {
     console.log("Using AI to extract patient info from PDF text");
     
+    // Enhanced prompt with better instructions for name extraction
     const prompt = `You are a medical data extraction expert. Extract patient information from this text extracted from a LEQVIO enrollment form or medical document.
 
 EXTRACTED TEXT:
 ${pdfText}
+
+IMPORTANT INSTRUCTIONS:
+1. Look very carefully for patient names - they may appear in different formats like "Last, First" or "First Last" or in form fields
+2. For LEQVIO forms, patient information is typically in the top section of the form
+3. If you see partial names or incomplete data, still extract what you can
+4. Pay attention to form field labels like "Patient Name:", "DOB:", "Provider:", etc.
+5. If the text seems garbled or encoded, look for recognizable patterns like dates (MM/DD/YYYY), phone numbers, or common names
 
 Extract the following patient information and return as JSON:
 {
@@ -1024,17 +1032,17 @@ Extract the following patient information and return as JSON:
 }
 
 Look for common medical form fields like:
-- Patient name (first/last)
-- Date of Birth or DOB
+- Patient name (first/last) - may be formatted as "Last, First" or "First Last"
+- Date of Birth or DOB (MM/DD/YYYY or MM-DD-YYYY)
 - Address/Street/City/State/ZIP
-- Phone numbers (home/cell/mobile)
-- Email
+- Phone numbers (home/cell/mobile) with various formats
+- Email addresses
 - Prescriber/Provider/Doctor name
 - MRN/Account Number/Patient ID
-- Diagnosis codes or conditions
+- Diagnosis codes or conditions (ASCVD, HeFH, etc.)
 - Signature date
 
-If any field is not found, use empty string "". Be very careful with name extraction - separate first and last names properly. Return only valid JSON.`;
+If any field is not found, use empty string "". Be very careful with name extraction - if you find ANY recognizable first or last name, include it. Return only valid JSON.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
@@ -1057,11 +1065,39 @@ If any field is not found, use empty string "". Be very careful with name extrac
     const extractedData = JSON.parse(result || '{}');
     
     console.log("AI PDF text extraction result:", {
-      patientName: `${extractedData.patient_first_name} ${extractedData.patient_last_name}`,
-      dateOfBirth: extractedData.date_of_birth,
-      provider: extractedData.provider_name,
-      confidence: extractedData.confidence
+      patientName: `${extractedData.patient_first_name || ''} ${extractedData.patient_last_name || ''}`,
+      dateOfBirth: extractedData.date_of_birth || '',
+      provider: extractedData.provider_name || '',
+      confidence: extractedData.confidence || 0.1
     });
+    
+    // If OpenAI returned completely empty names, try basic text pattern matching as fallback
+    if ((!extractedData.patient_first_name || extractedData.patient_first_name.trim() === '') && 
+        (!extractedData.patient_last_name || extractedData.patient_last_name.trim() === '')) {
+      console.log("OpenAI returned empty names, trying pattern matching fallback");
+      
+      // Try to find names in the text using common patterns
+      const namePatterns = [
+        /Patient\s*Name:?\s*([A-Za-z]+)\s+([A-Za-z]+)/i,
+        /Name:?\s*([A-Za-z]+)\s*,?\s*([A-Za-z]+)/i,
+        /([A-Z][a-z]+)\s+([A-Z][a-z]+)/,
+        /Patient:?\s*([A-Za-z]+)\s+([A-Za-z]+)/i
+      ];
+      
+      for (const pattern of namePatterns) {
+        const match = pdfText.match(pattern);
+        if (match && match[1] && match[2]) {
+          extractedData.patient_first_name = match[1].trim();
+          extractedData.patient_last_name = match[2].trim();
+          extractedData.confidence = Math.max(extractedData.confidence || 0.1, 0.5);
+          console.log("Found names via pattern matching:", {
+            firstName: extractedData.patient_first_name,
+            lastName: extractedData.patient_last_name
+          });
+          break;
+        }
+      }
+    }
     
     return extractedData;
     
