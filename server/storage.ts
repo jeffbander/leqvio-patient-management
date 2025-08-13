@@ -780,14 +780,17 @@ export class DatabaseStorage implements IStorage {
     const existingPatient = await this.getPatient(id, organizationId);
     if (!existingPatient) return undefined;
 
-    // Auto-determine auth status if auth-related fields are being updated
-    const authFieldsBeingUpdated = ['authNumber', 'refNumber', 'startDate', 'endDate'].some(field => 
+    // Auto-determine auth status if auth-related fields are being updated, but only if authStatus isn't manually set
+    const authDataFieldsBeingUpdated = ['authNumber', 'refNumber', 'startDate', 'endDate'].some(field => 
       patient[field as keyof InsertPatient] !== undefined
     );
+    const manualAuthStatusSet = patient.authStatus !== undefined;
 
-    if (authFieldsBeingUpdated && !patient.authStatus) {
+    // Only auto-determine if auth data changed but status wasn't manually provided
+    if (authDataFieldsBeingUpdated && !manualAuthStatusSet) {
       patient.authStatus = this.determineAuthStatus(patient, existingPatient);
     }
+    // If authStatus was manually provided, use it as-is (don't override)
 
     const [updatedPatient] = await db
       .update(patients)

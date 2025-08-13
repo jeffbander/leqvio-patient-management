@@ -17,7 +17,8 @@ Providerloop Chains is a comprehensive patient management system with integrated
 - Automatic authorization status update: when appointment dates fall outside auth start/end date range, authStatus automatically changes to "APT SCHEDULED W/O AUTH"
 - Authorization expiration management: when auth end date is within one week or has passed, status automatically changes to "Needs Renewal" (removed "Expired" status entirely)
 - Automatic schedule status for authorized patients: when a patient has valid authorization (auth number provided), schedule status automatically changes to "Needs Scheduling"
-- System-wide auth status checking: when any patient's auth information is updated, the system runs a comprehensive check on all patients in the organization to ensure consistent auth status across the entire patient database
+- Manual auth status override capability: users can now manually set any auth status and the system will respect that choice, only automatically updating statuses that are in "automatic" states (APT SCHEDULED W/O AUTH, Needs Renewal, Pending Review) - manually set statuses like "Approved" or "Denied" are preserved
+- Smart authorization checking: system only runs automatic auth status checks when auth data fields (dates, numbers) change but authStatus isn't manually specified, preventing override of intentional manual status changes
 - Automatic schedule status updates:
   - When last appointment status changes to "Cancelled" or "No Show", scheduleStatus automatically changes to "Needs Rescheduling"
   - When last appointment is at least 3 months ago and no next appointment is scheduled, scheduleStatus automatically changes to "Needs Scheduling–High Priority" (displayed with red styling)

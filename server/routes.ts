@@ -237,41 +237,58 @@ const checkAuthorizationStatus = async (patientId: number, organizationId: numbe
     const oneWeekFromNow = new Date();
     oneWeekFromNow.setDate(currentDate.getDate() + 7);
 
-    // Check if authorization expires within a week
+    // Only automatically change auth status if it's currently in an "automatic" state
+    // Don't override manually set statuses like "Denied", "Approved", etc.
+    const automaticStatuses = ["APT SCHEDULED W/O AUTH", "Needs Renewal", "Pending Review"];
+    const currentStatus = patient.authStatus || "Pending Review";
+    
+    // Check if authorization expires within a week (only update automatic statuses)
     if (authEndDate <= oneWeekFromNow && authEndDate > currentDate) {
-      await storage.updatePatient(patientId, {
-        authStatus: "Needs Renewal"
-      }, organizationId);
-      console.log(`Patient ${patientId}: Authorization status updated to "Needs Renewal" - auth expires on ${patient.endDate} (within one week)`);
+      if (automaticStatuses.includes(currentStatus)) {
+        await storage.updatePatient(patientId, {
+          authStatus: "Needs Renewal"
+        }, organizationId);
+        console.log(`Patient ${patientId}: Authorization status updated to "Needs Renewal" - auth expires on ${patient.endDate} (within one week)`);
+      }
       return;
     }
 
-    // Check if authorization has already expired
+    // Check if authorization has already expired (only update automatic statuses)
     if (authEndDate < currentDate) {
-      await storage.updatePatient(patientId, {
-        authStatus: "Needs Renewal"
-      }, organizationId);
-      console.log(`Patient ${patientId}: Authorization status updated to "Needs Renewal" - auth expired on ${patient.endDate}`);
+      if (automaticStatuses.includes(currentStatus)) {
+        await storage.updatePatient(patientId, {
+          authStatus: "Needs Renewal"
+        }, organizationId);
+        console.log(`Patient ${patientId}: Authorization status updated to "Needs Renewal" - auth expired on ${patient.endDate}`);
+      }
       return;
     }
 
     // Check if any appointment is outside the auth date range
+    let hasAppointmentsOutsideAuthRange = false;
     for (const appointment of appointments) {
       const appointmentDate = new Date(appointment.appointmentDate);
       
       if (appointmentDate < authStartDate || appointmentDate > authEndDate) {
-        // Appointment is outside auth range - update auth status
+        hasAppointmentsOutsideAuthRange = true;
+        break;
+      }
+    }
+    
+    if (hasAppointmentsOutsideAuthRange) {
+      // Only update if current status allows automatic changes
+      if (automaticStatuses.includes(currentStatus)) {
         await storage.updatePatient(patientId, {
           authStatus: "APT SCHEDULED W/O AUTH"
         }, organizationId);
-        console.log(`Patient ${patientId}: Authorization status updated to "APT SCHEDULED W/O AUTH" - appointment ${appointment.appointmentDate} is outside auth range ${patient.startDate} to ${patient.endDate}`);
-        return;
+        console.log(`Patient ${patientId}: Authorization status updated to "APT SCHEDULED W/O AUTH" - appointments outside auth range ${patient.startDate} to ${patient.endDate}`);
       }
+      return;
     }
 
     // If we get here, all appointments are within auth range and auth is valid
-    // Only update if current status indicates a problem that's now resolved
-    if (["APT SCHEDULED W/O AUTH", "Needs Renewal"].includes(patient.authStatus || "")) {
+    // Only update if current status indicates a problem that's now resolved AND it's an automatic status
+    if (["APT SCHEDULED W/O AUTH", "Needs Renewal"].includes(currentStatus)) {
       await storage.updatePatient(patientId, {
         authStatus: "Approved",
         scheduleStatus: "Needs Scheduling"
@@ -2737,14 +2754,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Patient not found' });
       }
 
-      // Check authorization status for all patients if any auth-related field was updated
-      const authFieldsUpdated = ['authNumber', 'refNumber', 'startDate', 'endDate', 'authStatus'].some(field => 
+      // Check authorization status for all patients if auth-related fields (NOT authStatus) were updated
+      // If authStatus was manually changed, respect that change and don't override it
+      const authDataFieldsUpdated = ['authNumber', 'refNumber', 'startDate', 'endDate'].some(field => 
         updates[field] !== undefined
       );
+      const manualAuthStatusChange = updates.authStatus !== undefined;
       
-      if (authFieldsUpdated) {
-        // Run system-wide check to ensure all patients have correct auth status
-        await checkAllPatientsAuthorizationStatus(user.currentOrganizationId);
+      if (authDataFieldsUpdated && !manualAuthStatusChange) {
+        // Only run automatic check if auth data changed but status wasn't manually set
+        await checkAuthorizationStatus(patientId, user.currentOrganizationId);
+      } else if (authDataFieldsUpdated && manualAuthStatusChange) {
+        // If both auth data AND status were changed, respect the manual status but log it
+        console.log(`Patient ${patientId}: Manual auth status change to "${updates.authStatus}" - skipping automatic status calculation`);
       }
       
       res.json(updatedPatient);
