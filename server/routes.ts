@@ -1741,16 +1741,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Normalize extracted data to patient schema format
+      const firstName = uploadExtractedData.patient_first_name || uploadExtractedData.firstName || '';
+      const lastName = uploadExtractedData.patient_last_name || uploadExtractedData.lastName || '';
+      const dateOfBirth = uploadExtractedData.date_of_birth || uploadExtractedData.dateOfBirth || '';
+      
+      // Generate sourceId using the same pattern as the rest of the app: LAST_FIRST__MM_DD_YYYY
+      let sourceId = '';
+      if (firstName && lastName && dateOfBirth) {
+        try {
+          const formattedFirstName = firstName.trim().replace(/\s+/g, '_');
+          const formattedLastName = lastName.trim().replace(/\s+/g, '_');
+          const [month, day, year] = dateOfBirth.split('/');
+          if (month && day && year) {
+            sourceId = `${formattedLastName}_${formattedFirstName}__${month.padStart(2, '0')}_${day.padStart(2, '0')}_${year}`;
+          }
+        } catch (error) {
+          console.log('Could not generate sourceId from date:', dateOfBirth, error);
+        }
+      }
+      
       const patientData = {
-        firstName: uploadExtractedData.patient_first_name || uploadExtractedData.firstName || '',
-        lastName: uploadExtractedData.patient_last_name || uploadExtractedData.lastName || '',
-        dateOfBirth: uploadExtractedData.date_of_birth || uploadExtractedData.dateOfBirth || '',
+        firstName,
+        lastName,
+        dateOfBirth,
         phone: uploadExtractedData.patient_home_phone || uploadExtractedData.homePhone || '',
         cellPhone: uploadExtractedData.patient_cell_phone || uploadExtractedData.cellPhone || '',
         email: uploadExtractedData.patient_email || uploadExtractedData.email || '',
         address: uploadExtractedData.patient_address || uploadExtractedData.address || '',
         orderingMD: uploadExtractedData.provider_name || uploadExtractedData.orderingMD || '',
         mrn: uploadExtractedData.account_number || uploadExtractedData.accountNo || '',
+        sourceId, // Generated ID using consistent pattern
         campus: 'Mount Sinai West', // Default campus
         status: 'Pending Auth', // Default status
         notes: `Created from uploaded ${fileExtension === 'pdf' ? 'LEQVIO form' : 'document'} on ${new Date().toLocaleDateString()}`
