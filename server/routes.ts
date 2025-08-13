@@ -1697,8 +1697,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const patientData = {
-        userId: user.id,
-        organizationId: user.currentOrganizationId,
         firstName: finalFirstName,
         lastName: finalLastName,
         dateOfBirth,
@@ -1724,7 +1722,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Create the patient
-      const newPatient = await storage.createPatient(patientData);
+      const newPatient = await storage.createPatient(patientData, user.id, user.currentOrganizationId);
       
       console.log("Patient created from pasted text:", {
         textLength: textContent.length,
@@ -1759,7 +1757,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error creating patient from text:', error);
       res.status(500).json({ 
         error: 'Failed to create patient from text',
-        details: error.message 
+        details: (error as Error).message 
       });
     }
   });
