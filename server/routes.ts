@@ -2257,11 +2257,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'User not associated with an organization' });
       }
       
-      // Get current patient data to check for voicemail logging
+      // Get current patient data to check for voicemail logging and auth changes
       const currentPatient = await storage.getPatient(patientId, user.currentOrganizationId);
       if (!currentPatient) {
         return res.status(404).json({ error: 'Patient not found' });
       }
+
+      // Track authorization changes for automatic note logging (removed - already handled below)
       
       // Handle timestamp fields that might come as ISO strings
       if (updates.lastVoicemailAt && typeof updates.lastVoicemailAt === 'string') {
@@ -2360,7 +2362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'primaryInsurance', 'primaryPlan', 'primaryInsuranceNumber', 'primaryGroupId',
         'secondaryInsurance', 'secondaryPlan', 'secondaryInsuranceNumber', 'secondaryGroupId'
       ];
-      const authFields = ['authNumber', 'refNumber', 'startDate', 'endDate'];
+      const authFieldsToTrack = ['authNumber', 'refNumber', 'startDate', 'endDate', 'authStatus'];
       
       const changeNotes: string[] = [];
       const changeTimestamp = new Date().toLocaleString();
@@ -2375,7 +2377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Check authorization field changes
-      authFields.forEach(field => {
+      authFieldsToTrack.forEach(field => {
         if (updates[field] !== undefined && updates[field] !== (currentPatient as any)[field]) {
           const oldValue = (currentPatient as any)[field] || '(empty)';
           const newValue = updates[field] || '(empty)';

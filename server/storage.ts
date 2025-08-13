@@ -708,10 +708,59 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(patients).orderBy(desc(patients.createdAt));
   }
 
+  // Helper function to determine auth status based on auth info
+  private determineAuthStatus(patient: Partial<InsertPatient>, existingPatient?: Patient): string {
+    // If auth status is being explicitly set, use that
+    if (patient.authStatus) {
+      return patient.authStatus;
+    }
+
+    // Get current or updated values
+    const authNumber = patient.authNumber !== undefined ? patient.authNumber : existingPatient?.authNumber;
+    const startDate = patient.startDate !== undefined ? patient.startDate : existingPatient?.startDate;
+    const endDate = patient.endDate !== undefined ? patient.endDate : existingPatient?.endDate;
+    const currentAuthStatus = existingPatient?.authStatus || "Pending Review";
+
+    // If auth number is provided but no dates, status should be "Approved"
+    if (authNumber && authNumber.trim() && (!startDate || !endDate)) {
+      return "Approved";
+    }
+
+    // If auth number and dates are provided, status should be "Approved" 
+    if (authNumber && authNumber.trim() && startDate && startDate.trim() && endDate && endDate.trim()) {
+      return "Approved";
+    }
+
+    // If auth number is cleared/removed, reset to pending
+    if (patient.authNumber === "" || patient.authNumber === null) {
+      return "Pending Review";
+    }
+
+    // If only dates are provided without auth number, keep current status but allow "Approved" if was already approved
+    if ((startDate && startDate.trim()) || (endDate && endDate.trim())) {
+      if (currentAuthStatus === "Approved" || currentAuthStatus === "APT SCHEDULED W/O AUTH") {
+        return currentAuthStatus; // Keep existing status
+      }
+      return "Pending Review"; // Default for partial info
+    }
+
+    // No auth info changes, return current status
+    return currentAuthStatus;
+  }
+
   async updatePatient(id: number, patient: Partial<InsertPatient>, organizationId: number): Promise<Patient | undefined> {
     // Check if patient belongs to organization first
     const existingPatient = await this.getPatient(id, organizationId);
     if (!existingPatient) return undefined;
+
+    // Auto-determine auth status if auth-related fields are being updated
+    const authFieldsBeingUpdated = ['authNumber', 'refNumber', 'startDate', 'endDate'].some(field => 
+      patient[field as keyof InsertPatient] !== undefined
+    );
+
+    if (authFieldsBeingUpdated && !patient.authStatus) {
+      patient.authStatus = this.determineAuthStatus(patient, existingPatient);
+    }
 
     const [updatedPatient] = await db
       .update(patients)
