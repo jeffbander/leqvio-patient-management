@@ -257,7 +257,31 @@ const checkAuthorizationStatus = async (patientId: number, organizationId: numbe
       console.log(`Patient ${patientId}: Authorization status updated to "Approved" - all appointments are within auth range`);
     }
   } catch (error) {
-    console.error('Error checking authorization status:', error);
+    console.error(`Error checking authorization status for patient ${patientId}:`, error);
+  }
+};
+
+// Check authorization status for all patients in an organization
+const checkAllPatientsAuthorizationStatus = async (organizationId: number) => {
+  try {
+    console.log(`Starting system-wide auth status check for organization ${organizationId}`);
+    const patients = await storage.getOrganizationPatients(organizationId);
+    
+    let updatedCount = 0;
+    for (const patient of patients) {
+      const originalAuthStatus = patient.authStatus;
+      await checkAuthorizationStatus(patient.id, organizationId);
+      
+      // Check if status was updated by comparing with fresh data
+      const updatedPatient = await storage.getPatient(patient.id, organizationId);
+      if (updatedPatient && updatedPatient.authStatus !== originalAuthStatus) {
+        updatedCount++;
+      }
+    }
+    
+    console.log(`System-wide auth status check completed. Updated ${updatedCount} patients.`);
+  } catch (error) {
+    console.error('Error during system-wide auth status check:', error);
   }
 };
 
@@ -2398,9 +2422,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Patient not found' });
       }
 
-      // Check authorization status if auth dates were updated
-      if (updates.startDate || updates.endDate) {
-        await checkAuthorizationStatus(patientId, user.id);
+      // Check authorization status for all patients if any auth-related field was updated
+      const authFieldsUpdated = ['authNumber', 'refNumber', 'startDate', 'endDate', 'authStatus'].some(field => 
+        updates[field] !== undefined
+      );
+      
+      if (authFieldsUpdated) {
+        // Run system-wide check to ensure all patients have correct auth status
+        await checkAllPatientsAuthorizationStatus(user.currentOrganizationId);
       }
       
       res.json(updatedPatient);
