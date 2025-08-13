@@ -319,8 +319,8 @@ export default function ESignatureForm() {
                       </div>
                       <DragDropFileUpload
                         onFileSelect={(file) => {
-                          const event = { target: { files: [file] } } as any;
-                          handleFileUpload(event, 'insurance_screenshot');
+                          setSubmissionState('uploading');
+                          uploadDocumentMutation.mutate({ file, documentType: 'insurance_screenshot' });
                         }}
                         accept="image/*"
                         maxSizeMB={10}
@@ -340,8 +340,8 @@ export default function ESignatureForm() {
                       </div>
                       <DragDropFileUpload
                         onFileSelect={(file) => {
-                          const event = { target: { files: [file] } } as any;
-                          handleFileUpload(event, 'epic_insurance_screenshot');
+                          setSubmissionState('uploading');
+                          uploadDocumentMutation.mutate({ file, documentType: 'epic_insurance_screenshot' });
                         }}
                         accept="image/*"
                         maxSizeMB={10}
@@ -361,8 +361,8 @@ export default function ESignatureForm() {
                       </div>
                       <DragDropFileUpload
                         onFileSelect={(file) => {
-                          const event = { target: { files: [file] } } as any;
-                          handleFileUpload(event, 'clinical_note');
+                          setSubmissionState('uploading');
+                          uploadDocumentMutation.mutate({ file, documentType: 'clinical_note' });
                         }}
                         accept=".pdf,.doc,.docx,.txt,image/*"
                         maxSizeMB={50}
@@ -382,8 +382,8 @@ export default function ESignatureForm() {
                       </div>
                       <DragDropFileUpload
                         onFileSelect={(file) => {
-                          const event = { target: { files: [file] } } as any;
-                          handleFileUpload(event, 'other');
+                          setSubmissionState('uploading');
+                          uploadDocumentMutation.mutate({ file, documentType: 'other' });
                         }}
                         accept="*/*"
                         maxSizeMB={50}
