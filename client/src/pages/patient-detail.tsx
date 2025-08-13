@@ -598,7 +598,11 @@ export default function PatientDetail() {
       secondaryInsurance: patient.secondaryInsurance || '',
       secondaryPlan: patient.secondaryPlan || '',
       secondaryInsuranceNumber: patient.secondaryInsuranceNumber || '',
-      secondaryGroupId: patient.secondaryGroupId || ''
+      secondaryGroupId: patient.secondaryGroupId || '',
+      authNumber: patient.authNumber || '',
+      refNumber: patient.refNumber || '',
+      startDate: patient.startDate || '',
+      endDate: patient.endDate || ''
     })
     setIsEditingInsurance(true)
   }
@@ -655,7 +659,11 @@ export default function PatientDetail() {
       secondaryInsurance: editedData.secondaryInsurance,
       secondaryPlan: editedData.secondaryPlan,
       secondaryInsuranceNumber: editedData.secondaryInsuranceNumber,
-      secondaryGroupId: editedData.secondaryGroupId
+      secondaryGroupId: editedData.secondaryGroupId,
+      authNumber: editedData.authNumber,
+      refNumber: editedData.refNumber,
+      startDate: editedData.startDate,
+      endDate: editedData.endDate
     }
     
     // Remove undefined values
