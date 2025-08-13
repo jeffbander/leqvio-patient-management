@@ -355,26 +355,36 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
 
       {/* Schedule Status */}
       <TableCell className="w-[12%] px-2 py-2">
-        <Select 
-          value={patient.scheduleStatus || 'Pending Auth'} 
-          onValueChange={(value) => onScheduleStatusChange(patient.id, value)}
-        >
-          <SelectTrigger className="w-full border-none bg-transparent p-0 h-auto hover:bg-transparent">
-            <SelectValue>
-              <Badge 
-                className={`${getScheduleStatusColor(patient.scheduleStatus || 'Pending Auth')} border text-xs cursor-pointer hover:opacity-80`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {patient.scheduleStatus || 'Pending Auth'}
-              </Badge>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {scheduleStatusOptions.map(option => (
-              <SelectItem key={option} value={option}>{option}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {patient.authStatus === 'Pending Review' ? (
+          // Locked to "Pending Auth" when authorization is under review
+          <Badge 
+            className={`${getScheduleStatusColor('Pending Auth')} border text-xs opacity-60`}
+            title="Schedule status is locked to 'Pending Auth' while authorization is under review"
+          >
+            Pending Auth
+          </Badge>
+        ) : (
+          <Select 
+            value={patient.scheduleStatus || 'Pending Auth'} 
+            onValueChange={(value) => onScheduleStatusChange(patient.id, value)}
+          >
+            <SelectTrigger className="w-full border-none bg-transparent p-0 h-auto hover:bg-transparent">
+              <SelectValue>
+                <Badge 
+                  className={`${getScheduleStatusColor(patient.scheduleStatus || 'Pending Auth')} border text-xs cursor-pointer hover:opacity-80`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {patient.scheduleStatus || 'Pending Auth'}
+                </Badge>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {scheduleStatusOptions.map(option => (
+                <SelectItem key={option} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </TableCell>
 
       {/* Dose # */}
@@ -519,8 +529,14 @@ export default function PatientList() {
   const applyBusinessLogic = (patient: Patient, appointments: any[] = []) => {
     const updates: any = {}
     
+    // Auto-lock schedule status to "Pending Auth" when auth status is "Pending Review"
+    if (patient.authStatus === 'Pending Review') {
+      if (patient.scheduleStatus !== 'Pending Auth') {
+        updates.scheduleStatus = 'Pending Auth'
+      }
+    }
     // Auto-update schedule status based on auth status changes
-    if (patient.authStatus === 'Approved' || patient.authStatus === 'No PA Required') {
+    else if (patient.authStatus === 'Approved' || patient.authStatus === 'No PA Required') {
       if (patient.scheduleStatus !== 'Needs Scheduling') {
         updates.scheduleStatus = 'Needs Scheduling'
       }
@@ -530,8 +546,8 @@ export default function PatientList() {
       }
     }
     
-    // Set Schedule Status to "Needs Scheduling–High Priority" if Dose # = 2
-    if (patient.doseNumber === 2 && patient.scheduleStatus !== 'Pending Auth') {
+    // Set Schedule Status to "Needs Scheduling–High Priority" if Dose # = 2 (but not if auth is pending review)
+    if (patient.doseNumber === 2 && patient.scheduleStatus !== 'Pending Auth' && patient.authStatus !== 'Pending Review') {
       updates.scheduleStatus = 'Needs Scheduling–High Priority'
     }
     
