@@ -6,7 +6,7 @@ import { Route, Switch, Redirect } from "wouter";
 import { Layout } from "@/components/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/dashboard";
-import MedicalDatabaseExtraction from "@/pages/medical-database-extraction";
+import UploadStartForm from "@/pages/extraction";
 import PatientList from "@/pages/patient-list";
 import PatientDetail from "@/pages/patient-detail";
 import ESignatureForm from "@/pages/e-signature-form";
@@ -25,7 +25,7 @@ function AuthenticatedRouter() {
         <Route path="/patient/new" component={ESignatureForm} />
         <Route path="/patient/:id" component={PatientDetail} />
         <Route path="/test-upload-patient" component={TestUploadPatient} />
-        <Route path="/extraction" component={MedicalDatabaseExtraction} />
+        <Route path="/extraction" component={UploadStartForm} />
         <Route path="/organization" component={OrganizationManagement} />
         <Route path="/account" component={AccountManagement} />
         <Route>
