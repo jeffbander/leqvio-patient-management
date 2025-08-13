@@ -1717,8 +1717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mrn: textExtractedData.mrn || '',
         sourceId,
         campus: 'Mount Sinai West',
-        status: 'Pending Auth',
-        notes: `Created from pasted text on ${new Date().toLocaleDateString()}\n\nOriginal text length: ${textContent.length} characters\nExtraction confidence: ${textExtractedData.confidence || 0.1}`
+        status: 'Pending Auth'
       };
 
       // Create the patient
@@ -1741,8 +1740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mrn: patientData.mrn,
           sourceId: patientData.sourceId,
           campus: patientData.campus,
-          status: patientData.status,
-          notes: patientData.notes
+          status: patientData.status
         }
       });
 
@@ -1897,8 +1895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mrn: uploadExtractedData.account_number || uploadExtractedData.accountNo || '',
         sourceId, // Generated ID using consistent pattern
         campus: 'Mount Sinai West', // Default campus
-        status: 'Pending Auth', // Default status
-        notes: `Created from uploaded ${fileExtension === 'pdf' ? 'LEQVIO form' : 'document'} on ${new Date().toLocaleDateString()}`
+        status: 'Pending Auth' // Default status
       };
 
       // Validate patient data
