@@ -730,11 +730,19 @@ export class DatabaseStorage implements IStorage {
       
       // Check if authorization has already expired
       if (authEndDate < currentDate) {
+        // Also update schedule status when auth expires
+        if (!patient.scheduleStatus || patient.scheduleStatus !== "Needs Rescheduling") {
+          patient.scheduleStatus = "Needs Rescheduling";
+        }
         return "Expired";
       }
       
       // Check if authorization expires within a week
       if (authEndDate <= oneWeekFromNow) {
+        // Also update schedule status when auth needs renewal
+        if (!patient.scheduleStatus || patient.scheduleStatus !== "Needs Rescheduling") {
+          patient.scheduleStatus = "Needs Rescheduling";
+        }
         return "Needs Renewal";
       }
     }

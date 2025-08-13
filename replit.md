@@ -15,7 +15,7 @@ Providerloop Chains is a comprehensive patient management system with integrated
 - Notes are only editable in patient detail view, not in patient list table (read-only in list)
 - Fixed notes saving issue by ensuring notes field is included in update mutations
 - Automatic authorization status update: when appointment dates fall outside auth start/end date range, authStatus automatically changes to "APT SCHEDULED W/O AUTH"
-- Authorization expiration management: when auth end date is within one week, status automatically changes to "Needs Renewal"; when auth end date has passed, status changes to "Expired"
+- Authorization expiration management: when auth end date is within one week, status automatically changes to "Needs Renewal" and schedule status changes to "Needs Rescheduling"; when auth end date has passed, status changes to "Expired" and schedule status changes to "Needs Rescheduling"
 - System-wide auth status checking: when any patient's auth information is updated, the system runs a comprehensive check on all patients in the organization to ensure consistent auth status across the entire patient database
 - Automatic schedule status updates:
   - When last appointment status changes to "Cancelled" or "No Show", scheduleStatus automatically changes to "Needs Rescheduling"

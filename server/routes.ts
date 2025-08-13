@@ -240,18 +240,20 @@ const checkAuthorizationStatus = async (patientId: number, organizationId: numbe
     // Check if authorization expires within a week
     if (authEndDate <= oneWeekFromNow && authEndDate > currentDate) {
       await storage.updatePatient(patientId, {
-        authStatus: "Needs Renewal"
+        authStatus: "Needs Renewal",
+        scheduleStatus: "Needs Rescheduling"
       }, organizationId);
-      console.log(`Patient ${patientId}: Authorization status updated to "Needs Renewal" - auth expires on ${patient.endDate} (within one week)`);
+      console.log(`Patient ${patientId}: Authorization status updated to "Needs Renewal" and schedule status to "Needs Rescheduling" - auth expires on ${patient.endDate} (within one week)`);
       return;
     }
 
     // Check if authorization has already expired
     if (authEndDate < currentDate) {
       await storage.updatePatient(patientId, {
-        authStatus: "Expired"
+        authStatus: "Expired",
+        scheduleStatus: "Needs Rescheduling"
       }, organizationId);
-      console.log(`Patient ${patientId}: Authorization status updated to "Expired" - auth expired on ${patient.endDate}`);
+      console.log(`Patient ${patientId}: Authorization status updated to "Expired" and schedule status to "Needs Rescheduling" - auth expired on ${patient.endDate}`);
       return;
     }
 
