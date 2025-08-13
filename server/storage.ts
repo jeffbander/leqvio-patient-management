@@ -730,31 +730,31 @@ export class DatabaseStorage implements IStorage {
       
       // Check if authorization has already expired
       if (authEndDate < currentDate) {
-        // Also update schedule status when auth expires
-        if (!patient.scheduleStatus || patient.scheduleStatus !== "Needs Rescheduling") {
-          patient.scheduleStatus = "Needs Rescheduling";
-        }
         return "Expired";
       }
       
       // Check if authorization expires within a week
       if (authEndDate <= oneWeekFromNow) {
-        // Also update schedule status when auth needs renewal
-        if (!patient.scheduleStatus || patient.scheduleStatus !== "Needs Rescheduling") {
-          patient.scheduleStatus = "Needs Rescheduling";
-        }
         return "Needs Renewal";
       }
     }
 
     // If auth number is provided but no dates, status should be "Approved"
     if (authNumber && authNumber.trim() && (!startDate || !endDate)) {
+      // Set schedule status to "Needs Scheduling" when user has auth
+      if (!patient.scheduleStatus || patient.scheduleStatus !== "Needs Scheduling") {
+        patient.scheduleStatus = "Needs Scheduling";
+      }
       return "Approved";
     }
 
     // If auth number and dates are provided, check expiration status
     if (authNumber && authNumber.trim() && startDate && startDate.trim() && endDate && endDate.trim()) {
       // Expiration logic already handled above, so if we reach here it's valid
+      // Set schedule status to "Needs Scheduling" when user has valid auth
+      if (!patient.scheduleStatus || patient.scheduleStatus !== "Needs Scheduling") {
+        patient.scheduleStatus = "Needs Scheduling";
+      }
       return "Approved";
     }
 

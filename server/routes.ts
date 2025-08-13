@@ -240,20 +240,18 @@ const checkAuthorizationStatus = async (patientId: number, organizationId: numbe
     // Check if authorization expires within a week
     if (authEndDate <= oneWeekFromNow && authEndDate > currentDate) {
       await storage.updatePatient(patientId, {
-        authStatus: "Needs Renewal",
-        scheduleStatus: "Needs Rescheduling"
+        authStatus: "Needs Renewal"
       }, organizationId);
-      console.log(`Patient ${patientId}: Authorization status updated to "Needs Renewal" and schedule status to "Needs Rescheduling" - auth expires on ${patient.endDate} (within one week)`);
+      console.log(`Patient ${patientId}: Authorization status updated to "Needs Renewal" - auth expires on ${patient.endDate} (within one week)`);
       return;
     }
 
     // Check if authorization has already expired
     if (authEndDate < currentDate) {
       await storage.updatePatient(patientId, {
-        authStatus: "Expired",
-        scheduleStatus: "Needs Rescheduling"
+        authStatus: "Expired"
       }, organizationId);
-      console.log(`Patient ${patientId}: Authorization status updated to "Expired" and schedule status to "Needs Rescheduling" - auth expired on ${patient.endDate}`);
+      console.log(`Patient ${patientId}: Authorization status updated to "Expired" - auth expired on ${patient.endDate}`);
       return;
     }
 
@@ -275,9 +273,10 @@ const checkAuthorizationStatus = async (patientId: number, organizationId: numbe
     // Only update if current status indicates a problem that's now resolved
     if (["APT SCHEDULED W/O AUTH", "Needs Renewal", "Expired"].includes(patient.authStatus || "")) {
       await storage.updatePatient(patientId, {
-        authStatus: "Approved"
+        authStatus: "Approved",
+        scheduleStatus: "Needs Scheduling"
       }, organizationId);
-      console.log(`Patient ${patientId}: Authorization status updated to "Approved" - all appointments are within auth range and auth is valid`);
+      console.log(`Patient ${patientId}: Authorization status updated to "Approved" and schedule status to "Needs Scheduling" - patient has valid auth`);
     }
   } catch (error) {
     console.error(`Error checking authorization status for patient ${patientId}:`, error);
