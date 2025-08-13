@@ -98,6 +98,7 @@ export interface IStorage {
   getAllPatients(): Promise<Patient[]>; // Keep for backward compatibility
   updatePatient(id: number, patient: Partial<InsertPatient>, organizationId: number): Promise<Patient | undefined>;
   updatePatientStatus(id: number, status: string, organizationId: number): Promise<Patient | undefined>;
+  deletePatient(id: number, organizationId: number): Promise<boolean>;
   
   // Patient Documents
   createPatientDocument(document: InsertPatientDocument): Promise<PatientDocument>;
@@ -731,6 +732,27 @@ export class DatabaseStorage implements IStorage {
       .where(eq(patients.id, id))
       .returning();
     return updatedPatient;
+  }
+
+  async deletePatient(id: number, organizationId: number): Promise<boolean> {
+    try {
+      // Check if patient belongs to organization first
+      const existingPatient = await this.getPatient(id, organizationId);
+      if (!existingPatient) return false;
+
+      // Delete related records first (cascade delete)
+      await db.delete(patientDocuments).where(eq(patientDocuments.patientId, id));
+      await db.delete(appointments).where(eq(appointments.patientId, id));
+      await db.delete(automationLogs).where(eq(automationLogs.patientId, id));
+      
+      // Delete the patient record
+      await db.delete(patients).where(eq(patients.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting patient:', error);
+      return false;
+    }
   }
 
   // Patient Documents methods

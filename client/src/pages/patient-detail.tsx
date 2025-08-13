@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
 import { useParams, Link } from 'wouter'
 import { apiRequest, queryClient } from '@/lib/queryClient'
@@ -265,6 +266,7 @@ export default function PatientDetail() {
     letterOfMedicalNecessity: false,
     approvalLikelihood: false
   })
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Helper function to parse AIGENTS response
   const parseAigentsResponse = (response: string) => {
@@ -390,6 +392,28 @@ export default function PatientDetail() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update patient",
+        variant: "destructive"
+      })
+    }
+  })
+
+  const deletePatientMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('DELETE', `/api/patients/${patientId}`)
+      return res.json()
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success", 
+        description: "Patient deleted successfully!"
+      })
+      // Redirect to patient list after successful deletion
+      window.location.href = '/patients'
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete patient",
         variant: "destructive"
       })
     }
@@ -830,6 +854,38 @@ export default function PatientDetail() {
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
             </select>
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Patient</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete {patient.firstName} {patient.lastName}? 
+                    This action cannot be undone. All patient data, documents, and appointments will be permanently deleted.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deletePatientMutation.mutate()}
+                    disabled={deletePatientMutation.isPending}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {deletePatientMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    Delete Patient
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>

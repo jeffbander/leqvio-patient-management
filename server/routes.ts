@@ -2431,6 +2431,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete patient
+  app.delete('/api/patients/:id', requireAuth, async (req, res) => {
+    try {
+      const user = await getUserFromSession(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const patientId = parseInt(req.params.id);
+      const deleted = await storage.deletePatient(patientId, user.currentOrganizationId!);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: 'Patient not found or could not be deleted' });
+      }
+      
+      res.json({ success: true, message: 'Patient deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting patient:', error);
+      res.status(500).json({ error: 'Failed to delete patient' });
+    }
+  });
+
   // Get patient documents
   app.get('/api/patients/:id/documents', async (req, res) => {
     try {
