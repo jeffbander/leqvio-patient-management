@@ -2,21 +2,25 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { Upload, FileText, Camera, Image, CheckCircle, AlertCircle, Loader2, Clipboard } from 'lucide-react'
-import { DragDropFileUpload } from '@/components/DragDropFileUpload'
+import { Upload, FileText, Type, Loader2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react'
 import { useLocation } from 'wouter'
 
 export default function UploadStartForm() {
   const { toast } = useToast()
   const [, setLocation] = useLocation()
   const queryClient = useQueryClient()
+  
+  // State management
+  const [activeTab, setActiveTab] = useState<'file' | 'text'>('file')
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [createdPatient, setCreatedPatient] = useState<any>(null)
-  const [processingText, setProcessingText] = useState<boolean>(false)
+  const [textContent, setTextContent] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
-  // Direct patient creation from upload
-  const createPatientMutation = useMutation({
+  // File upload mutation
+  const createPatientFromFileMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData()
       formData.append('photo', file)
@@ -28,7 +32,7 @@ export default function UploadStartForm() {
       
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create patient')
+        throw new Error(errorData.error || 'Failed to create patient from file')
       }
       
       return response.json()
@@ -41,28 +45,20 @@ export default function UploadStartForm() {
           title: "Patient Created Successfully",
           description: data.message
         })
-        // Refresh patient list
         queryClient.invalidateQueries({ queryKey: ['/api/patients'] })
-      } else {
-        throw new Error(data.error || 'Failed to create patient')
       }
     },
     onError: (error) => {
       setUploadStatus('error')
       toast({
-        title: "Error Creating Patient",
+        title: "Error Creating Patient from File",
         description: error.message,
         variant: "destructive"
       })
     }
   })
 
-  const handleFileUpload = (file: File) => {
-    setUploadStatus('uploading')
-    createPatientMutation.mutate(file)
-  }
-
-  // Text-based patient creation
+  // Text upload mutation
   const createPatientFromTextMutation = useMutation({
     mutationFn: async (textContent: string) => {
       const response = await fetch('/api/patients/create-from-text', {
@@ -84,20 +80,15 @@ export default function UploadStartForm() {
       if (data.success) {
         setCreatedPatient(data.patient)
         setUploadStatus('success')
-        setProcessingText(false)
         toast({
           title: "Patient Created Successfully",
           description: data.message
         })
-        // Refresh patient list
         queryClient.invalidateQueries({ queryKey: ['/api/patients'] })
-      } else {
-        throw new Error(data.error || 'Failed to create patient from text')
       }
     },
     onError: (error) => {
       setUploadStatus('error')
-      setProcessingText(false)
       toast({
         title: "Error Creating Patient from Text",
         description: error.message,
@@ -106,214 +97,304 @@ export default function UploadStartForm() {
     }
   })
 
-  const handleTextPaste = (textContent: string) => {
-    console.log("Text pasted, length:", textContent.length)
-    setUploadStatus('uploading')
-    setProcessingText(true)
-    createPatientFromTextMutation.mutate(textContent)
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setSelectedFile(file)
+    }
+  }
+
+  const handleFileUpload = () => {
+    if (selectedFile) {
+      setUploadStatus('uploading')
+      createPatientFromFileMutation.mutate(selectedFile)
+    }
+  }
+
+  const handleTextUpload = () => {
+    if (textContent.trim().length >= 10) {
+      setUploadStatus('uploading')
+      createPatientFromTextMutation.mutate(textContent.trim())
+    } else {
+      toast({
+        title: "Text Too Short",
+        description: "Please enter at least 10 characters of medical text",
+        variant: "destructive"
+      })
+    }
   }
 
   const resetForm = () => {
     setUploadStatus('idle')
     setCreatedPatient(null)
-    setProcessingText(false)
+    setSelectedFile(null)
+    setTextContent('')
   }
 
   const goToPatientDetail = () => {
-    if (createdPatient?.id) {
+    if (createdPatient) {
       setLocation(`/patient/${createdPatient.id}`)
     }
   }
 
-  if (uploadStatus === 'success') {
+  if (uploadStatus === 'uploading') {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Card className="border-green-200 bg-green-50">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-            <CardTitle className="text-2xl text-green-800">Patient Created Successfully!</CardTitle>
-            <CardDescription className="text-green-600">
-              {createdPatient?.firstName} {createdPatient?.lastName} has been added to your patient database.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-4">
-                Patient ID: <span className="font-mono font-semibold">{createdPatient?.sourceId}</span>
-              </p>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={goToPatientDetail} className="flex-1 max-w-sm">
-                View Patient Details
-              </Button>
-              <Button variant="outline" onClick={resetForm} className="flex-1 max-w-sm">
-                Upload Another Document
-              </Button>
-              <Button variant="outline" onClick={() => setLocation('/patients')} className="flex-1 max-w-sm">
-                Back to Patient List
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="container mx-auto p-6">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardContent className="p-12">
+              <div className="text-center">
+                <Loader2 className="h-16 w-16 animate-spin mx-auto mb-6 text-blue-600" />
+                <h2 className="text-2xl font-semibold mb-4">Processing...</h2>
+                <p className="text-gray-600">
+                  {activeTab === 'file' ? 'Extracting patient information from file' : 'Extracting patient information from text'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  if (uploadStatus === 'success' && createdPatient) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-green-200">
+            <CardContent className="p-8">
+              <div className="text-center">
+                <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-6" />
+                <h2 className="text-2xl font-semibold text-green-800 mb-4">Patient Created Successfully!</h2>
+                <div className="bg-green-50 p-4 rounded-lg mb-6">
+                  <p className="text-lg font-medium text-green-800">
+                    {createdPatient.firstName} {createdPatient.lastName}
+                  </p>
+                  <p className="text-green-600">DOB: {createdPatient.dateOfBirth}</p>
+                  <p className="text-green-600">Status: {createdPatient.status}</p>
+                </div>
+                <div className="flex gap-4 justify-center">
+                  <Button onClick={goToPatientDetail} className="flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    View Patient Details
+                  </Button>
+                  <Button variant="outline" onClick={resetForm}>
+                    Create Another Patient
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  if (uploadStatus === 'error') {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-red-200">
+            <CardContent className="p-8">
+              <div className="text-center">
+                <AlertCircle className="h-16 w-16 text-red-600 mx-auto mb-6" />
+                <h2 className="text-2xl font-semibold text-red-800 mb-4">Error Creating Patient</h2>
+                <p className="text-red-600 mb-6">
+                  There was an issue processing your {activeTab === 'file' ? 'file' : 'text'}. Please try again.
+                </p>
+                <Button onClick={resetForm}>
+                  Try Again
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Upload Start Form</h1>
-        <p className="text-gray-600">
-          Upload medical documents to automatically create patient records
-        </p>
-      </div>
+    <div className="container mx-auto p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Patient Record</h1>
+          <p className="text-gray-600">Upload documents or paste text to automatically extract patient information</p>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Main Upload Card */}
-        <div className="lg:col-span-2">
+        {/* Tab Navigation */}
+        <div className="flex mb-6 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('file')}
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+              activeTab === 'file'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              File Upload
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('text')}
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+              activeTab === 'text'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Type className="h-4 w-4" />
+              Text Input
+            </div>
+          </button>
+        </div>
+
+        {/* File Upload Tab */}
+        {activeTab === 'file' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="h-5 w-5" />
-                Document Upload
+                Upload Medical Document
               </CardTitle>
               <CardDescription>
-                Upload LEQVIO forms, Epic screenshots, medical documents, or paste text content
+                Select a PDF file, medical screenshot, or other document containing patient information
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              {uploadStatus === 'uploading' ? (
-                <div className="text-center py-12">
-                  <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
-                  <h3 className="text-lg font-medium mb-2">
-                    {processingText ? 'Processing Text...' : 'Processing Document...'}
-                  </h3>
-                  <p className="text-gray-600">
-                    {processingText ? 'Extracting patient information from text content' : 'Extracting patient information and creating record'}
+            <CardContent className="space-y-6">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
+                <div className="text-center">
+                  <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <div className="mb-4">
+                    <label
+                      htmlFor="file-upload"
+                      className="cursor-pointer text-blue-600 hover:text-blue-500 font-medium"
+                    >
+                      Click to select file
+                    </label>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,image/*"
+                      onChange={handleFileSelect}
+                    />
+                  </div>
+                  <p className="text-gray-500 text-sm">
+                    Supports PDF, PNG, JPG, GIF, WEBP files up to 50MB
                   </p>
                 </div>
-              ) : uploadStatus === 'error' ? (
-                <div className="text-center py-12">
-                  <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-600" />
-                  <h3 className="text-lg font-medium mb-2 text-red-800">Upload Failed</h3>
-                  <p className="text-gray-600 mb-4">Please try again with a different document</p>
-                  <Button onClick={resetForm} variant="outline">
-                    Try Again
-                  </Button>
+              </div>
+
+              {selectedFile && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-8 w-8 text-gray-600" />
+                    <div>
+                      <p className="font-medium">{selectedFile.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <DragDropFileUpload
-                  onFileSelect={handleFileUpload}
-                  accept=".pdf,image/*"
-                  maxSizeMB={50}
-                  placeholder="Drag and drop your document here, or click to select"
-                  className="min-h-[200px]"
-                  enablePaste={true}
-                  enableTextPaste={true}
-                  onTextPaste={handleTextPaste}
-                />
               )}
+
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleFileUpload} 
+                  disabled={!selectedFile}
+                  className="min-w-[120px]"
+                >
+                  Create Patient
+                </Button>
+              </div>
+
+              {/* Supported File Types */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-red-600" />
+                  <div>
+                    <p className="font-medium">PDF Documents</p>
+                    <p className="text-sm text-gray-600">LEQVIO forms, medical records</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Upload className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <p className="font-medium">Screenshots</p>
+                    <p className="text-sm text-gray-600">Epic, medical database extracts</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="font-medium">Images</p>
+                    <p className="text-sm text-gray-600">Insurance cards, documents</p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        </div>
+        )}
 
-        {/* Information Sidebar */}
-        <div className="space-y-6">
-          {/* Supported File Types */}
+        {/* Text Input Tab */}
+        {activeTab === 'text' && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <FileText className="h-4 w-4" />
-                Supported Files
+              <CardTitle className="flex items-center gap-2">
+                <Type className="h-5 w-5" />
+                Paste Medical Text
               </CardTitle>
+              <CardDescription>
+                Copy and paste text from Epic, insurance information, or other medical records
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-3">
-                <FileText className="h-5 w-5 text-red-600" />
-                <div>
-                  <p className="font-medium">PDF Documents</p>
-                  <p className="text-sm text-gray-600">LEQVIO enrollment forms</p>
-                </div>
+            <CardContent className="space-y-6">
+              <div>
+                <Textarea
+                  placeholder="Paste medical text here (Epic system text, patient information, insurance details, etc.)..."
+                  value={textContent}
+                  onChange={(e) => setTextContent(e.target.value)}
+                  className="min-h-[200px] text-sm"
+                />
+                <p className="text-sm text-gray-500 mt-2">
+                  {textContent.length} characters (minimum 10 required)
+                </p>
               </div>
-              <div className="flex items-center gap-3">
-                <Camera className="h-5 w-5 text-blue-600" />
-                <div>
-                  <p className="font-medium">Epic Screenshots</p>
-                  <p className="text-sm text-gray-600">Patient database extracts</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Image className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="font-medium">Medical Images</p>
-                  <p className="text-sm text-gray-600">PNG, JPG, GIF, WEBP</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Clipboard className="h-5 w-5 text-purple-600" />
-                <div>
-                  <p className="font-medium">Pasted Text</p>
-                  <p className="text-sm text-gray-600">Epic text, insurance info</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* How It Works */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">How It Works</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ol className="space-y-2 text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full min-w-[20px] text-center">1</span>
-                  <span>Upload your medical document</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full min-w-[20px] text-center">2</span>
-                  <span>AI extracts patient information</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full min-w-[20px] text-center">3</span>
-                  <span>Patient record created automatically</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full min-w-[20px] text-center">4</span>
-                  <span>Review and edit patient details</span>
-                </li>
-              </ol>
-            </CardContent>
-          </Card>
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleTextUpload} 
+                  disabled={textContent.trim().length < 10}
+                  className="min-w-[120px]"
+                >
+                  Create Patient
+                </Button>
+              </div>
 
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button 
-                variant="outline" 
-                className="w-full justify-start" 
-                onClick={() => setLocation('/patient/new')}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Manual Patient Entry
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start" 
-                onClick={() => setLocation('/patients')}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                View All Patients
-              </Button>
+              {/* Text Examples */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center gap-3">
+                  <Type className="h-5 w-5 text-purple-600" />
+                  <div>
+                    <p className="font-medium">Epic System Text</p>
+                    <p className="text-sm text-gray-600">Patient demographics, appointments</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-orange-600" />
+                  <div>
+                    <p className="font-medium">Insurance Information</p>
+                    <p className="text-sm text-gray-600">Member IDs, group numbers, plans</p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        </div>
+        )}
       </div>
     </div>
   )
