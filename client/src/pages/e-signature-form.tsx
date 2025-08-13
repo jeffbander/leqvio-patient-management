@@ -308,12 +308,77 @@ export default function ESignatureForm() {
               </div>
               
               {/* Document Upload Options */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Card>
                   <CardContent className="p-4">
                     <div className="space-y-4">
                       <div className="text-center">
-                        <Image className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                        <FileText className="h-8 w-8 mx-auto mb-2 text-indigo-600" />
+                        <h3 className="font-medium mb-2">Epic Insurance Text</h3>
+                        <p className="text-sm text-gray-600">Copy & paste Epic insurance data</p>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          if (createdPatient?.id) {
+                            setLocation(`/patient/${createdPatient.id}?tab=documents&type=epic_insurance_text`);
+                          }
+                        }}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        Open Text Extractor
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <Camera className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                        <h3 className="font-medium mb-2">Epic Insurance Screenshot</h3>
+                        <p className="text-sm text-gray-600">Upload Epic insurance coverage screenshot</p>
+                      </div>
+                      <DragDropFileUpload
+                        onFileSelect={(file) => {
+                          setSubmissionState('uploading');
+                          uploadDocumentMutation.mutate({ file, documentType: 'epic_insurance_screenshot' });
+                        }}
+                        accept="image/*"
+                        maxSizeMB={10}
+                        placeholder="Drag and drop image here"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <Camera className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                        <h3 className="font-medium mb-2">Epic Patient Screenshot</h3>
+                        <p className="text-sm text-gray-600">Upload Epic patient demographics screenshot</p>
+                      </div>
+                      <DragDropFileUpload
+                        onFileSelect={(file) => {
+                          setSubmissionState('uploading');
+                          uploadDocumentMutation.mutate({ file, documentType: 'epic_screenshot' });
+                        }}
+                        accept="image/*"
+                        maxSizeMB={10}
+                        placeholder="Drag and drop image here"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <Image className="h-8 w-8 mx-auto mb-2 text-cyan-600" />
                         <h3 className="font-medium mb-2">Insurance Card</h3>
                         <p className="text-sm text-gray-600">Upload front/back of insurance card</p>
                       </div>
@@ -334,19 +399,21 @@ export default function ESignatureForm() {
                   <CardContent className="p-4">
                     <div className="space-y-4">
                       <div className="text-center">
-                        <Camera className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                        <h3 className="font-medium mb-2">Epic Screenshot</h3>
-                        <p className="text-sm text-gray-600">Upload Epic system screenshot</p>
+                        <FileText className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                        <h3 className="font-medium mb-2">Clinical Note</h3>
+                        <p className="text-sm text-gray-600">Add clinical notes or observations</p>
                       </div>
-                      <DragDropFileUpload
-                        onFileSelect={(file) => {
-                          setSubmissionState('uploading');
-                          uploadDocumentMutation.mutate({ file, documentType: 'epic_insurance_screenshot' });
+                      <Button
+                        onClick={() => {
+                          if (createdPatient?.id) {
+                            setLocation(`/patient/${createdPatient.id}?tab=documents&type=clinical_note`);
+                          }
                         }}
-                        accept="image/*"
-                        maxSizeMB={10}
-                        placeholder="Drag and drop image here"
-                      />
+                        variant="outline"
+                        className="w-full"
+                      >
+                        Add Clinical Note
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -355,39 +422,18 @@ export default function ESignatureForm() {
                   <CardContent className="p-4">
                     <div className="space-y-4">
                       <div className="text-center">
-                        <FileText className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-                        <h3 className="font-medium mb-2">Clinical Document</h3>
-                        <p className="text-sm text-gray-600">Upload medical records or notes</p>
+                        <FileText className="h-8 w-8 mx-auto mb-2 text-red-600" />
+                        <h3 className="font-medium mb-2">LEQVIO Form</h3>
+                        <p className="text-sm text-gray-600">Upload completed LEQVIO form</p>
                       </div>
                       <DragDropFileUpload
                         onFileSelect={(file) => {
                           setSubmissionState('uploading');
-                          uploadDocumentMutation.mutate({ file, documentType: 'clinical_note' });
+                          uploadDocumentMutation.mutate({ file, documentType: 'leqvio_form' });
                         }}
-                        accept=".pdf,.doc,.docx,.txt,image/*"
+                        accept=".pdf,image/*"
                         maxSizeMB={50}
                         placeholder="Drag and drop document here"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="space-y-4">
-                      <div className="text-center">
-                        <Upload className="h-8 w-8 mx-auto mb-2 text-orange-600" />
-                        <h3 className="font-medium mb-2">Other Document</h3>
-                        <p className="text-sm text-gray-600">Upload any other related document</p>
-                      </div>
-                      <DragDropFileUpload
-                        onFileSelect={(file) => {
-                          setSubmissionState('uploading');
-                          uploadDocumentMutation.mutate({ file, documentType: 'other' });
-                        }}
-                        accept="*/*"
-                        maxSizeMB={50}
-                        placeholder="Drag and drop any file here"
                       />
                     </div>
                   </CardContent>
