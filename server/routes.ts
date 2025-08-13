@@ -1768,7 +1768,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cellPhone: uploadExtractedData.patient_cell_phone || uploadExtractedData.cellPhone || '',
         email: uploadExtractedData.patient_email || uploadExtractedData.email || '',
         address: uploadExtractedData.patient_address || uploadExtractedData.address || '',
-        orderingMD: uploadExtractedData.provider_name || uploadExtractedData.orderingMD || '',
+        orderingMD: uploadExtractedData.provider_name || uploadExtractedData.orderingMD || 'TBD',
+        diagnosis: uploadExtractedData.diagnosis || 'ASCVD', // Default diagnosis for LEQVIO
         mrn: uploadExtractedData.account_number || uploadExtractedData.accountNo || '',
         sourceId, // Generated ID using consistent pattern
         campus: 'Mount Sinai West', // Default campus
