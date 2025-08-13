@@ -6,14 +6,14 @@ import { Route, Switch, Redirect } from "wouter";
 import { Layout } from "@/components/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/dashboard";
-import UploadStartForm from "@/pages/extraction";
+import UploadStartForm from "@/pages/upload-start-form";
 import PatientList from "@/pages/patient-list";
 import PatientDetail from "@/pages/patient-detail";
 import ESignatureForm from "@/pages/e-signature-form";
 import TestUploadPatient from "@/pages/test-upload-patient";
 import OrganizationManagement from "@/pages/OrganizationManagement";
 import AccountManagement from "@/pages/AccountManagement";
-import Login from "@/pages/Login";
+import Login from "@/pages/login";
 import Register from "@/pages/Register";
 
 function AuthenticatedRouter() {
