@@ -537,12 +537,12 @@ export class DatabaseStorage implements IStorage {
         responseTime: analytics.responseTime || 0,
         userAgent: analytics.userAgent || '',
         ipAddress: analytics.ipAddress || '',
-        chainType: analytics.chainType || null,
-        uniqueId: analytics.uniqueId || null,
+        chainType: analytics.chainType || undefined,
+        uniqueId: analytics.uniqueId || undefined,
         requestSize: analytics.requestSize || 0,
         responseSize: analytics.responseSize || 0,
-        errorMessage: analytics.errorMessage || null,
-        requestData: analytics.requestData || null
+        errorMessage: analytics.errorMessage || undefined,
+        requestData: analytics.requestData || undefined
       };
       
       const [newAnalytics] = await db.insert(apiAnalytics).values(sanitizedData).returning();

@@ -919,45 +919,68 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
       console.log("PDF to image conversion failed:", (conversionError as Error).message);
     }
     
-    // Method 2: Try basic text extraction using pdf-parse (if available)
+    // Method 2: Try PDF.js text extraction (more reliable than pdf-parse)
     try {
-      const pdfParse = await import('pdf-parse');
-      console.log("Trying pdf-parse text extraction");
-      console.log("PDF buffer size:", pdfBuffer.length, "bytes");
+      console.log("Trying PDF.js text extraction");
+      const pdfjsLib = await import('pdfjs-dist');
       
-      // Use pdf-parse with explicit options to avoid internal path issues
-      const pdfData = await pdfParse.default(pdfBuffer, {
-        max: 0, // Parse all pages
-        version: '1.10.100'
-      });
+      // Configure PDF.js worker
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
       
-      console.log("PDF parse successful, extracted text length:", pdfData.text?.length || 0);
+      const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
+      const pdf = await loadingTask.promise;
       
-      if (pdfData.text && pdfData.text.length > 50) {
-        console.log("PDF text extracted, processing with AI");
-        console.log("First 200 characters of extracted text:", pdfData.text.substring(0, 200));
-        return await extractPatientInfoFromPDFText(pdfData.text);
-      } else if (pdfData.text && pdfData.text.length > 10) {
-        console.log("PDF text is short but trying AI extraction anyway");
-        return await extractPatientInfoFromPDFText(pdfData.text);
+      console.log(`PDF loaded successfully, ${pdf.numPages} pages`);
+      
+      let extractedText = '';
+      
+      // Extract text from all pages
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        try {
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map((item: any) => item.str).join(' ');
+          extractedText += pageText + ' ';
+          console.log(`Page ${pageNum} extracted ${pageText.length} characters`);
+        } catch (pageError) {
+          console.log(`Error extracting page ${pageNum}:`, (pageError as Error).message);
+        }
       }
       
-    } catch (parseError) {
-      console.log("pdf-parse extraction failed:", (parseError as Error).message);
-      console.log("Error stack:", parseError.stack);
+      extractedText = extractedText.trim();
+      console.log("PDF.js extraction successful, total text length:", extractedText.length);
       
-      // If pdf-parse fails, try alternative approach with different import
+      if (extractedText.length > 50) {
+        console.log("First 200 characters of PDF.js extracted text:", extractedText.substring(0, 200));
+        return await extractPatientInfoFromPDFText(extractedText);
+      } else if (extractedText.length > 10) {
+        console.log("PDF.js text is short but trying AI extraction anyway");
+        return await extractPatientInfoFromPDFText(extractedText);
+      }
+      
+    } catch (pdfjsError) {
+      console.log("PDF.js extraction failed:", (pdfjsError as Error).message);
+      
+      // Fallback to pdf-parse
       try {
-        console.log("Trying alternative pdf-parse approach");
-        const pdf = require('pdf-parse');
-        const pdfData = await pdf(pdfBuffer);
+        const pdfParse = await import('pdf-parse');
+        console.log("Falling back to pdf-parse text extraction");
+        console.log("PDF buffer size:", pdfBuffer.length, "bytes");
+        
+        const pdfData = await pdfParse.default(pdfBuffer, {
+          max: 0, // Parse all pages
+          version: '1.10.100'
+        });
+        
+        console.log("PDF parse fallback successful, extracted text length:", pdfData.text?.length || 0);
         
         if (pdfData.text && pdfData.text.length > 10) {
-          console.log("Alternative pdf-parse successful, text length:", pdfData.text.length);
+          console.log("First 200 characters of fallback extracted text:", pdfData.text.substring(0, 200));
           return await extractPatientInfoFromPDFText(pdfData.text);
         }
-      } catch (altError) {
-        console.log("Alternative pdf-parse also failed:", (altError as Error).message);
+        
+      } catch (parseError) {
+        console.log("pdf-parse fallback also failed:", (parseError as Error).message);
       }
     }
     
@@ -1047,22 +1070,23 @@ export async function extractPatientInfoFromPDFText(pdfText: string): Promise<an
     console.log("Using AI to extract patient info from PDF text");
     
     // Enhanced prompt with better instructions for name extraction
-    const prompt = `You are a medical data extraction expert. Extract patient information from this text extracted from a LEQVIO enrollment form or medical document.
+    const prompt = `You are a medical data extraction expert specializing in LEQVIO enrollment forms. The text below was extracted from a PDF and may be garbled or contain encoding artifacts.
 
-EXTRACTED TEXT:
+EXTRACTED TEXT (may contain PDF encoding artifacts):
 ${pdfText}
 
-IMPORTANT INSTRUCTIONS:
-1. Look very carefully for patient names - they may appear in different formats like "Last, First" or "First Last" or in form fields
-2. For LEQVIO forms, patient information is typically in the top section of the form
-3. If you see partial names or incomplete data, still extract what you can
-4. Pay attention to form field labels like "Patient Name:", "DOB:", "Provider:", etc.
-5. If the text seems garbled or encoded, look for recognizable patterns like dates (MM/DD/YYYY), phone numbers, or common names
+CRITICAL INSTRUCTIONS FOR HANDLING POOR QUALITY TEXT:
+1. This text likely contains PDF encoding artifacts, random characters, and metadata
+2. IGNORE technical terms like "Subtype", "Type", "ReportLab", "PDF Library", "www.reportlab.com" - these are NOT patient names
+3. Look for REAL human names that make sense as first/last names
+4. Common LEQVIO form patterns: Patient name is usually at the top of the form
+5. Focus on text that looks like actual form data, not PDF metadata
+6. If the text is heavily garbled, return empty strings rather than PDF artifacts
 
 Extract the following patient information and return as JSON:
 {
-  "patient_first_name": "First name only",
-  "patient_last_name": "Last name only", 
+  "patient_first_name": "First name only (must be a real human name)",
+  "patient_last_name": "Last name only (must be a real human name)", 
   "date_of_birth": "MM/DD/YYYY format",
   "patient_address": "Full street address",
   "patient_city": "City",
@@ -1078,18 +1102,14 @@ Extract the following patient information and return as JSON:
   "confidence": 0.9
 }
 
-Look for common medical form fields like:
-- Patient name (first/last) - may be formatted as "Last, First" or "First Last"
-- Date of Birth or DOB (MM/DD/YYYY or MM-DD-YYYY)
-- Address/Street/City/State/ZIP
-- Phone numbers (home/cell/mobile) with various formats
-- Email addresses
-- Prescriber/Provider/Doctor name
-- MRN/Account Number/Patient ID
-- Diagnosis codes or conditions (ASCVD, HeFH, etc.)
-- Signature date
+EXAMPLES OF WHAT TO IGNORE (these are PDF artifacts, NOT patient names):
+- "Subtype" / "Type" 
+- "ReportLab" / "PDF Library"
+- "anonymous" / "unspecified"
+- Technical codes like "JIV", "DclHZNR", "OAp6a"
+- Random character sequences
 
-If any field is not found, use empty string "". Be very careful with name extraction - if you find ANY recognizable first or last name, include it. Return only valid JSON.`;
+ONLY extract information if you find clear, recognizable patient data. If the text is too garbled, return empty strings. Return only valid JSON.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
@@ -1123,25 +1143,35 @@ If any field is not found, use empty string "". Be very careful with name extrac
         (!extractedData.patient_last_name || extractedData.patient_last_name.trim() === '')) {
       console.log("OpenAI returned empty names, trying pattern matching fallback");
       
-      // Try to find names in the text using common patterns
+      // Try to find names in the text using common patterns (improved)
       const namePatterns = [
-        /Patient\s*Name:?\s*([A-Za-z]+)\s+([A-Za-z]+)/i,
-        /Name:?\s*([A-Za-z]+)\s*,?\s*([A-Za-z]+)/i,
-        /([A-Z][a-z]+)\s+([A-Z][a-z]+)/,
-        /Patient:?\s*([A-Za-z]+)\s+([A-Za-z]+)/i
+        /Patient\s*Name:?\s*([A-Za-z]{2,})\s*,?\s*([A-Za-z]{2,})/i,
+        /Name:?\s*([A-Za-z]{2,})\s*,?\s*([A-Za-z]{2,})/i,
+        /First\s*Name:?\s*([A-Za-z]{2,}).*Last\s*Name:?\s*([A-Za-z]{2,})/i,
+        /Last\s*Name:?\s*([A-Za-z]{2,}).*First\s*Name:?\s*([A-Za-z]{2,})/i,
+        /([A-Z][a-z]{2,})\s*,\s*([A-Z][a-z]{2,})/,  // Last, First format
+        /([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\s+[A-Z]/  // First Last followed by middle initial
       ];
       
       for (const pattern of namePatterns) {
         const match = pdfText.match(pattern);
         if (match && match[1] && match[2]) {
-          extractedData.patient_first_name = match[1].trim();
-          extractedData.patient_last_name = match[2].trim();
-          extractedData.confidence = Math.max(extractedData.confidence || 0.1, 0.5);
-          console.log("Found names via pattern matching:", {
-            firstName: extractedData.patient_first_name,
-            lastName: extractedData.patient_last_name
-          });
-          break;
+          // Filter out common PDF artifacts and non-name words
+          const badWords = ['subtype', 'type', 'form', 'page', 'document', 'pdf', 'report', 'lab', 'www', 'com'];
+          const firstName = match[1].trim().toLowerCase();
+          const lastName = match[2].trim().toLowerCase();
+          
+          if (!badWords.includes(firstName) && !badWords.includes(lastName) && 
+              firstName.length >= 2 && lastName.length >= 2) {
+            extractedData.patient_first_name = match[1].trim();
+            extractedData.patient_last_name = match[2].trim();
+            extractedData.confidence = Math.max(extractedData.confidence || 0.1, 0.5);
+            console.log("Found names via pattern matching:", {
+              firstName: extractedData.patient_first_name,
+              lastName: extractedData.patient_last_name
+            });
+            break;
+          }
         }
       }
     }

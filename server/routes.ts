@@ -338,10 +338,10 @@ const analyticsMiddleware = (req: any, res: any, next: any) => {
         requestData: req.method !== 'GET' ? req.body : null
       };
 
-      // Store analytics asynchronously
-      storage.createApiAnalytics(analyticsData).catch(error => {
-        console.error('Failed to store analytics:', error);
-      });
+      // Store analytics asynchronously (temporarily disabled due to DB issues)
+      // storage.createApiAnalytics(analyticsData).catch(error => {
+      //   console.error('Failed to store analytics:', error);
+      // });
     }
 
     return originalSend.call(this, data);
