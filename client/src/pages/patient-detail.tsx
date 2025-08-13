@@ -1222,59 +1222,59 @@ export default function PatientDetail() {
                   Authorization Information
                 </Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Auth Number:</span>
+                  <div className="space-y-4 text-sm">
+                    <div className="space-y-1">
+                      <span className="font-medium block">Auth Number:</span>
                       {isEditingInsurance ? (
                         <Input
                           value={editedData.authNumber || ''}
                           onChange={(e) => setEditedData({...editedData, authNumber: e.target.value})}
-                          className="w-48"
+                          className="w-full"
                           placeholder="Authorization Number"
                         />
                       ) : (
-                        <span>{patient.authNumber || 'Not provided'}</span>
+                        <span className="block text-gray-600">{patient.authNumber || 'Not provided'}</span>
                       )}
                     </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Ref Number:</span>
+                    <div className="space-y-1">
+                      <span className="font-medium block">Ref Number:</span>
                       {isEditingInsurance ? (
                         <Input
                           value={editedData.refNumber || ''}
                           onChange={(e) => setEditedData({...editedData, refNumber: e.target.value})}
-                          className="w-48"
+                          className="w-full"
                           placeholder="Reference Number"
                         />
                       ) : (
-                        <span>{patient.refNumber || 'Not provided'}</span>
+                        <span className="block text-gray-600">{patient.refNumber || 'Not provided'}</span>
                       )}
                     </div>
                   </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Start Date:</span>
+                  <div className="space-y-4 text-sm">
+                    <div className="space-y-1">
+                      <span className="font-medium block">Start Date:</span>
                       {isEditingInsurance ? (
                         <Input
                           value={editedData.startDate || ''}
                           onChange={(e) => setEditedData({...editedData, startDate: e.target.value})}
-                          className="w-48"
+                          className="w-full"
                           placeholder="MM/DD/YYYY"
                         />
                       ) : (
-                        <span>{patient.startDate || 'Not provided'}</span>
+                        <span className="block text-gray-600">{patient.startDate || 'Not provided'}</span>
                       )}
                     </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">End Date:</span>
+                    <div className="space-y-1">
+                      <span className="font-medium block">End Date:</span>
                       {isEditingInsurance ? (
                         <Input
                           value={editedData.endDate || ''}
                           onChange={(e) => setEditedData({...editedData, endDate: e.target.value})}
-                          className="w-48"
+                          className="w-full"
                           placeholder="MM/DD/YYYY"
                         />
                       ) : (
-                        <span>{patient.endDate || 'Not provided'}</span>
+                        <span className="block text-gray-600">{patient.endDate || 'Not provided'}</span>
                       )}
                     </div>
                   </div>
