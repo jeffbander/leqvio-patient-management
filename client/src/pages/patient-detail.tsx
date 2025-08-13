@@ -419,18 +419,7 @@ export default function PatientDetail() {
     }
   })
 
-  const updateStatusMutation = useMutation({
-    mutationFn: async (status: string) => {
-      return apiRequest('PATCH', `/api/patients/${patientId}/status`, { status })
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Patient status updated"
-      })
-      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}`] })
-    }
-  })
+
 
   const uploadDocumentMutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -779,20 +768,7 @@ export default function PatientDetail() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'started':
-        return 'bg-blue-100 text-blue-800'
-      case 'in_progress':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'completed':
-        return 'bg-green-100 text-green-800'
-      case 'cancelled':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
+
 
   if (patientLoading) {
     return (
@@ -841,19 +817,6 @@ export default function PatientDetail() {
             <p className="text-gray-600 mt-1">Patient ID: {patient.id}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className={getStatusColor(patient.status)}>
-              {patient.status}
-            </Badge>
-            <select
-              value={patient.status}
-              onChange={(e) => updateStatusMutation.mutate(e.target.value)}
-              className="text-sm border rounded px-2 py-1"
-            >
-              <option value="started">Started</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm">
