@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema, userLoginSchema, userRegisterSchema, insertPatientSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
-import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio, extractPatientInfoFromScreenshot } from "./openai-service";
+import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio, extractPatientInfoFromScreenshot, extractPatientInfoFromPDF } from "./openai-service";
 import { generateLEQVIOPDF } from "./pdf-generator";
 import { googleSheetsService } from "./google-sheets-service";
 import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
@@ -1631,87 +1631,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let uploadExtractedData: any = null;
       
       if (fileExtension === 'pdf') {
-        // For PDF files (like LEQVIO forms), extract text directly
-        const pdfText = req.file.buffer.toString('utf-8');
+        // For PDF files (like LEQVIO forms), extract text using pdf-parse library
+        const pdfParse = await import('pdf-parse');
+        const pdfData = await pdfParse.default(req.file.buffer);
+        const pdfText = pdfData.text;
         
         console.log("Processing PDF file for patient creation");
         console.log("PDF text length:", pdfText.length);
+        console.log("PDF pages:", pdfData.numpages);
         
-        // Initialize with default values
-        uploadExtractedData = {
-          patient_first_name: "",
-          patient_last_name: "",
-          patient_sex: "",
-          patient_home_phone: "",
-          patient_cell_phone: "",
-          patient_address: "",
-          provider_name: "",
-          signature_date: "",
-          date_of_birth: "",
-          rawData: pdfText,
-          confidence: 0.8
-        };
-        
-        // Extract fields from the LEQVIO form text - comprehensive patterns
-        const firstNameMatch = pdfText.match(/First Name:\s*([^\n\r\t]+)/i) || 
-                               pdfText.match(/First:\s*([^\n\r\t]+)/i);
-        const lastNameMatch = pdfText.match(/Last Name:\s*([^\n\r\t]+)/i) || 
-                              pdfText.match(/Last:\s*([^\n\r\t]+)/i);
-        const dobMatch = pdfText.match(/Date of Birth:\s*([^\n\r\t]+)/i) ||
-                        pdfText.match(/DOB:\s*([^\n\r\t]+)/i) ||
-                        pdfText.match(/Birth Date:\s*([^\n\r\t]+)/i);
-        const sexMatch = pdfText.match(/Sex:\s*(Male|Female|M|F)/i) ||
-                        pdfText.match(/Gender:\s*(Male|Female|M|F)/i);
-        const homePhoneMatch = pdfText.match(/Home\s*Phone[^:]*:\s*([^\n\r\t]+)/i) ||
-                              pdfText.match(/Phone[^:]*:\s*([^\n\r\t]+).*Home/i);
-        const cellPhoneMatch = pdfText.match(/Cell\s*Phone[^:]*:\s*([^\n\r\t]+)/i) ||
-                              pdfText.match(/Mobile[^:]*:\s*([^\n\r\t]+)/i) ||
-                              pdfText.match(/Phone[^:]*:\s*([^\n\r\t]+).*Mobile/i);
-        const addressMatch = pdfText.match(/Address:\s*([^\n\r\t]+)/i) ||
-                            pdfText.match(/Street[^:]*:\s*([^\n\r\t]+)/i);
-        const signatureDateMatch = pdfText.match(/Date of Signature[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i) ||
-                                   pdfText.match(/Signature Date[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i) ||
-                                   pdfText.match(/Date:[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
-        const providerMatch = pdfText.match(/Prescriber Name:\s*([^\n\r\t]+)/i) ||
-                             pdfText.match(/Provider Name:\s*([^\n\r\t]+)/i) ||
-                             pdfText.match(/Doctor:\s*([^\n\r\t]+)/i) ||
-                             pdfText.match(/Physician:\s*([^\n\r\t]+)/i);
-        
-        if (firstNameMatch) {
-          let firstName = firstNameMatch[1].trim();
-          firstName = firstName.replace(/\s+/g, ' ');
-          if (firstName && firstName !== '') uploadExtractedData.patient_first_name = firstName;
+        // If we can't extract meaningful text, use AI to process the PDF as an image
+        if (!pdfText || pdfText.trim().length < 50) {
+          console.log("PDF text extraction insufficient, falling back to AI analysis");
+          uploadExtractedData = await extractPatientInfoFromPDF(pdfText || 'Unable to extract text from PDF');
+        } else {
+          // Use AI to intelligently parse the extracted PDF text
+          uploadExtractedData = await extractPatientInfoFromPDF(pdfText);
         }
-        if (lastNameMatch) {
-          let lastName = lastNameMatch[1].trim();
-          lastName = lastName.replace(/\s+/g, ' ');
-          if (lastName && lastName !== '') uploadExtractedData.patient_last_name = lastName;
-        }
-        if (dobMatch) {
-          let dob = dobMatch[1].trim();
-          if (dob && dob !== '') uploadExtractedData.date_of_birth = dob;
-        }
-        if (sexMatch) {
-          let sex = sexMatch[1].trim();
-          if (sex === 'M') sex = 'Male';
-          if (sex === 'F') sex = 'Female';
-          uploadExtractedData.patient_sex = sex;
-        }
-        if (homePhoneMatch) {
-          uploadExtractedData.patient_home_phone = homePhoneMatch[1].trim();
-        }
-        if (cellPhoneMatch) {
-          uploadExtractedData.patient_cell_phone = cellPhoneMatch[1].trim();
-        }
-        if (addressMatch) {
-          uploadExtractedData.patient_address = addressMatch[1].trim();
-        }
-        if (signatureDateMatch) {
-          uploadExtractedData.signature_date = signatureDateMatch[1].trim();
-        }
-        if (providerMatch) {
-          uploadExtractedData.provider_name = providerMatch[1].trim();
-        }
+
         
       } else if (supportedImageTypes.includes(fileExtension || '')) {
         // For image files, extract using OpenAI Vision

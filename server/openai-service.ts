@@ -834,3 +834,200 @@ EXTRACTION RULES:
     throw new Error("Failed to extract Epic insurance data: " + (error as Error).message);
   }
 }
+
+export async function extractPatientInfoFromPDF(pdfText: string): Promise<any> {
+  try {
+    console.log("Using AI to extract patient info from PDF text");
+    
+    const prompt = `You are a medical data extraction expert. Extract patient information from this PDF text from a LEQVIO enrollment form or medical document.
+
+PDF TEXT:
+${pdfText}
+
+Extract the following patient information and return as JSON:
+{
+  "patient_first_name": "First name only",
+  "patient_last_name": "Last name only", 
+  "date_of_birth": "MM/DD/YYYY format",
+  "patient_address": "Full street address",
+  "patient_city": "City",
+  "patient_state": "State abbreviation", 
+  "patient_zip": "ZIP code",
+  "patient_home_phone": "Home phone number",
+  "patient_cell_phone": "Cell/mobile phone number",
+  "patient_email": "Email address",
+  "provider_name": "Prescribing physician/provider name",
+  "account_number": "Medical record number or account number",
+  "diagnosis": "Primary diagnosis (e.g., ASCVD, HeFH)",
+  "signature_date": "Date form was signed MM/DD/YYYY",
+  "confidence": 0.9
+}
+
+Look for common LEQVIO form fields like:
+- Patient name (first/last)
+- Date of Birth or DOB
+- Address/Street/City/State/ZIP
+- Phone numbers (home/cell/mobile)
+- Email
+- Prescriber/Provider/Doctor name
+- MRN/Account Number/Patient ID
+- Diagnosis codes or conditions
+- Signature date
+
+If any field is not found, use empty string "". Be very careful with name extraction - separate first and last names properly. Return only valid JSON.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: "You are a medical data extraction expert. Extract patient information from medical documents accurately and return only valid JSON."
+        },
+        {
+          role: "user", 
+          content: prompt
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.1,
+      max_tokens: 1000
+    });
+
+    const result = response.choices[0].message.content;
+    const extractedData = JSON.parse(result || '{}');
+    
+    console.log("AI PDF extraction result:", {
+      patientName: `${extractedData.patient_first_name} ${extractedData.patient_last_name}`,
+      dateOfBirth: extractedData.date_of_birth,
+      provider: extractedData.provider_name,
+      confidence: extractedData.confidence
+    });
+    
+    return extractedData;
+    
+  } catch (error) {
+    console.error('Error in AI PDF extraction:', error);
+    
+    // Fallback to regex-based extraction if AI fails
+    console.log("AI extraction failed, falling back to regex patterns");
+    
+    const extractedData = {
+      patient_first_name: "",
+      patient_last_name: "",
+      date_of_birth: "",
+      patient_address: "",
+      patient_city: "",
+      patient_state: "",
+      patient_zip: "",
+      patient_home_phone: "",
+      patient_cell_phone: "",
+      patient_email: "",
+      provider_name: "",
+      account_number: "",
+      diagnosis: "ASCVD", // Default for LEQVIO
+      signature_date: "",
+      confidence: 0.3
+    };
+    
+    // Enhanced regex patterns for LEQVIO forms
+    const patterns = {
+      firstName: [
+        /First Name:\s*([^\n\r\t,]+)/i,
+        /First:\s*([^\n\r\t,]+)/i,
+        /Patient First Name:\s*([^\n\r\t,]+)/i,
+        /Name.*First:\s*([^\n\r\t,]+)/i
+      ],
+      lastName: [
+        /Last Name:\s*([^\n\r\t,]+)/i,
+        /Last:\s*([^\n\r\t,]+)/i,
+        /Patient Last Name:\s*([^\n\r\t,]+)/i,
+        /Name.*Last:\s*([^\n\r\t,]+)/i
+      ],
+      dateOfBirth: [
+        /Date of Birth:\s*([^\n\r\t]+)/i,
+        /DOB:\s*([^\n\r\t]+)/i,
+        /Birth Date:\s*([^\n\r\t]+)/i,
+        /Patient DOB:\s*([^\n\r\t]+)/i,
+        /\b(\d{1,2}\/\d{1,2}\/\d{4})\b/g
+      ],
+      provider: [
+        /Prescriber Name:\s*([^\n\r\t]+)/i,
+        /Provider Name:\s*([^\n\r\t]+)/i,
+        /Physician Name:\s*([^\n\r\t]+)/i,
+        /Doctor:\s*([^\n\r\t]+)/i,
+        /MD Name:\s*([^\n\r\t]+)/i
+      ],
+      homePhone: [
+        /Home Phone:\s*([^\n\r\t]+)/i,
+        /Phone.*Home:\s*([^\n\r\t]+)/i,
+        /Home.*Phone:\s*([^\n\r\t]+)/i
+      ],
+      cellPhone: [
+        /Cell Phone:\s*([^\n\r\t]+)/i,
+        /Mobile Phone:\s*([^\n\r\t]+)/i,
+        /Cell:\s*([^\n\r\t]+)/i,
+        /Mobile:\s*([^\n\r\t]+)/i
+      ],
+      address: [
+        /Address:\s*([^\n\r\t]+)/i,
+        /Street Address:\s*([^\n\r\t]+)/i,
+        /Patient Address:\s*([^\n\r\t]+)/i
+      ],
+      email: [
+        /Email:\s*([^\n\r\t\s]+@[^\n\r\t\s]+)/i,
+        /E-mail:\s*([^\n\r\t\s]+@[^\n\r\t\s]+)/i,
+        /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g
+      ],
+      accountNumber: [
+        /Account Number:\s*([^\n\r\t]+)/i,
+        /MRN:\s*([^\n\r\t]+)/i,
+        /Medical Record Number:\s*([^\n\r\t]+)/i,
+        /Patient ID:\s*([^\n\r\t]+)/i
+      ]
+    };
+    
+    // Apply patterns
+    for (const [field, regexList] of Object.entries(patterns)) {
+      for (const regex of regexList) {
+        const match = pdfText.match(regex);
+        if (match && match[1]) {
+          const value = match[1].trim();
+          if (value && value !== '') {
+            switch (field) {
+              case 'firstName':
+                extractedData.patient_first_name = value;
+                break;
+              case 'lastName':
+                extractedData.patient_last_name = value;
+                break;
+              case 'dateOfBirth':
+                extractedData.date_of_birth = value;
+                break;
+              case 'provider':
+                extractedData.provider_name = value;
+                break;
+              case 'homePhone':
+                extractedData.patient_home_phone = value;
+                break;
+              case 'cellPhone':
+                extractedData.patient_cell_phone = value;
+                break;
+              case 'address':
+                extractedData.patient_address = value;
+                break;
+              case 'email':
+                extractedData.patient_email = value;
+                break;
+              case 'accountNumber':
+                extractedData.account_number = value;
+                break;
+            }
+            break; // Use first match
+          }
+        }
+      }
+    }
+    
+    return extractedData;
+  }
+}
