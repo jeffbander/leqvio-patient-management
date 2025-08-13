@@ -880,18 +880,18 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
         }
         
         // Use Vision API to extract data
-        const extractedData = await extractPatientDataFromImage(base64Image, 'leqvio_form');
+        const extractedData = await extractPatientDataFromImage(base64Image);
         console.log("Vision API extraction successful");
         return extractedData;
       }
       
     } catch (conversionError) {
-      console.log("PDF to image conversion failed:", conversionError.message);
+      console.log("PDF to image conversion failed:", (conversionError as Error).message);
     }
     
     // Method 2: Try pdf-poppler for text extraction
     try {
-      const pdfPoppler = await import('pdf-poppler');
+      const pdfPoppler = await import('pdf-poppler') as any;
       console.log("Trying pdf-poppler text extraction");
       
       const options = {
@@ -919,12 +919,12 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
         }
         
         console.log("Using extracted image with Vision API");
-        const extractedData = await extractPatientDataFromImage(base64Image, 'leqvio_form');
+        const extractedData = await extractPatientDataFromImage(base64Image);
         return extractedData;
       }
       
     } catch (popplerError) {
-      console.log("pdf-poppler extraction failed:", popplerError.message);
+      console.log("pdf-poppler extraction failed:", (popplerError as Error).message);
     }
     
     // Method 3: Basic binary text extraction with enhanced patterns
