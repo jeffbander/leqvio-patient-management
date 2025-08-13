@@ -1,14 +1,15 @@
 import { useState, useRef } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
 import { apiRequest } from '@/lib/queryClient'
-import { FileText, Send, Loader2, Pen, Upload, CheckCircle, ArrowRight, Camera, Image } from 'lucide-react'
+import { FileText, Send, Loader2, Pen, Upload, CheckCircle, ArrowRight, Camera, Image, X, Clipboard } from 'lucide-react'
 import { DragDropFileUpload } from '@/components/DragDropFileUpload'
 import { useLocation } from 'wouter'
 
@@ -36,11 +37,21 @@ const SECONDARY_DIAGNOSIS_CODES = [
 export default function ESignatureForm() {
   const { toast } = useToast()
   const [, setLocation] = useLocation()
+  const queryClient = useQueryClient()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [hasSignature, setHasSignature] = useState(false)
   const [submissionState, setSubmissionState] = useState<'form' | 'success' | 'uploading'>('form')
   const [createdPatient, setCreatedPatient] = useState<any>(null)
+  
+  // Text extractor popup state
+  const [showTextExtractor, setShowTextExtractor] = useState(false)
+  const [epicText, setEpicText] = useState('')
+  const [extractedData, setExtractedData] = useState<any>(null)
+  
+  // Clinical note popup state
+  const [showClinicalNote, setShowClinicalNote] = useState(false)
+  const [clinicalNotes, setClinicalNotes] = useState('')
 
   // Form fields
   const [formData, setFormData] = useState({
@@ -146,6 +157,94 @@ export default function ESignatureForm() {
       })
     }
   })
+
+  // Text extractor mutation
+  const extractTextMutation = useMutation({
+    mutationFn: async (text: string) => {
+      const response = await fetch('/api/extract-epic-insurance-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ epicText: text, patientId: createdPatient?.id })
+      })
+      if (!response.ok) throw new Error('Extraction failed')
+      return response.json()
+    },
+    onSuccess: (data) => {
+      setExtractedData(data.extractedData)
+      
+      // Check if patient was automatically updated
+      if (data.updatedFields && Object.keys(data.updatedFields).length > 0) {
+        toast({
+          title: "Insurance information extracted and applied!",
+          description: "Patient insurance details have been automatically updated."
+        })
+      } else {
+        toast({
+          title: "Insurance information extracted!",
+          description: "Review the extracted data below."
+        })
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Extraction failed",
+        description: "Unable to extract insurance information from the text.",
+        variant: "destructive"
+      })
+    }
+  })
+
+  // Clinical note mutation
+  const addClinicalNoteMutation = useMutation({
+    mutationFn: async (notes: string) => {
+      const blob = new Blob([notes], { type: 'text/plain' })
+      const file = new File([blob], 'clinical_note.txt', { type: 'text/plain' })
+      
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('documentType', 'clinical_note')
+      
+      const response = await fetch(`/api/patients/${createdPatient?.id}/documents`, {
+        method: 'POST',
+        body: formData,
+      })
+      
+      if (!response.ok) throw new Error('Failed to add clinical note')
+      return response.json()
+    },
+    onSuccess: () => {
+      setClinicalNotes('')
+      setShowClinicalNote(false)
+      toast({
+        title: "Clinical note added!",
+        description: "The clinical note has been saved to the patient record."
+      })
+    },
+    onError: () => {
+      toast({
+        title: "Failed to add clinical note",
+        description: "Please try again.",
+        variant: "destructive"
+      })
+    }
+  })
+
+  // Handle clipboard paste for text extractor
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      setEpicText(text)
+      if (text.trim()) {
+        extractTextMutation.mutate(text)
+      }
+    } catch (error) {
+      toast({
+        title: "Clipboard access failed",
+        description: "Unable to read from clipboard. Please paste manually.",
+        variant: "destructive"
+      })
+    }
+  }
 
   // File upload handlers
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, documentType: string) => {
@@ -318,11 +417,7 @@ export default function ESignatureForm() {
                         <p className="text-sm text-gray-600">Copy & paste Epic insurance data</p>
                       </div>
                       <Button
-                        onClick={() => {
-                          if (createdPatient?.id) {
-                            setLocation(`/patient/${createdPatient.id}?tab=documents&type=epic_insurance_text`);
-                          }
-                        }}
+                        onClick={() => setShowTextExtractor(true)}
                         variant="outline"
                         className="w-full"
                       >
@@ -404,11 +499,7 @@ export default function ESignatureForm() {
                         <p className="text-sm text-gray-600">Add clinical notes or observations</p>
                       </div>
                       <Button
-                        onClick={() => {
-                          if (createdPatient?.id) {
-                            setLocation(`/patient/${createdPatient.id}?tab=documents&type=clinical_note`);
-                          }
-                        }}
+                        onClick={() => setShowClinicalNote(true)}
                         variant="outline"
                         className="w-full"
                       >
@@ -460,6 +551,136 @@ export default function ESignatureForm() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Epic Insurance Text Extractor Popup */}
+          <Dialog open={showTextExtractor} onOpenChange={setShowTextExtractor}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Epic Insurance Text Extractor
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="epic-text">Epic Insurance Information</Label>
+                  <Textarea
+                    id="epic-text"
+                    placeholder="Paste Epic insurance screen text here (Coverage, Member ID, Group Number, etc.)"
+                    value={epicText}
+                    onChange={(e) => setEpicText(e.target.value)}
+                    className="min-h-[120px] mt-1"
+                    disabled={extractTextMutation.isPending}
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Select and copy text from Epic's insurance/coverage tab, then paste it here
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handlePasteFromClipboard}
+                    variant="outline"
+                    disabled={extractTextMutation.isPending}
+                    className="flex items-center gap-2"
+                  >
+                    <Clipboard className="h-4 w-4" />
+                    Paste from Clipboard
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      if (epicText.trim()) {
+                        extractTextMutation.mutate(epicText)
+                      }
+                    }}
+                    disabled={!epicText.trim() || extractTextMutation.isPending}
+                  >
+                    {extractTextMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Extracting...
+                      </>
+                    ) : (
+                      'Extract Information'
+                    )}
+                  </Button>
+                </div>
+
+                {extractedData && (
+                  <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 className="font-medium text-green-800 mb-2">Extracted Insurance Data:</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p><span className="font-medium">Primary Insurance:</span> {extractedData.primaryInsurance || 'Not found'}</p>
+                        <p><span className="font-medium">Member ID:</span> {extractedData.primaryMemberId || 'Not found'}</p>
+                        <p><span className="font-medium">Group Number:</span> {extractedData.primaryGroupNumber || 'Not found'}</p>
+                      </div>
+                      <div>
+                        <p><span className="font-medium">Secondary Insurance:</span> {extractedData.secondaryInsurance || 'Not found'}</p>
+                        <p><span className="font-medium">Secondary Member ID:</span> {extractedData.secondaryMemberId || 'Not found'}</p>
+                        <p><span className="font-medium">Secondary Group:</span> {extractedData.secondaryGroupNumber || 'Not found'}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-green-700 mt-2">
+                      ✓ This information has been automatically applied to the patient record
+                    </p>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Clinical Note Popup */}
+          <Dialog open={showClinicalNote} onOpenChange={setShowClinicalNote}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Add Clinical Note
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="clinical-notes">Clinical Notes</Label>
+                  <Textarea
+                    id="clinical-notes"
+                    placeholder="Enter clinical notes, observations, or treatment details..."
+                    value={clinicalNotes}
+                    onChange={(e) => setClinicalNotes(e.target.value)}
+                    className="min-h-[200px] mt-1"
+                    disabled={addClinicalNoteMutation.isPending}
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowClinicalNote(false)}
+                    disabled={addClinicalNoteMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      if (clinicalNotes.trim()) {
+                        addClinicalNoteMutation.mutate(clinicalNotes)
+                      }
+                    }}
+                    disabled={!clinicalNotes.trim() || addClinicalNoteMutation.isPending}
+                  >
+                    {addClinicalNoteMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Clinical Note'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     )
