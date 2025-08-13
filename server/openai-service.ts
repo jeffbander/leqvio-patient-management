@@ -360,8 +360,13 @@ EXTRACTION RULES:
   }
 }
 
-export async function extractPatientDataFromImage(base64Image: string): Promise<ExtractedPatientData> {
+export async function extractPatientDataFromImage(base64Image: string, imageFormat: string = "png"): Promise<ExtractedPatientData> {
   try {
+    // Validate base64 image format
+    if (!base64Image || base64Image.length < 100) {
+      throw new Error("Invalid or empty base64 image provided");
+    }
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -399,7 +404,7 @@ Rules:
             {
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
+                url: `data:image/${imageFormat};base64,${base64Image}`
               }
             }
           ],
@@ -872,59 +877,42 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
         console.log("PDF converted to image, using Vision API");
         const base64Image = result.buffer.toString('base64');
         
-        // Clean up temp files
-        try {
-          await unlink(tempPdfPath);
-        } catch (e) {
-          console.log("Temp file cleanup warning:", e);
+        // Validate base64 image before processing
+        if (base64Image && base64Image.length > 100) {
+          // Clean up temp files
+          try {
+            await unlink(tempPdfPath);
+          } catch (e) {
+            console.log("Temp file cleanup warning:", e);
+          }
+          
+          // Use Vision API to extract data (PNG format from pdf2pic)
+          const extractedData = await extractPatientDataFromImage(base64Image, "png");
+          console.log("Vision API extraction successful");
+          return extractedData;
+        } else {
+          console.log("Invalid base64 image generated, skipping Vision API");
         }
-        
-        // Use Vision API to extract data
-        const extractedData = await extractPatientDataFromImage(base64Image);
-        console.log("Vision API extraction successful");
-        return extractedData;
       }
       
     } catch (conversionError) {
       console.log("PDF to image conversion failed:", (conversionError as Error).message);
     }
     
-    // Method 2: Try pdf-poppler for text extraction
+    // Method 2: Try basic text extraction using pdf-parse (if available)
     try {
-      const pdfPoppler = await import('pdf-poppler') as any;
-      console.log("Trying pdf-poppler text extraction");
+      const pdfParse = await import('pdf-parse');
+      console.log("Trying pdf-parse text extraction");
       
-      const options = {
-        type: 'jpeg',
-        size: 2048,
-        density: 200,
-        outputdir: '/tmp',
-        outputname: 'pdf_page',
-        page: 1
-      };
+      const pdfData = await pdfParse.default(pdfBuffer);
       
-      const result = await pdfPoppler.convert(pdfBuffer, options);
-      
-      if (result && result.length > 0) {
-        const fs = await import('fs');
-        const imagePath = result[0];
-        const imageBuffer = fs.readFileSync(imagePath);
-        const base64Image = imageBuffer.toString('base64');
-        
-        // Clean up temp file
-        try {
-          fs.unlinkSync(imagePath);
-        } catch (e) {
-          console.log("Temp file cleanup warning:", e);
-        }
-        
-        console.log("Using extracted image with Vision API");
-        const extractedData = await extractPatientDataFromImage(base64Image);
-        return extractedData;
+      if (pdfData.text && pdfData.text.length > 50) {
+        console.log("PDF text extracted, processing with AI");
+        return await extractPatientInfoFromPDFText(pdfData.text);
       }
       
-    } catch (popplerError) {
-      console.log("pdf-poppler extraction failed:", (popplerError as Error).message);
+    } catch (parseError) {
+      console.log("pdf-parse extraction failed:", (parseError as Error).message);
     }
     
     // Method 3: Basic binary text extraction with enhanced patterns
