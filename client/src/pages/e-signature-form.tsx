@@ -529,62 +529,6 @@ export default function ESignatureForm() {
                     </div>
                   </CardContent>
                 </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="space-y-4">
-                      <div className="text-center">
-                        <Upload className="h-8 w-8 mx-auto mb-2 text-emerald-600" />
-                        <h3 className="font-medium mb-2">Create Patient from PDF</h3>
-                        <p className="text-sm text-gray-600">Upload PDF to auto-create new patient record</p>
-                      </div>
-                      <DragDropFileUpload
-                        onFileSelect={(file) => {
-                          setSubmissionState('uploading');
-                          // Use the new direct patient creation endpoint
-                          const formData = new FormData();
-                          formData.append('photo', file);
-                          
-                          fetch('/api/patients/create-from-upload', {
-                            method: 'POST',
-                            body: formData
-                          })
-                          .then(response => {
-                            if (!response.ok) {
-                              return response.json().then(err => { throw new Error(err.error || 'Upload failed'); });
-                            }
-                            return response.json();
-                          })
-                          .then(data => {
-                            if (data.success) {
-                              toast({
-                                title: "Patient Created Successfully",
-                                description: data.message
-                              });
-                              // Refresh patient list
-                              queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
-                            } else {
-                              throw new Error(data.error || 'Failed to create patient');
-                            }
-                          })
-                          .catch(error => {
-                            toast({
-                              title: "Error Creating Patient",
-                              description: error.message,
-                              variant: "destructive"
-                            });
-                          })
-                          .finally(() => {
-                            setSubmissionState('success');
-                          });
-                        }}
-                        accept=".pdf,image/*"
-                        maxSizeMB={50}
-                        placeholder="Drag and drop PDF or screenshot here"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
               
               {/* Upload Status */}
@@ -748,71 +692,6 @@ export default function ESignatureForm() {
         <h1 className="text-3xl font-bold text-gray-900 mb-2">LEQVIO Patient Registration</h1>
         <p className="text-gray-600">Complete the form and provide your e-signature</p>
       </div>
-
-      {/* Quick PDF Upload Option */}
-      <Card className="border-dashed border-2 border-gray-300 bg-gray-50 mb-6">
-        <CardContent className="p-6">
-          <div className="text-center space-y-4">
-            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-              <Upload className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Quick Start: Upload PDF</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Have a completed LEQVIO form or patient document? Upload it to automatically create a patient record.
-              </p>
-            </div>
-            <DragDropFileUpload
-              onFileSelect={(file) => {
-                // Use the new direct patient creation endpoint
-                const formData = new FormData();
-                formData.append('photo', file);
-                
-                fetch('/api/patients/create-from-upload', {
-                  method: 'POST',
-                  body: formData
-                })
-                .then(response => {
-                  if (!response.ok) {
-                    return response.json().then(err => { throw new Error(err.error || 'Upload failed'); });
-                  }
-                  return response.json();
-                })
-                .then(data => {
-                  if (data.success) {
-                    toast({
-                      title: "Patient Created Successfully",
-                      description: data.message
-                    });
-                    // Refresh patient list and redirect to patient detail
-                    queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
-                    if (data.patient?.id) {
-                      setLocation(`/patient/${data.patient.id}`);
-                    } else {
-                      setLocation('/patients');
-                    }
-                  } else {
-                    throw new Error(data.error || 'Failed to create patient');
-                  }
-                })
-                .catch(error => {
-                  toast({
-                    title: "Error Creating Patient",
-                    description: error.message,
-                    variant: "destructive"
-                  });
-                });
-              }}
-              accept=".pdf,image/*"
-              maxSizeMB={50}
-              placeholder="Drag and drop PDF or screenshot here to auto-create patient"
-            />
-            <p className="text-xs text-gray-500">
-              Or continue with the manual form below
-            </p>
-          </div>
-        </CardContent>
-      </Card>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
