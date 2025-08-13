@@ -1,0 +1,219 @@
+import React, { useState, useRef, DragEvent, ChangeEvent } from 'react';
+import { Upload, File, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+
+interface DragDropFileUploadProps {
+  onFileSelect: (file: File) => void;
+  accept?: string;
+  maxSizeMB?: number;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+  children?: React.ReactNode;
+  multiple?: boolean;
+  onMultipleFiles?: (files: File[]) => void;
+}
+
+export function DragDropFileUpload({
+  onFileSelect,
+  accept = "image/*",
+  maxSizeMB = 10,
+  disabled = false,
+  placeholder = "Drag and drop files here, or click to select",
+  className,
+  children,
+  multiple = false,
+  onMultipleFiles
+}: DragDropFileUploadProps) {
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const validateFile = (file: File): string | null => {
+    if (maxSizeMB && file.size > maxSizeMB * 1024 * 1024) {
+      return `File size must be less than ${maxSizeMB}MB`;
+    }
+    
+    if (accept && accept !== "*/*") {
+      const acceptTypes = accept.split(',').map(type => type.trim());
+      const fileType = file.type;
+      const fileName = file.name.toLowerCase();
+      
+      const isAccepted = acceptTypes.some(acceptType => {
+        if (acceptType.startsWith('.')) {
+          return fileName.endsWith(acceptType.toLowerCase());
+        }
+        if (acceptType.includes('*')) {
+          const baseType = acceptType.split('/')[0];
+          return fileType.startsWith(baseType);
+        }
+        return fileType === acceptType;
+      });
+      
+      if (!isAccepted) {
+        return `File type not accepted. Accepted types: ${accept}`;
+      }
+    }
+    
+    return null;
+  };
+
+  const handleFiles = (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    const validFiles: File[] = [];
+    
+    for (const file of fileArray) {
+      const error = validateFile(file);
+      if (error) {
+        alert(error);
+        continue;
+      }
+      validFiles.push(file);
+    }
+    
+    if (validFiles.length === 0) return;
+    
+    if (multiple && onMultipleFiles) {
+      setSelectedFiles(validFiles);
+      onMultipleFiles(validFiles);
+    } else {
+      const file = validFiles[0];
+      setSelectedFiles([file]);
+      onFileSelect(file);
+    }
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    
+    if (disabled) return;
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFiles(files);
+    }
+  };
+
+  const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFiles(files);
+    }
+  };
+
+  const handleClick = () => {
+    if (!disabled && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const removeFile = (index: number) => {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    setSelectedFiles(newFiles);
+    
+    if (multiple && onMultipleFiles) {
+      onMultipleFiles(newFiles);
+    } else if (newFiles.length === 0) {
+      // Reset if no files left
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  return (
+    <div className={cn("w-full", className)}>
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={handleClick}
+        className={cn(
+          "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-200",
+          isDragOver && !disabled 
+            ? "border-blue-500 bg-blue-50" 
+            : "border-gray-300 hover:border-gray-400",
+          disabled && "opacity-50 cursor-not-allowed bg-gray-50",
+          selectedFiles.length > 0 && "border-green-500 bg-green-50"
+        )}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={accept}
+          multiple={multiple}
+          onChange={handleFileInputChange}
+          className="hidden"
+          disabled={disabled}
+        />
+        
+        {children ? children : (
+          <div className="space-y-2">
+            <Upload className={cn(
+              "h-8 w-8 mx-auto",
+              isDragOver ? "text-blue-500" : "text-gray-400"
+            )} />
+            <p className={cn(
+              "text-sm",
+              isDragOver ? "text-blue-600" : "text-gray-600"
+            )}>
+              {isDragOver ? "Drop files here" : placeholder}
+            </p>
+            {!multiple && selectedFiles.length === 0 && (
+              <p className="text-xs text-gray-500">
+                Maximum file size: {maxSizeMB}MB
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+      
+      {/* Selected Files Display */}
+      {selectedFiles.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {selectedFiles.map((file, index) => (
+            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+              <div className="flex items-center gap-2">
+                <File className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-700 truncate">
+                  {file.name}
+                </span>
+                <span className="text-xs text-gray-500">
+                  ({(file.size / 1024 / 1024).toFixed(1)}MB)
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeFile(index);
+                }}
+                className="h-6 w-6 p-0 hover:bg-red-100"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

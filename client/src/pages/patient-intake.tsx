@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import providerloopLogo from "/generated-icon.png";
+import { DragDropFileUpload } from '@/components/DragDropFileUpload';
 
 // Utility function to convert base64 to Blob
 function base64ToBlob(base64: string, mimeType: string): Blob {
@@ -489,55 +490,61 @@ export default function PatientIntake() {
             </Button>
           </div>
         ) : (
-          <>
-            <Camera className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
-            <p className="text-sm text-gray-600 mb-4">{subtitle}</p>
-            <div className="space-y-2">
-              {/* File selection input */}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-                id={`file-select-${type}`}
-                disabled={isProcessing}
-              />
-              {/* Camera capture input */}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-                id={`file-camera-${type}`}
-                disabled={isProcessing}
-                capture="environment"
-              />
-              <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                <Button 
-                  variant="outline" 
-                  className="cursor-pointer w-full sm:w-auto" 
-                  disabled={isProcessing}
-                  onClick={() => document.getElementById(`file-camera-${type}`)?.click()}
-                  type="button"
-                >
-                  <Camera className="h-4 w-4 mr-2" />
-                  Take Photo
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="cursor-pointer w-full sm:w-auto" 
-                  disabled={isProcessing}
-                  onClick={() => document.getElementById(`file-select-${type}`)?.click()}
-                  type="button"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Select Image
-                </Button>
-              </div>
-              <p className="text-xs text-gray-500">Or drag and drop an image here</p>
+          <div className="space-y-4">
+            <div className="text-center">
+              <Camera className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
+              <p className="text-sm text-gray-600 mb-4">{subtitle}</p>
             </div>
-          </>
+            
+            <DragDropFileUpload
+              onFileSelect={(file) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  const result = e.target?.result as string;
+                  if (type === 'id') setIdCardImage(result);
+                  else if (type === 'insurance-front') setInsuranceFrontImage(result);
+                  else if (type === 'insurance-back') setInsuranceBackImage(result);
+                };
+                reader.readAsDataURL(file);
+              }}
+              accept="image/*"
+              maxSizeMB={10}
+              disabled={isProcessing}
+              placeholder="Drag and drop an image here, or click to select"
+            />
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-500">or</span>
+              </div>
+            </div>
+            
+            {/* Camera capture input */}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+              id={`file-camera-${type}`}
+              disabled={isProcessing}
+              capture="environment"
+            />
+            
+            <Button 
+              variant="outline" 
+              className="cursor-pointer w-full" 
+              disabled={isProcessing}
+              onClick={() => document.getElementById(`file-camera-${type}`)?.click()}
+              type="button"
+            >
+              <Camera className="h-4 w-4 mr-2" />
+              Take Photo with Camera
+            </Button>
+          </div>
         )}
       </div>
     );

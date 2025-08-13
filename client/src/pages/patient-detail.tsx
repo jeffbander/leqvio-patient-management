@@ -40,6 +40,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { EpicInsuranceExtractor } from '@/components/EpicInsuranceExtractor'
+import { DragDropFileUpload } from '@/components/DragDropFileUpload'
 
 // Component for expandable text fields
 const ExpandableText = ({ 
@@ -1527,17 +1528,22 @@ export default function PatientDetail() {
                 }}
               />
             ) : documentType !== 'clinical_note' ? (
-              <div>
+              <div className="space-y-4">
                 <Label>Upload File</Label>
-                <div className="mt-1 flex items-center gap-4">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                  />
+                <DragDropFileUpload
+                  onFileSelect={(file) => {
+                    setSelectedFile(file);
+                  }}
+                  accept="image/*"
+                  maxSizeMB={10}
+                  disabled={uploadDocumentMutation.isPending}
+                  placeholder={uploadDocumentMutation.isPending ? "Uploading..." : "Drag and drop an image here, or click to select"}
+                />
+                {selectedFile && (
                   <Button 
                     onClick={handleUpload}
                     disabled={!selectedFile || uploadDocumentMutation.isPending}
+                    className="w-full"
                   >
                     {uploadDocumentMutation.isPending ? (
                       <>
@@ -1547,11 +1553,11 @@ export default function PatientDetail() {
                     ) : (
                       <>
                         <Upload className="mr-2 h-4 w-4" />
-                        Upload
+                        Upload {selectedFile.name}
                       </>
                     )}
                   </Button>
-                </div>
+                )}
               </div>
             ) : (
               <div>

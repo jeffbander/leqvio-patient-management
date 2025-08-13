@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { apiRequest } from '@/lib/queryClient'
 import { FileText, Send, Loader2, Pen, Upload, CheckCircle, ArrowRight, Camera, Image } from 'lucide-react'
+import { DragDropFileUpload } from '@/components/DragDropFileUpload'
 import { useLocation } from 'wouter'
 
 // ICD-10 Diagnosis Codes for LEQVIO
@@ -310,24 +311,20 @@ export default function ESignatureForm() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                   <CardContent className="p-4">
-                    <div className="text-center">
-                      <Image className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                      <h3 className="font-medium mb-2">Insurance Card</h3>
-                      <p className="text-sm text-gray-600 mb-4">Upload front/back of insurance card</p>
-                      <Label htmlFor="insurance-upload" className="cursor-pointer">
-                        <Button variant="outline" className="w-full" asChild>
-                          <span>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Choose File
-                          </span>
-                        </Button>
-                      </Label>
-                      <Input
-                        id="insurance-upload"
-                        type="file"
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <Image className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                        <h3 className="font-medium mb-2">Insurance Card</h3>
+                        <p className="text-sm text-gray-600">Upload front/back of insurance card</p>
+                      </div>
+                      <DragDropFileUpload
+                        onFileSelect={(file) => {
+                          const event = { target: { files: [file] } } as any;
+                          handleFileUpload(event, 'insurance_screenshot');
+                        }}
                         accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleFileUpload(e, 'insurance_screenshot')}
+                        maxSizeMB={10}
+                        placeholder="Drag and drop image here"
                       />
                     </div>
                   </CardContent>
@@ -335,24 +332,20 @@ export default function ESignatureForm() {
                 
                 <Card>
                   <CardContent className="p-4">
-                    <div className="text-center">
-                      <Camera className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                      <h3 className="font-medium mb-2">Epic Screenshot</h3>
-                      <p className="text-sm text-gray-600 mb-4">Upload Epic system screenshot</p>
-                      <Label htmlFor="epic-upload" className="cursor-pointer">
-                        <Button variant="outline" className="w-full" asChild>
-                          <span>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Choose File
-                          </span>
-                        </Button>
-                      </Label>
-                      <Input
-                        id="epic-upload"
-                        type="file"
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <Camera className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                        <h3 className="font-medium mb-2">Epic Screenshot</h3>
+                        <p className="text-sm text-gray-600">Upload Epic system screenshot</p>
+                      </div>
+                      <DragDropFileUpload
+                        onFileSelect={(file) => {
+                          const event = { target: { files: [file] } } as any;
+                          handleFileUpload(event, 'epic_insurance_screenshot');
+                        }}
                         accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleFileUpload(e, 'epic_insurance_screenshot')}
+                        maxSizeMB={10}
+                        placeholder="Drag and drop image here"
                       />
                     </div>
                   </CardContent>
@@ -360,24 +353,20 @@ export default function ESignatureForm() {
                 
                 <Card>
                   <CardContent className="p-4">
-                    <div className="text-center">
-                      <FileText className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-                      <h3 className="font-medium mb-2">Clinical Document</h3>
-                      <p className="text-sm text-gray-600 mb-4">Upload medical records or notes</p>
-                      <Label htmlFor="clinical-upload" className="cursor-pointer">
-                        <Button variant="outline" className="w-full" asChild>
-                          <span>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Choose File
-                          </span>
-                        </Button>
-                      </Label>
-                      <Input
-                        id="clinical-upload"
-                        type="file"
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <FileText className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                        <h3 className="font-medium mb-2">Clinical Document</h3>
+                        <p className="text-sm text-gray-600">Upload medical records or notes</p>
+                      </div>
+                      <DragDropFileUpload
+                        onFileSelect={(file) => {
+                          const event = { target: { files: [file] } } as any;
+                          handleFileUpload(event, 'clinical_note');
+                        }}
                         accept=".pdf,.doc,.docx,.txt,image/*"
-                        className="hidden"
-                        onChange={(e) => handleFileUpload(e, 'clinical_note')}
+                        maxSizeMB={50}
+                        placeholder="Drag and drop document here"
                       />
                     </div>
                   </CardContent>
@@ -385,24 +374,20 @@ export default function ESignatureForm() {
                 
                 <Card>
                   <CardContent className="p-4">
-                    <div className="text-center">
-                      <FileText className="h-8 w-8 mx-auto mb-2 text-orange-600" />
-                      <h3 className="font-medium mb-2">Other Document</h3>
-                      <p className="text-sm text-gray-600 mb-4">Upload any other related document</p>
-                      <Label htmlFor="other-upload" className="cursor-pointer">
-                        <Button variant="outline" className="w-full" asChild>
-                          <span>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Choose File
-                          </span>
-                        </Button>
-                      </Label>
-                      <Input
-                        id="other-upload"
-                        type="file"
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <Upload className="h-8 w-8 mx-auto mb-2 text-orange-600" />
+                        <h3 className="font-medium mb-2">Other Document</h3>
+                        <p className="text-sm text-gray-600">Upload any other related document</p>
+                      </div>
+                      <DragDropFileUpload
+                        onFileSelect={(file) => {
+                          const event = { target: { files: [file] } } as any;
+                          handleFileUpload(event, 'other');
+                        }}
                         accept="*/*"
-                        className="hidden"
-                        onChange={(e) => handleFileUpload(e, 'other')}
+                        maxSizeMB={50}
+                        placeholder="Drag and drop any file here"
                       />
                     </div>
                   </CardContent>

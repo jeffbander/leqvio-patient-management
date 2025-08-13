@@ -10,6 +10,7 @@ import { AlertCircle, Upload, Camera, Eye, Send, Loader2, UserPlus, ClipboardLis
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
+import { DragDropFileUpload } from '@/components/DragDropFileUpload'
 
 interface ExtractedPatientData {
   patient_first_name?: string
@@ -58,7 +59,7 @@ export default function MedicalDatabaseExtraction() {
   // State for insurance information
   const [insuranceMode, setInsuranceMode] = useState<'manual' | 'screenshot'>('manual')
   const [insuranceFile, setInsuranceFile] = useState<File | null>(null)
-  const [insurancePreviewUrl, setInsurancePreviewUrl] = useState<string>('')
+  const [insurancePreviewUrl, setInsurancePreviewUrl] = useState<string | null>(null)
   const [insuranceProvider, setInsuranceProvider] = useState<string>('')
   const [insurancePolicyNumber, setInsurancePolicyNumber] = useState<string>('')
   const [insuranceGroupNumber, setInsuranceGroupNumber] = useState<string>('')
@@ -494,13 +495,25 @@ export default function MedicalDatabaseExtraction() {
           <CardContent>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="leqvio-form">LEQVIO Form Upload</Label>
-                <Input
-                  id="leqvio-form"
-                  type="file"
+                <Label>LEQVIO Form Upload</Label>
+                <DragDropFileUpload
+                  onFileSelect={(file) => {
+                    setClinicalFormFile(file);
+                    
+                    if (file.type.startsWith('image/')) {
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        setClinicalPreviewUrl(e.target?.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    } else {
+                      setClinicalPreviewUrl(null);
+                    }
+                  }}
                   accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp"
-                  onChange={handleClinicalFileSelect}
-                  className="mt-1"
+                  maxSizeMB={50}
+                  disabled={extractClinicalDataMutation.isPending}
+                  placeholder="Drag and drop LEQVIO form (PDF or image) here, or click to select"
                 />
                 <p className="text-sm text-gray-500 mt-1">
                   Upload the completed LEQVIO form (PDF) or image to extract patient data
@@ -788,13 +801,25 @@ export default function MedicalDatabaseExtraction() {
                 {insuranceMode === 'screenshot' && (
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="insurance-card">Insurance Card Screenshot</Label>
-                      <Input
-                        id="insurance-card"
-                        type="file"
+                      <Label>Insurance Card Screenshot</Label>
+                      <DragDropFileUpload
+                        onFileSelect={(file) => {
+                          setInsuranceFile(file);
+                          
+                          if (file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                              setInsurancePreviewUrl(e.target?.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          } else {
+                            setInsurancePreviewUrl(null);
+                          }
+                        }}
                         accept="image/*"
-                        onChange={handleInsuranceFileSelect}
-                        className="mt-1"
+                        maxSizeMB={10}
+                        disabled={extractInsuranceDataMutation.isPending}
+                        placeholder="Drag and drop insurance card image here, or click to select"
                       />
                       <p className="text-sm text-gray-500 mt-1">
                         Upload a clear photo of the front and/or back of the insurance card
