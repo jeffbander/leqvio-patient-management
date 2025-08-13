@@ -14,6 +14,8 @@ interface DragDropFileUploadProps {
   multiple?: boolean;
   onMultipleFiles?: (files: File[]) => void;
   enablePaste?: boolean;
+  enableTextPaste?: boolean;
+  onTextPaste?: (text: string) => void;
 }
 
 export function DragDropFileUpload({
@@ -26,11 +28,14 @@ export function DragDropFileUpload({
   children,
   multiple = false,
   onMultipleFiles,
-  enablePaste = true
+  enablePaste = true,
+  enableTextPaste = false,
+  onTextPaste
 }: DragDropFileUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [showPasteHint, setShowPasteHint] = useState(false);
+  const [pastedText, setPastedText] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -65,48 +70,62 @@ export function DragDropFileUpload({
 
   // Handle paste events
   useEffect(() => {
-    if (!enablePaste) return;
+    if (!enablePaste && !enableTextPaste) return;
 
     const handlePaste = async (e: ClipboardEvent) => {
       // Only handle paste if the container is focused or visible
       if (!containerRef.current || disabled) return;
 
       const items = e.clipboardData?.items;
-      if (!items) return;
+      const textData = e.clipboardData?.getData('text/plain');
 
-      for (const item of Array.from(items)) {
-        if (item.type.startsWith('image/')) {
-          e.preventDefault();
-          const file = item.getAsFile();
-          if (file) {
-            const error = validateFile(file);
-            if (error) {
-              alert(error);
-              return;
+      if (!items && !textData) return;
+
+      // Handle text paste first if enabled
+      if (enableTextPaste && textData && textData.trim().length > 10) {
+        e.preventDefault();
+        setPastedText(textData);
+        onTextPaste?.(textData);
+        setShowPasteHint(false);
+        return;
+      }
+
+      // Handle image paste
+      if (enablePaste && items) {
+        for (const item of Array.from(items)) {
+          if (item.type.startsWith('image/')) {
+            e.preventDefault();
+            const file = item.getAsFile();
+            if (file) {
+              const error = validateFile(file);
+              if (error) {
+                alert(error);
+                return;
+              }
+              // Create a new file with a proper name
+              const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '_');
+              const extension = item.type.split('/')[1] || 'png';
+              // Use the original file directly since it's already a File object
+              const renamedFile = Object.defineProperty(file, 'name', {
+                writable: true,
+                value: `pasted_image_${timestamp}.${extension}`
+              });
+              onFileSelect(renamedFile);
+              setShowPasteHint(false);
             }
-            // Create a new file with a proper name
-            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '_');
-            const extension = item.type.split('/')[1] || 'png';
-            // Use the original file directly since it's already a File object
-            const renamedFile = Object.defineProperty(file, 'name', {
-              writable: true,
-              value: `pasted_image_${timestamp}.${extension}`
-            });
-            onFileSelect(renamedFile);
-            setShowPasteHint(false);
+            return;
           }
-          return;
         }
       }
     };
 
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, [enablePaste, disabled, onFileSelect, accept, maxSizeMB]);
+  }, [enablePaste, enableTextPaste, disabled, onFileSelect, onTextPaste, accept, maxSizeMB]);
 
   // Show paste hint when Ctrl+V is detected
   useEffect(() => {
-    if (!enablePaste) return;
+    if (!enablePaste && !enableTextPaste) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !disabled) {
@@ -117,7 +136,7 @@ export function DragDropFileUpload({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [enablePaste, disabled]);
+  }, [enablePaste, enableTextPaste, disabled]);
 
   const handleFiles = (files: FileList | File[]) => {
     const fileArray = Array.from(files);
@@ -201,11 +220,13 @@ export function DragDropFileUpload({
   return (
     <div className={cn("w-full", className)} ref={containerRef}>
       {/* Paste Hint */}
-      {enablePaste && showPasteHint && (
+      {(enablePaste || enableTextPaste) && showPasteHint && (
         <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg text-center">
           <div className="flex items-center justify-center gap-2 text-blue-700">
             <Clipboard className="h-4 w-4" />
-            <span className="text-sm font-medium">Paste your image here (Ctrl+V)</span>
+            <span className="text-sm font-medium">
+              Paste your {enableTextPaste && enablePaste ? 'content' : enableTextPaste ? 'text' : 'image'} here (Ctrl+V)
+            </span>
           </div>
         </div>
       )}
@@ -246,10 +267,10 @@ export function DragDropFileUpload({
             )}>
               {isDragOver ? "Drop files here" : placeholder}
             </p>
-            {enablePaste && !isDragOver && (
+            {(enablePaste || enableTextPaste) && !isDragOver && (
               <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
                 <Clipboard className="h-3 w-3" />
-                <span>or press Ctrl+V to paste from clipboard</span>
+                <span>or press Ctrl+V to paste {enableTextPaste && enablePaste ? 'content' : enableTextPaste ? 'text' : 'images'} from clipboard</span>
               </div>
             )}
             {!multiple && selectedFiles.length === 0 && (
@@ -261,6 +282,30 @@ export function DragDropFileUpload({
         )}
       </div>
       
+      {/* Pasted Text Display */}
+      {pastedText && (
+        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Clipboard className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-medium text-green-800">Pasted Text Content</span>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setPastedText('')}
+              className="h-6 w-6 p-0 hover:bg-red-100"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+          <div className="text-xs text-gray-600 bg-white p-2 rounded border max-h-32 overflow-y-auto">
+            {pastedText.substring(0, 500)}
+            {pastedText.length > 500 && '...'}
+          </div>
+        </div>
+      )}
+
       {/* Selected Files Display */}
       {selectedFiles.length > 0 && (
         <div className="mt-3 space-y-2">

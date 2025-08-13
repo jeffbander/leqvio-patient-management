@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
-import { Upload, FileText, Camera, Image, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { Upload, FileText, Camera, Image, CheckCircle, AlertCircle, Loader2, Clipboard } from 'lucide-react'
 import { DragDropFileUpload } from '@/components/DragDropFileUpload'
 import { useLocation } from 'wouter'
 
@@ -13,6 +13,7 @@ export default function UploadStartForm() {
   const queryClient = useQueryClient()
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [createdPatient, setCreatedPatient] = useState<any>(null)
+  const [processingText, setProcessingText] = useState<boolean>(false)
 
   // Direct patient creation from upload
   const createPatientMutation = useMutation({
@@ -61,9 +62,61 @@ export default function UploadStartForm() {
     createPatientMutation.mutate(file)
   }
 
+  // Text-based patient creation
+  const createPatientFromTextMutation = useMutation({
+    mutationFn: async (textContent: string) => {
+      const response = await fetch('/api/patients/create-from-text', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ textContent })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create patient from text')
+      }
+      
+      return response.json()
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        setCreatedPatient(data.patient)
+        setUploadStatus('success')
+        setProcessingText(false)
+        toast({
+          title: "Patient Created Successfully",
+          description: data.message
+        })
+        // Refresh patient list
+        queryClient.invalidateQueries({ queryKey: ['/api/patients'] })
+      } else {
+        throw new Error(data.error || 'Failed to create patient from text')
+      }
+    },
+    onError: (error) => {
+      setUploadStatus('error')
+      setProcessingText(false)
+      toast({
+        title: "Error Creating Patient from Text",
+        description: error.message,
+        variant: "destructive"
+      })
+    }
+  })
+
+  const handleTextPaste = (textContent: string) => {
+    console.log("Text pasted, length:", textContent.length)
+    setUploadStatus('uploading')
+    setProcessingText(true)
+    createPatientFromTextMutation.mutate(textContent)
+  }
+
   const resetForm = () => {
     setUploadStatus('idle')
     setCreatedPatient(null)
+    setProcessingText(false)
   }
 
   const goToPatientDetail = () => {
@@ -128,15 +181,19 @@ export default function UploadStartForm() {
                 Document Upload
               </CardTitle>
               <CardDescription>
-                Upload LEQVIO forms, Epic screenshots, or other medical documents
+                Upload LEQVIO forms, Epic screenshots, medical documents, or paste text content
               </CardDescription>
             </CardHeader>
             <CardContent>
               {uploadStatus === 'uploading' ? (
                 <div className="text-center py-12">
                   <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
-                  <h3 className="text-lg font-medium mb-2">Processing Document...</h3>
-                  <p className="text-gray-600">Extracting patient information and creating record</p>
+                  <h3 className="text-lg font-medium mb-2">
+                    {processingText ? 'Processing Text...' : 'Processing Document...'}
+                  </h3>
+                  <p className="text-gray-600">
+                    {processingText ? 'Extracting patient information from text content' : 'Extracting patient information and creating record'}
+                  </p>
                 </div>
               ) : uploadStatus === 'error' ? (
                 <div className="text-center py-12">
@@ -155,6 +212,8 @@ export default function UploadStartForm() {
                   placeholder="Drag and drop your document here, or click to select"
                   className="min-h-[200px]"
                   enablePaste={true}
+                  enableTextPaste={true}
+                  onTextPaste={handleTextPaste}
                 />
               )}
             </CardContent>
@@ -191,6 +250,13 @@ export default function UploadStartForm() {
                 <div>
                   <p className="font-medium">Medical Images</p>
                   <p className="text-sm text-gray-600">PNG, JPG, GIF, WEBP</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Clipboard className="h-5 w-5 text-purple-600" />
+                <div>
+                  <p className="font-medium">Pasted Text</p>
+                  <p className="text-sm text-gray-600">Epic text, insurance info</p>
                 </div>
               </div>
             </CardContent>

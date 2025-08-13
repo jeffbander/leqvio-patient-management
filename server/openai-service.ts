@@ -1133,3 +1133,96 @@ ONLY extract information if you find clear, recognizable patient data. If the te
     return extractedData;
   }
 }
+
+// Extract patient information from pasted Epic text or other medical database text
+export async function extractPatientInfoFromText(textContent: string): Promise<any> {
+  console.log("Extracting patient info from text using OpenAI");
+  console.log("Text length:", textContent.length);
+  console.log("First 200 chars:", textContent.substring(0, 200));
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: `Extract patient information from the provided medical text. This could be Epic system text, insurance information, or other medical records.
+
+Return a JSON object with these fields (use empty string if not found):
+{
+  "patient_first_name": "Patient's first name",
+  "patient_last_name": "Patient's last name", 
+  "date_of_birth": "Date in MM/DD/YYYY format",
+  "patient_home_phone": "Primary phone number",
+  "patient_cell_phone": "Cell/mobile phone",
+  "patient_email": "Email address",
+  "patient_address": "Street address",
+  "patient_city": "City",
+  "patient_state": "State",
+  "patient_zip": "ZIP code",
+  "member_id_primary": "Primary insurance member ID",
+  "member_id_secondary": "Secondary insurance member ID",
+  "group_number": "Insurance group number",
+  "plan_name": "Insurance plan name",
+  "subscriber_name": "Insurance subscriber name",
+  "mrn": "Medical record number or patient ID",
+  "provider_name": "Attending physician or provider",
+  "diagnosis": "Medical diagnosis or condition",
+  "confidence": 0.9
+}
+
+IMPORTANT: Look for actual patient names, not technical terms like "Patient Portal", "Epic", "MyChart", etc.
+Only extract information you can clearly identify as belonging to a real patient.
+Return valid JSON only.`
+        },
+        {
+          role: "user",
+          content: textContent
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 1000
+    });
+
+    const extractedData = JSON.parse(response.choices[0].message.content || '{}');
+    console.log("OpenAI text extraction result:", extractedData);
+
+    // If no patient name found, create placeholder
+    if ((!extractedData.patient_first_name || extractedData.patient_first_name.trim() === '') && 
+        (!extractedData.patient_last_name || extractedData.patient_last_name.trim() === '')) {
+      console.log("No patient names found in text, returning placeholder data");
+      const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
+      extractedData.patient_first_name = "NEEDS_REVIEW";
+      extractedData.patient_last_name = `TEXT_${timestamp}`;
+      extractedData.confidence = 0.1;
+    }
+
+    return extractedData;
+
+  } catch (error) {
+    console.error("Error extracting patient info from text:", error);
+    // Return placeholder data on error
+    const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
+    return {
+      patient_first_name: "NEEDS_REVIEW",
+      patient_last_name: `TEXT_${timestamp}`,
+      date_of_birth: "",
+      patient_home_phone: "",
+      patient_cell_phone: "",
+      patient_email: "",
+      patient_address: "",
+      patient_city: "",
+      patient_state: "",
+      patient_zip: "",
+      member_id_primary: "",
+      member_id_secondary: "",
+      group_number: "",
+      plan_name: "",
+      subscriber_name: "",
+      mrn: "",
+      provider_name: "",
+      diagnosis: "",
+      confidence: 0.1
+    };
+  }
+}

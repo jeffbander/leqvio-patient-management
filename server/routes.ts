@@ -1600,6 +1600,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Patient creation from pasted text
+  app.post('/api/patients/create-from-text', async (req, res) => {
+    const userId = (req.session as any).userId;
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
+    try {
+      const user = await storage.getUser(userId);
+      if (!user || !user.currentOrganizationId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      console.log('Creating patient from pasted text');
+      
+      const { textContent } = req.body;
+      if (!textContent || typeof textContent !== 'string' || textContent.trim().length < 10) {
+        return res.status(400).json({ 
+          error: "Invalid text content", 
+          details: "Text must be at least 10 characters long." 
+        });
+      }
+
+      console.log('Processing text content, length:', textContent.length);
+
+      // Extract patient data from text using OpenAI
+      let textExtractedData;
+      try {
+        const { extractPatientInfoFromText } = await import('./openai-service.js');
+        textExtractedData = await extractPatientInfoFromText(textContent);
+        console.log("Text extraction successful:", {
+          name: `${textExtractedData.patient_first_name} ${textExtractedData.patient_last_name}`,
+          confidence: textExtractedData.confidence
+        });
+      } catch (error) {
+        console.log("Text processing error:", error);
+        // Return placeholder data when extraction fails
+        const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
+        textExtractedData = {
+          patient_first_name: "NEEDS_REVIEW",
+          patient_last_name: `TEXT_${timestamp}`,
+          date_of_birth: "",
+          patient_home_phone: "",
+          patient_cell_phone: "",
+          patient_email: "",
+          patient_address: "",
+          patient_city: "",
+          patient_state: "",
+          patient_zip: "",
+          member_id_primary: "",
+          member_id_secondary: "",
+          group_number: "",
+          plan_name: "",
+          subscriber_name: "",
+          mrn: "",
+          provider_name: "TBD",
+          diagnosis: "ASCVD",
+          confidence: 0.1
+        };
+      }
+
+      // Process the extracted data similar to file upload
+      const firstName = textExtractedData.patient_first_name || '';
+      const lastName = textExtractedData.patient_last_name || '';
+      
+      // Filter out common artifacts that might slip through
+      const textArtifacts = ['patient', 'portal', 'epic', 'mychart', 'dashboard', 'system', 'application'];
+      const isFirstNameArtifact = textArtifacts.includes(firstName.toLowerCase());
+      const isLastNameArtifact = textArtifacts.includes(lastName.toLowerCase());
+      
+      let finalFirstName = firstName;
+      let finalLastName = lastName;
+      
+      if (!firstName || !lastName || isFirstNameArtifact || isLastNameArtifact || 
+          firstName.trim() === '' || lastName.trim() === '') {
+        console.log("Using placeholder names due to empty or artifact data:", { firstName, lastName });
+        const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
+        finalFirstName = "NEEDS_REVIEW";
+        finalLastName = `TEXT_${timestamp}`;
+      }
+
+      // Create patient data object
+      const dateOfBirth = textExtractedData.date_of_birth || '01/01/1990';
+      let sourceId = '';
+      
+      if (dateOfBirth && dateOfBirth !== '01/01/1990') {
+        try {
+          const [month, day, year] = dateOfBirth.split('/');
+          if (month && day && year) {
+            sourceId = `${finalLastName.toUpperCase()}_${finalFirstName.toUpperCase()}__${month}_${day}_${year}`;
+          }
+        } catch (error) {
+          console.log('Could not generate sourceId from date:', dateOfBirth, error);
+        }
+      }
+      
+      const patientData = {
+        userId: user.id,
+        organizationId: user.currentOrganizationId,
+        firstName: finalFirstName,
+        lastName: finalLastName,
+        dateOfBirth,
+        phone: textExtractedData.patient_home_phone || '',
+        cellPhone: textExtractedData.patient_cell_phone || '',
+        email: textExtractedData.patient_email || '',
+        address: textExtractedData.patient_address || '',
+        city: textExtractedData.patient_city || '',
+        state: textExtractedData.patient_state || '',
+        zip: textExtractedData.patient_zip || '',
+        orderingMD: textExtractedData.provider_name || 'TBD',
+        diagnosis: textExtractedData.diagnosis || 'ASCVD',
+        memberIdPrimary: textExtractedData.member_id_primary || '',
+        memberIdSecondary: textExtractedData.member_id_secondary || '',
+        groupNumber: textExtractedData.group_number || '',
+        planName: textExtractedData.plan_name || '',
+        subscriberName: textExtractedData.subscriber_name || '',
+        mrn: textExtractedData.mrn || '',
+        sourceId,
+        campus: 'Mount Sinai West',
+        status: 'Pending Auth',
+        notes: `Created from pasted text on ${new Date().toLocaleDateString()}\n\nOriginal text length: ${textContent.length} characters\nExtraction confidence: ${textExtractedData.confidence || 0.1}`
+      };
+
+      // Create the patient
+      const newPatient = await storage.createPatient(patientData);
+      
+      console.log("Patient created from pasted text:", {
+        textLength: textContent.length,
+        patientId: newPatient.id,
+        patientName: `${newPatient.firstName} ${newPatient.lastName}`,
+        extractedFields: {
+          firstName: finalFirstName,
+          lastName: finalLastName,
+          dateOfBirth,
+          phone: patientData.phone,
+          cellPhone: patientData.cellPhone,
+          email: patientData.email,
+          address: patientData.address,
+          orderingMD: patientData.orderingMD,
+          diagnosis: patientData.diagnosis,
+          mrn: patientData.mrn,
+          sourceId: patientData.sourceId,
+          campus: patientData.campus,
+          status: patientData.status,
+          notes: patientData.notes
+        }
+      });
+
+      res.json({
+        success: true,
+        patient: newPatient,
+        message: `Patient ${newPatient.firstName} ${newPatient.lastName} created successfully from text content.`,
+        extractedData: textExtractedData
+      });
+
+    } catch (error) {
+      console.error('Error creating patient from text:', error);
+      res.status(500).json({ 
+        error: 'Failed to create patient from text',
+        details: error.message 
+      });
+    }
+  });
+
   // Patient creation from uploaded forms (LEQVIO PDFs, screenshots, etc.)
   app.post("/api/patients/create-from-upload", upload.single('photo'), async (req, res) => {
     const userId = (req.session as any).userId;
