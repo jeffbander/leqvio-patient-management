@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema, userLoginSchema, userRegisterSchema, insertPatientSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
-import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio, extractPatientInfoFromScreenshot, extractPatientInfoFromPDF } from "./openai-service";
+import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio, extractPatientInfoFromScreenshot } from "./openai-service";
 import { generateLEQVIOPDF } from "./pdf-generator";
 import { googleSheetsService } from "./google-sheets-service";
 import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
@@ -1631,22 +1631,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let uploadExtractedData: any = null;
       
       if (fileExtension === 'pdf') {
-        // For PDF files (like LEQVIO forms), extract text using pdf-parse library
-        const { default: pdfParse } = await import('pdf-parse');
-        const pdfData = await pdfParse(req.file.buffer);
-        const pdfText = pdfData.text;
+        // For PDF files (like LEQVIO forms), convert to base64 and use AI Vision
+        console.log("Processing PDF file for patient creation using AI Vision");
+        const base64Pdf = req.file.buffer.toString('base64');
         
-        console.log("Processing PDF file for patient creation");
-        console.log("PDF text length:", pdfText.length);
-        console.log("PDF pages:", pdfData.numpages);
-        
-        // If we can't extract meaningful text, use AI to process the PDF as an image
-        if (!pdfText || pdfText.trim().length < 50) {
-          console.log("PDF text extraction insufficient, falling back to AI analysis");
-          uploadExtractedData = await extractPatientInfoFromPDF(pdfText || 'Unable to extract text from PDF');
-        } else {
-          // Use AI to intelligently parse the extracted PDF text
-          uploadExtractedData = await extractPatientInfoFromPDF(pdfText);
+        try {
+          // Use AI Vision to extract patient data from PDF
+          uploadExtractedData = await extractPatientDataFromImage(base64Pdf, 'leqvio_form');
+          console.log("AI PDF extraction successful:", {
+            name: `${uploadExtractedData.patient_first_name} ${uploadExtractedData.patient_last_name}`,
+            confidence: uploadExtractedData.confidence
+          });
+        } catch (error) {
+          console.log("AI Vision extraction failed, using default values");
+          uploadExtractedData = {
+            patient_first_name: "",
+            patient_last_name: "",
+            date_of_birth: "",
+            patient_address: "",
+            patient_city: "",
+            patient_state: "",
+            patient_zip: "",
+            patient_home_phone: "",
+            patient_cell_phone: "",
+            patient_email: "",
+            provider_name: "",
+            account_number: "",
+            diagnosis: "ASCVD",
+            signature_date: "",
+            confidence: 0.1
+          };
         }
 
         
