@@ -154,6 +154,7 @@ export default function UploadStartForm() {
                   maxSizeMB={50}
                   placeholder="Drag and drop your document here, or click to select"
                   className="min-h-[200px]"
+                  enablePaste={true}
                 />
               )}
             </CardContent>

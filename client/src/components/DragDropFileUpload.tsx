@@ -1,5 +1,5 @@
-import React, { useState, useRef, DragEvent, ChangeEvent } from 'react';
-import { Upload, File, X } from 'lucide-react';
+import React, { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
+import { Upload, File, X, Clipboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +13,7 @@ interface DragDropFileUploadProps {
   children?: React.ReactNode;
   multiple?: boolean;
   onMultipleFiles?: (files: File[]) => void;
+  enablePaste?: boolean;
 }
 
 export function DragDropFileUpload({
@@ -24,11 +25,14 @@ export function DragDropFileUpload({
   className,
   children,
   multiple = false,
-  onMultipleFiles
+  onMultipleFiles,
+  enablePaste = true
 }: DragDropFileUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [showPasteHint, setShowPasteHint] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const validateFile = (file: File): string | null => {
     if (maxSizeMB && file.size > maxSizeMB * 1024 * 1024) {
@@ -58,6 +62,62 @@ export function DragDropFileUpload({
     
     return null;
   };
+
+  // Handle paste events
+  useEffect(() => {
+    if (!enablePaste) return;
+
+    const handlePaste = async (e: ClipboardEvent) => {
+      // Only handle paste if the container is focused or visible
+      if (!containerRef.current || disabled) return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            const error = validateFile(file);
+            if (error) {
+              alert(error);
+              return;
+            }
+            // Create a new file with a proper name
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '_');
+            const extension = item.type.split('/')[1] || 'png';
+            // Use the original file directly since it's already a File object
+            const renamedFile = Object.defineProperty(file, 'name', {
+              writable: true,
+              value: `pasted_image_${timestamp}.${extension}`
+            });
+            onFileSelect(renamedFile);
+            setShowPasteHint(false);
+          }
+          return;
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [enablePaste, disabled, onFileSelect, accept, maxSizeMB]);
+
+  // Show paste hint when Ctrl+V is detected
+  useEffect(() => {
+    if (!enablePaste) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !disabled) {
+        setShowPasteHint(true);
+        setTimeout(() => setShowPasteHint(false), 2000);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [enablePaste, disabled]);
 
   const handleFiles = (files: FileList | File[]) => {
     const fileArray = Array.from(files);
@@ -139,14 +199,24 @@ export function DragDropFileUpload({
   };
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("w-full", className)} ref={containerRef}>
+      {/* Paste Hint */}
+      {enablePaste && showPasteHint && (
+        <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg text-center">
+          <div className="flex items-center justify-center gap-2 text-blue-700">
+            <Clipboard className="h-4 w-4" />
+            <span className="text-sm font-medium">Paste your image here (Ctrl+V)</span>
+          </div>
+        </div>
+      )}
+      
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={handleClick}
         className={cn(
-          "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-200",
+          "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-200 relative",
           isDragOver && !disabled 
             ? "border-blue-500 bg-blue-50" 
             : "border-gray-300 hover:border-gray-400",
@@ -176,6 +246,12 @@ export function DragDropFileUpload({
             )}>
               {isDragOver ? "Drop files here" : placeholder}
             </p>
+            {enablePaste && !isDragOver && (
+              <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                <Clipboard className="h-3 w-3" />
+                <span>or press Ctrl+V to paste from clipboard</span>
+              </div>
+            )}
             {!multiple && selectedFiles.length === 0 && (
               <p className="text-xs text-gray-500">
                 Maximum file size: {maxSizeMB}MB
