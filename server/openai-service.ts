@@ -919,69 +919,25 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
       console.log("PDF to image conversion failed:", (conversionError as Error).message);
     }
     
-    // Method 2: Try PDF.js text extraction (more reliable than pdf-parse)
+    // Method 2: Direct pdf-parse text extraction (simplified approach)
     try {
-      console.log("Trying PDF.js text extraction");
-      const pdfjsLib = await import('pdfjs-dist');
+      console.log("Trying direct pdf-parse text extraction");
+      const pdfParse = require('pdf-parse');
+      console.log("PDF buffer size:", pdfBuffer.length, "bytes");
       
-      // Configure PDF.js worker
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+      const pdfData = await pdfParse(pdfBuffer);
+      console.log("PDF parse successful, extracted text length:", pdfData.text?.length || 0);
       
-      const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
-      const pdf = await loadingTask.promise;
-      
-      console.log(`PDF loaded successfully, ${pdf.numPages} pages`);
-      
-      let extractedText = '';
-      
-      // Extract text from all pages
-      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-        try {
-          const page = await pdf.getPage(pageNum);
-          const textContent = await page.getTextContent();
-          const pageText = textContent.items.map((item: any) => item.str).join(' ');
-          extractedText += pageText + ' ';
-          console.log(`Page ${pageNum} extracted ${pageText.length} characters`);
-        } catch (pageError) {
-          console.log(`Error extracting page ${pageNum}:`, (pageError as Error).message);
-        }
+      if (pdfData.text && pdfData.text.length > 50) {
+        console.log("First 200 characters of extracted text:", pdfData.text.substring(0, 200));
+        return await extractPatientInfoFromPDFText(pdfData.text);
+      } else if (pdfData.text && pdfData.text.length > 10) {
+        console.log("PDF text is short but trying AI extraction anyway");
+        return await extractPatientInfoFromPDFText(pdfData.text);
       }
       
-      extractedText = extractedText.trim();
-      console.log("PDF.js extraction successful, total text length:", extractedText.length);
-      
-      if (extractedText.length > 50) {
-        console.log("First 200 characters of PDF.js extracted text:", extractedText.substring(0, 200));
-        return await extractPatientInfoFromPDFText(extractedText);
-      } else if (extractedText.length > 10) {
-        console.log("PDF.js text is short but trying AI extraction anyway");
-        return await extractPatientInfoFromPDFText(extractedText);
-      }
-      
-    } catch (pdfjsError) {
-      console.log("PDF.js extraction failed:", (pdfjsError as Error).message);
-      
-      // Fallback to pdf-parse
-      try {
-        const pdfParse = await import('pdf-parse');
-        console.log("Falling back to pdf-parse text extraction");
-        console.log("PDF buffer size:", pdfBuffer.length, "bytes");
-        
-        const pdfData = await pdfParse.default(pdfBuffer, {
-          max: 0, // Parse all pages
-          version: '1.10.100'
-        });
-        
-        console.log("PDF parse fallback successful, extracted text length:", pdfData.text?.length || 0);
-        
-        if (pdfData.text && pdfData.text.length > 10) {
-          console.log("First 200 characters of fallback extracted text:", pdfData.text.substring(0, 200));
-          return await extractPatientInfoFromPDFText(pdfData.text);
-        }
-        
-      } catch (parseError) {
-        console.log("pdf-parse fallback also failed:", (parseError as Error).message);
-      }
+    } catch (parseError) {
+      console.log("pdf-parse extraction failed:", (parseError as Error).message);
     }
     
     // Method 3: Basic binary text extraction with enhanced patterns
@@ -1138,47 +1094,16 @@ ONLY extract information if you find clear, recognizable patient data. If the te
       confidence: extractedData.confidence || 0.1
     });
     
-    // If OpenAI returned completely empty names, try basic text pattern matching as fallback
+    // If OpenAI returned completely empty names, return placeholder data instead of pattern matching
     if ((!extractedData.patient_first_name || extractedData.patient_first_name.trim() === '') && 
         (!extractedData.patient_last_name || extractedData.patient_last_name.trim() === '')) {
-      console.log("OpenAI returned empty names, trying pattern matching fallback");
+      console.log("OpenAI returned empty names, returning placeholder data for manual review");
       
-      // Try to find names in the text using common patterns (improved)
-      const namePatterns = [
-        /Patient\s*Name:?\s*([A-Za-z]{2,})\s*,?\s*([A-Za-z]{2,})/i,
-        /Name:?\s*([A-Za-z]{2,})\s*,?\s*([A-Za-z]{2,})/i,
-        /First\s*Name:?\s*([A-Za-z]{2,}).*Last\s*Name:?\s*([A-Za-z]{2,})/i,
-        /Last\s*Name:?\s*([A-Za-z]{2,}).*First\s*Name:?\s*([A-Za-z]{2,})/i,
-        /([A-Z][a-z]{2,})\s*,\s*([A-Z][a-z]{2,})/,  // Last, First format
-        /([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\s+[A-Z]/  // First Last followed by middle initial
-      ];
-      
-      for (const pattern of namePatterns) {
-        const match = pdfText.match(pattern);
-        if (match && match[1] && match[2]) {
-          // Filter out common PDF artifacts, font names, and non-name words
-          const badWords = ['subtype', 'type', 'form', 'page', 'document', 'pdf', 'report', 'lab', 'www', 'com', 
-                           'helvetica', 'arial', 'times', 'font', 'bold', 'italic', 'roman', 'sans', 'serif',
-                           'calibri', 'verdana', 'georgia', 'courier', 'trebuchet', 'tahoma', 'impact',
-                           'reportlab', 'library', 'version', 'created', 'producer', 'creator', 'title',
-                           'subject', 'keywords', 'anonymous', 'unspecified', 'default', 'regular'];
-          const firstName = match[1].trim().toLowerCase();
-          const lastName = match[2].trim().toLowerCase();
-          
-          if (!badWords.includes(firstName) && !badWords.includes(lastName) && 
-              firstName.length >= 2 && lastName.length >= 2 && 
-              /^[a-z]+$/.test(firstName) && /^[a-z]+$/.test(lastName)) {
-            extractedData.patient_first_name = match[1].trim();
-            extractedData.patient_last_name = match[2].trim();
-            extractedData.confidence = Math.max(extractedData.confidence || 0.1, 0.5);
-            console.log("Found names via pattern matching:", {
-              firstName: extractedData.patient_first_name,
-              lastName: extractedData.patient_last_name
-            });
-            break;
-          }
-        }
-      }
+      // Return placeholder data that will be caught by the artifact filter
+      const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
+      extractedData.patient_first_name = "NEEDS_REVIEW";
+      extractedData.patient_last_name = `PDF_${timestamp}`;
+      extractedData.confidence = 0.1;
     }
     
     return extractedData;

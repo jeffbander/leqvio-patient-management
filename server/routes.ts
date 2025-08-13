@@ -1692,20 +1692,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isFirstNameArtifact = pdfArtifacts.includes(firstName.toLowerCase());
       const isLastNameArtifact = pdfArtifacts.includes(lastName.toLowerCase());
       
-      if (!firstName && !lastName) {
-        return res.status(400).json({ 
-          error: "Insufficient patient data", 
-          details: "Could not extract patient name from the uploaded file." 
-        });
-      }
-      
-      // If we detect PDF artifacts as names, replace with placeholder
+      // If we detect PDF artifacts as names or have empty names, use placeholder
       let finalFirstName = firstName;
       let finalLastName = lastName;
       
-      if (isFirstNameArtifact || isLastNameArtifact) {
-        console.log("Detected PDF artifacts as names, using placeholders:", { firstName, lastName });
-        const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      if (!firstName || !lastName || isFirstNameArtifact || isLastNameArtifact || 
+          firstName.trim() === '' || lastName.trim() === '') {
+        console.log("Using placeholder names due to empty or artifact data:", { firstName, lastName });
+        const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
         finalFirstName = "NEEDS_REVIEW";
         finalLastName = `PDF_${timestamp}`;
       }
