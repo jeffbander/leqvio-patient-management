@@ -36,7 +36,7 @@ const navigation = [
     icon: UserPlus,
   },
   {
-    name: 'Upload Form',
+    name: 'Upload Start Form',
     href: '/extraction',
     icon: FileText,
   },
