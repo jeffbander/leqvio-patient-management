@@ -2093,6 +2093,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (extractionType === 'insurance_card') {
         // Use insurance card extraction
         extractedData = await extractPatientInfoFromScreenshot(base64Image, 'insurance_card');
+      } else if (extractionType === 'rejection_letter') {
+        // Use rejection letter text extraction
+        extractedData = await extractPatientInfoFromScreenshot(base64Image, 'rejection_letter');
       } else {
         // Use existing medical system extraction
         extractedData = await extractPatientInfoFromScreenshot(base64Image, 'medical_system');
@@ -2106,6 +2109,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processingTime_ms: processingTime,
         extractionType: extractionType
       };
+
+      // For rejection letter extraction, also return the extracted text directly
+      if (extractionType === 'rejection_letter') {
+        responseData.extractedText = extractedData.extractedText || extractedData.rawData || '';
+      }
       
       console.log("Patient info extraction completed:", {
         fileName: req.file.originalname,
@@ -3712,6 +3720,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Patient not found' });
       }
 
+      // Extract rejection letter text from request body
+      const { rejectionLetterText } = req.body || {};
+
       // Get all documents for this patient (same as leqvio_app chain)
       const documents = await storage.getPatientDocuments(patientId);
       
@@ -3840,7 +3851,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           Patient_Secondary_Plan: patient.secondaryPlan || '',
           Patient_Secondary_Insurance_Number: patient.secondaryInsuranceNumber || '',
           Patient_Secondary_Group_ID: patient.secondaryGroupId || '',
-          Patient_Clinical_Info: clinicalText
+          Patient_Clinical_Info: clinicalText,
+          Rejection_Letter_Text: rejectionLetterText || 'No rejection letter provided'
         }
       };
 

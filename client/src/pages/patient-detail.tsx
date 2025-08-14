@@ -268,8 +268,14 @@ export default function PatientDetail() {
   const [expandedFields, setExpandedFields] = useState<{[key: string]: boolean}>({
     furtherAnalysis: false,
     letterOfMedicalNecessity: false,
-    approvalLikelihood: false
+    approvalLikelihood: false,
+    denialAppealLetter: false
   })
+  
+  // Rejection letter states
+  const [rejectionLetterText, setRejectionLetterText] = useState('')
+  const [rejectionLetterExtracted, setRejectionLetterExtracted] = useState('')
+  const [isUploadingRejection, setIsUploadingRejection] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Helper function to extract user notes from organized notes
@@ -572,7 +578,10 @@ export default function PatientDetail() {
     mutationFn: async () => {
       const response = await fetch(`/api/patients/${patientId}/denial-ai`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rejectionLetterText: rejectionLetterExtracted || rejectionLetterText || ''
+        })
       })
       if (!response.ok) throw new Error('Failed to run Denial AI analysis')
       return response.json()
@@ -890,6 +899,43 @@ export default function PatientDetail() {
   const handleDeleteAppointment = (appointmentId: number) => {
     if (confirm('Are you sure you want to delete this appointment?')) {
       deleteAppointmentMutation.mutate(appointmentId)
+    }
+  }
+
+  // Handle rejection letter image upload
+  const handleRejectionImageUpload = async (file: File) => {
+    setIsUploadingRejection(true)
+    try {
+      const formData = new FormData()
+      formData.append('photo', file)
+      formData.append('extractionType', 'rejection_letter')
+
+      const response = await fetch('/api/extract-patient-info', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to process rejection letter')
+      }
+
+      const result = await response.json()
+      if (result.extractedText) {
+        setRejectionLetterExtracted(result.extractedText)
+        toast({
+          title: "Rejection Letter Processed",
+          description: "The rejection letter text has been extracted successfully.",
+        })
+      }
+    } catch (error) {
+      console.error('Error processing rejection letter:', error)
+      toast({
+        title: "Upload Failed",
+        description: "Failed to process the rejection letter. Please try again or paste the text manually.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsUploadingRejection(false)
     }
   }
 
@@ -1990,6 +2036,58 @@ export default function PatientDetail() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
+                    {/* Rejection Letter Upload Section */}
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <h3 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
+                        <Upload className="h-4 w-4" />
+                        Upload Rejection Letter (Optional)
+                      </h3>
+                      <p className="text-sm text-red-700 mb-4">
+                        Upload the insurance rejection letter to enhance the Denial AI analysis. You can upload an image of the letter or paste the text directly.
+                      </p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Image Upload */}
+                        <div>
+                          <DragDropFileUpload
+                            onFileSelect={handleRejectionImageUpload}
+                            accept="image/*"
+                            maxSizeMB={10}
+                            uploadText="Upload Rejection Letter Image"
+                            dragText="Drop rejection letter image here"
+                            className="border-red-200 hover:border-red-300"
+                            disabled={isUploadingRejection}
+                          />
+                          {isUploadingRejection && (
+                            <div className="mt-2 text-xs text-red-600 flex items-center gap-1">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Processing rejection letter...
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Text Paste */}
+                        <div>
+                          <Label className="text-sm font-medium text-red-800">Or Paste Rejection Letter Text</Label>
+                          <Textarea
+                            value={rejectionLetterText}
+                            onChange={(e) => setRejectionLetterText(e.target.value)}
+                            placeholder="Paste the rejection letter text here..."
+                            className="mt-2 min-h-[120px] border-red-200 focus:border-red-400 focus:ring-red-400"
+                          />
+                        </div>
+                      </div>
+                      
+                      {(rejectionLetterExtracted || rejectionLetterText) && (
+                        <div className="mt-4 p-3 bg-white border border-red-200 rounded">
+                          <p className="text-xs font-medium text-red-800 mb-2">Rejection Letter Content:</p>
+                          <div className="text-xs text-red-700 max-h-24 overflow-y-auto whitespace-pre-wrap">
+                            {rejectionLetterExtracted || rejectionLetterText}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                       <p className="text-sm text-red-800 mb-3">
                         This patient's authorization has been denied. Use Denial AI to generate a formal appeal letter.

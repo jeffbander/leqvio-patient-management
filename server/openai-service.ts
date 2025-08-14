@@ -241,6 +241,41 @@ EXTRACTION RULES FOR INSURANCE CARDS:
         rawData: "",
         confidence: 0
       };
+    } else if (extractionType === 'rejection_letter') {
+      systemContent = `You are a medical rejection letter text extraction expert. Extract ALL text content from rejection letters, denial letters, or prior authorization rejection documents.
+
+Return your response in JSON format with these exact fields:
+{
+  "extractedText": "Complete text content of the rejection letter",
+  "patientName": "Patient name if mentioned",
+  "rejectionReason": "Primary reason for rejection/denial",
+  "insuranceCompany": "Insurance company name if mentioned",
+  "referenceNumber": "Any reference/case numbers mentioned",
+  "appealDeadline": "Appeal deadline date if mentioned",
+  "confidence": 0.0-1.0
+}
+
+EXTRACTION RULES FOR REJECTION LETTERS:
+- Extract ALL visible text from the rejection letter
+- Capture complete rejection/denial reasoning
+- Find patient name if mentioned in the letter
+- Identify insurance company or payer name
+- Extract any reference numbers, case numbers, or tracking numbers
+- Look for appeal deadline dates or timeframes
+- Use empty string "" for missing fields
+- Set confidence based on text clarity and completeness of extraction`;
+
+      userText = "Extract all text content from this rejection letter image. Capture the complete rejection reasoning, patient information, and any appeal instructions.";
+      
+      responseFields = {
+        extractedText: "",
+        patientName: "",
+        rejectionReason: "",
+        insuranceCompany: "",
+        referenceNumber: "",
+        appealDeadline: "",
+        confidence: 0
+      };
     } else {
       // Original medical system extraction
       systemContent = `You are a medical system data extraction expert. Extract patient information from screenshots of medical systems, EHR/EMR interfaces, or patient registration screens.
