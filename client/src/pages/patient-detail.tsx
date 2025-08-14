@@ -102,17 +102,17 @@ const OrganizedNotesDisplay = ({ notes }: { notes?: string | null }) => {
 
   // Parse notes into sections
   const sections = {
-    notes: [] as string[],
+    userNotes: [] as string[],
     voicemails: [] as string[],
     insuranceUpdates: [] as string[]
   }
 
   const lines = notes.split('\n')
-  let currentSection = 'notes' // Default section for legacy notes
+  let currentSection = 'userNotes' // Default section for legacy notes
 
   for (const line of lines) {
-    if (line === '=== NOTES ===') {
-      currentSection = 'notes'
+    if (line === '=== USER NOTES ===') {
+      currentSection = 'userNotes'
       continue
     } else if (line === '=== VOICEMAILS ===') {
       currentSection = 'voicemails'
@@ -123,8 +123,8 @@ const OrganizedNotesDisplay = ({ notes }: { notes?: string | null }) => {
     }
 
     if (line.trim()) {
-      if (currentSection === 'notes') {
-        sections.notes.push(line)
+      if (currentSection === 'userNotes') {
+        sections.userNotes.push(line)
       } else if (currentSection === 'voicemails') {
         sections.voicemails.push(line)
       } else if (currentSection === 'insuranceUpdates') {
@@ -134,7 +134,7 @@ const OrganizedNotesDisplay = ({ notes }: { notes?: string | null }) => {
   }
 
   // If no sections found, treat as legacy unorganized notes
-  const hasOrganizedSections = notes.includes('=== NOTES ===') || notes.includes('=== VOICEMAILS ===') || notes.includes('=== INSURANCE & AUTH UPDATES ===')
+  const hasOrganizedSections = notes.includes('=== USER NOTES ===') || notes.includes('=== VOICEMAILS ===') || notes.includes('=== INSURANCE & AUTH UPDATES ===')
   
   if (!hasOrganizedSections) {
     return <div className="whitespace-pre-line">{notes}</div>
@@ -142,14 +142,14 @@ const OrganizedNotesDisplay = ({ notes }: { notes?: string | null }) => {
 
   return (
     <div className="space-y-4">
-      {sections.notes.length > 0 && (
+      {sections.userNotes.length > 0 && (
         <div>
           <h4 className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2">
             <FileText className="h-4 w-4" />
-            Notes
+            User Notes
           </h4>
           <div className="pl-6 space-y-1">
-            {sections.notes.map((note, idx) => (
+            {sections.userNotes.map((note, idx) => (
               <div key={idx} className="text-sm text-gray-700 whitespace-pre-line">{note}</div>
             ))}
           </div>
@@ -256,6 +256,7 @@ export default function PatientDetail() {
   const [clinicalNotes, setClinicalNotes] = useState('')
   const [showTextExtractor, setShowTextExtractor] = useState(false)
   const [showClinicalNote, setShowClinicalNote] = useState(false)
+  const [userNotes, setUserNotes] = useState('')
   const [processResult, setProcessResult] = useState<any>(null)
   const [showAigentsData, setShowAigentsData] = useState(false)
   const [viewedDocument, setViewedDocument] = useState<PatientDocument | null>(null)
@@ -270,6 +271,80 @@ export default function PatientDetail() {
     approvalLikelihood: false
   })
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+
+  // Helper function to extract user notes from organized notes
+  const extractUserNotes = (notes?: string | null): string => {
+    if (!notes) return ''
+    
+    if (!notes.includes('=== USER NOTES ===')) {
+      // If no organized sections, treat as legacy user notes
+      const hasOtherSections = notes.includes('=== VOICEMAILS ===') || notes.includes('=== INSURANCE & AUTH UPDATES ===')
+      if (!hasOtherSections) {
+        return notes
+      }
+      return ''
+    }
+    
+    const lines = notes.split('\n')
+    const userNotesLines: string[] = []
+    let inUserNotesSection = false
+    
+    for (const line of lines) {
+      if (line === '=== USER NOTES ===') {
+        inUserNotesSection = true
+        continue
+      } else if (line.startsWith('=== ') && line.endsWith(' ===')) {
+        inUserNotesSection = false
+        continue
+      }
+      
+      if (inUserNotesSection) {
+        userNotesLines.push(line)
+      }
+    }
+    
+    return userNotesLines.join('\n').trim()
+  }
+
+  // Helper function to update user notes in organized notes structure
+  const updateUserNotesInOrganized = (currentNotes?: string | null, newUserNotes?: string): string => {
+    if (!currentNotes) {
+      return newUserNotes ? `=== USER NOTES ===\n${newUserNotes}` : ''
+    }
+    
+    const lines = currentNotes.split('\n')
+    const resultLines: string[] = []
+    let inUserNotesSection = false
+    let hasUserNotesSection = false
+    
+    // Process existing notes, replacing user notes section
+    for (const line of lines) {
+      if (line === '=== USER NOTES ===') {
+        hasUserNotesSection = true
+        inUserNotesSection = true
+        if (newUserNotes?.trim()) {
+          resultLines.push('=== USER NOTES ===')
+          resultLines.push(newUserNotes)
+        }
+        continue
+      } else if (line.startsWith('=== ') && line.endsWith(' ===')) {
+        inUserNotesSection = false
+        resultLines.push(line)
+        continue
+      }
+      
+      if (!inUserNotesSection) {
+        resultLines.push(line)
+      }
+    }
+    
+    // If no user notes section existed and we have new user notes, add it at the beginning
+    if (!hasUserNotesSection && newUserNotes?.trim()) {
+      return `=== USER NOTES ===\n${newUserNotes}\n\n${currentNotes}`
+    }
+    
+    return resultLines.join('\n').replace(/\n\n+/g, '\n\n').trim()
+  }
 
   // Helper function to parse AIGENTS response
   const parseAigentsResponse = (response: string) => {
@@ -588,6 +663,8 @@ export default function PatientDetail() {
       endDate: patient.endDate || '',
       notes: patient.notes || ''
     })
+    // Initialize user notes separately
+    setUserNotes(extractUserNotes(patient.notes))
     setIsEditing(true)
   }
 
@@ -611,6 +688,9 @@ export default function PatientDetail() {
   }
 
   const handleSave = () => {
+    // Update the notes with the new user notes while preserving other sections
+    const updatedNotes = updateUserNotesInOrganized(patient?.notes, userNotes)
+    
     // Only send fields that can be updated
     const updateData: any = {
       firstName: editedData.firstName,
@@ -623,7 +703,7 @@ export default function PatientDetail() {
       address: editedData.address,
       mrn: editedData.mrn,
       campus: editedData.campus,
-      notes: editedData.notes,
+      notes: updatedNotes,
       authNumber: editedData.authNumber,
       refNumber: editedData.refNumber,
       startDate: editedData.startDate,
@@ -651,6 +731,7 @@ export default function PatientDetail() {
   const handleCancel = () => {
     setIsEditing(false)
     setEditedData({})
+    setUserNotes('')
   }
 
   const handleSaveInsurance = () => {
@@ -1512,12 +1593,25 @@ export default function PatientDetail() {
           </CardHeader>
           <CardContent>
             {isEditing ? (
-              <Textarea
-                value={editedData.notes || ''}
-                onChange={(e) => setEditedData({...editedData, notes: e.target.value})}
-                className="w-full min-h-32"
-                placeholder="Patient notes..."
-              />
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">User Notes</Label>
+                  <Textarea
+                    value={userNotes}
+                    onChange={(e) => setUserNotes(e.target.value)}
+                    className="w-full min-h-32"
+                    placeholder="Add your notes about this patient..."
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Only the user notes section will be updated. Voicemails and insurance updates are managed automatically.
+                  </p>
+                </div>
+                
+                {/* Show read-only view of other sections while editing */}
+                <div className="text-sm text-gray-700 p-4 bg-gray-50 rounded border">
+                  <OrganizedNotesDisplay notes={patient.notes} />
+                </div>
+              </div>
             ) : (
               <div className="text-sm text-gray-700 min-h-8 p-4 bg-gray-50 rounded border">
                 <OrganizedNotesDisplay notes={patient.notes} />

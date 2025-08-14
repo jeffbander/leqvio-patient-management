@@ -2640,9 +2640,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Helper function to organize notes into sections
-      const organizeNotes = (existingNotes: string, newEntry: string, section: 'NOTES' | 'VOICEMAILS' | 'INSURANCE_UPDATES'): string => {
+      const organizeNotes = (existingNotes: string, newEntry: string, section: 'USER_NOTES' | 'VOICEMAILS' | 'INSURANCE_UPDATES'): string => {
         const sections = {
-          NOTES: '=== NOTES ===',
+          USER_NOTES: '=== USER NOTES ===',
           VOICEMAILS: '=== VOICEMAILS ===',
           INSURANCE_UPDATES: '=== INSURANCE & AUTH UPDATES ==='
         };
@@ -2652,16 +2652,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Parse existing notes to find sections
-        let notesSection = '';
+        let userNotesSection = '';
         let voicemailsSection = '';
         let insuranceSection = '';
         
         const lines = existingNotes.split('\n');
-        let currentSection = 'NOTES'; // Default section for legacy notes
+        let currentSection = 'USER_NOTES'; // Default section for legacy notes
         
         for (const line of lines) {
-          if (line === sections.NOTES) {
-            currentSection = 'NOTES';
+          if (line === sections.USER_NOTES || line === '=== NOTES ===') { // Handle legacy NOTES section
+            currentSection = 'USER_NOTES';
             continue;
           } else if (line === sections.VOICEMAILS) {
             currentSection = 'VOICEMAILS';
@@ -2672,8 +2672,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           if (line.trim()) {
-            if (currentSection === 'NOTES') {
-              notesSection += (notesSection ? '\n' : '') + line;
+            if (currentSection === 'USER_NOTES') {
+              userNotesSection += (userNotesSection ? '\n' : '') + line;
             } else if (currentSection === 'VOICEMAILS') {
               voicemailsSection += (voicemailsSection ? '\n' : '') + line;
             } else if (currentSection === 'INSURANCE_UPDATES') {
@@ -2683,8 +2683,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Add new entry to appropriate section
-        if (section === 'NOTES') {
-          notesSection += (notesSection ? '\n' : '') + newEntry;
+        if (section === 'USER_NOTES') {
+          userNotesSection += (userNotesSection ? '\n' : '') + newEntry;
         } else if (section === 'VOICEMAILS') {
           voicemailsSection += (voicemailsSection ? '\n' : '') + newEntry;
         } else if (section === 'INSURANCE_UPDATES') {
@@ -2693,8 +2693,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Rebuild notes with sections
         let result = '';
-        if (notesSection) {
-          result += `${sections.NOTES}\n${notesSection}`;
+        if (userNotesSection) {
+          result += `${sections.USER_NOTES}\n${userNotesSection}`;
         }
         if (voicemailsSection) {
           result += (result ? '\n\n' : '') + `${sections.VOICEMAILS}\n${voicemailsSection}`;
