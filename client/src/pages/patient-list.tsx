@@ -193,18 +193,18 @@ const PatientRow = ({ patient, onAuthStatusChange, onScheduleStatusChange, onDos
     // Check if there are organized sections
     const voicemailsIndex = notesText.indexOf('=== VOICEMAILS ===')
     const insuranceIndex = notesText.indexOf('=== INSURANCE & AUTH UPDATES ===')
-    const notesIndex = notesText.indexOf('=== NOTES ===')
+    const userNotesIndex = notesText.indexOf('=== USER NOTES ===')
     
-    if (notesIndex !== -1) {
-      // If there's a notes section, extract content after the header
-      let startIndex = notesIndex + '=== NOTES ==='.length
+    if (userNotesIndex !== -1) {
+      // If there's a user notes section, extract content after the header
+      let startIndex = userNotesIndex + '=== USER NOTES ==='.length
       let endIndex = notesText.length
       
-      // Find where notes section ends (before voicemails or insurance sections)
-      if (voicemailsIndex > notesIndex && voicemailsIndex < endIndex) {
+      // Find where user notes section ends (before voicemails or insurance sections)
+      if (voicemailsIndex > userNotesIndex && voicemailsIndex < endIndex) {
         endIndex = voicemailsIndex
       }
-      if (insuranceIndex > notesIndex && insuranceIndex < endIndex) {
+      if (insuranceIndex > userNotesIndex && insuranceIndex < endIndex) {
         endIndex = insuranceIndex
       }
       
