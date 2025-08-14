@@ -225,8 +225,20 @@ const checkAuthorizationStatus = async (patientId: number, organizationId: numbe
     // Get all appointments for the patient
     const appointments = await storage.getPatientAppointments(patientId);
     
+    // Only automatically change auth status if it's currently in an "automatic" state
+    // Don't override manually set statuses like "Denied", "Approved", etc.
+    const automaticStatuses = ["APT SCHEDULED W/O AUTH", "Needs Renewal", "Pending Review"];
+    const currentStatus = patient.authStatus || "Pending Review";
+    
     // Check if patient has auth dates
     if (!patient.startDate || !patient.endDate) {
+      // No auth dates - check if there are appointments scheduled
+      if (appointments.length > 0 && automaticStatuses.includes(currentStatus)) {
+        await storage.updatePatient(patientId, {
+          authStatus: "APT SCHEDULED W/O AUTH"
+        }, organizationId);
+        console.log(`Patient ${patientId}: Authorization status updated to "APT SCHEDULED W/O AUTH" - appointments scheduled but no auth info`);
+      }
       return; // No auth dates to check against
     }
 
@@ -236,11 +248,6 @@ const checkAuthorizationStatus = async (patientId: number, organizationId: numbe
     const currentDate = new Date();
     const oneWeekFromNow = new Date();
     oneWeekFromNow.setDate(currentDate.getDate() + 7);
-
-    // Only automatically change auth status if it's currently in an "automatic" state
-    // Don't override manually set statuses like "Denied", "Approved", etc.
-    const automaticStatuses = ["APT SCHEDULED W/O AUTH", "Needs Renewal", "Pending Review"];
-    const currentStatus = patient.authStatus || "Pending Review";
     
     // Check if authorization expires within a week (only update automatic statuses)
     if (authEndDate <= oneWeekFromNow && authEndDate > currentDate) {
