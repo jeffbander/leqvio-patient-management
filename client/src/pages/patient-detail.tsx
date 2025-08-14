@@ -2026,8 +2026,8 @@ export default function PatientDetail() {
 
             {/* Denial AI Section - only show when auth status is Denied */}
             {(patient as any)?.authStatus === 'Denied' && (
-              <Card className="border-red-200">
-                <CardHeader className="bg-red-50 border-b border-red-200">
+              <Card className="border border-red-300 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-red-50 to-red-50/30 border-b border-red-200">
                   <CardTitle className="flex items-center gap-3 text-red-800">
                     <div className="p-2 bg-red-100 rounded-lg">
                       <AlertTriangle className="h-5 w-5 text-red-600" />
