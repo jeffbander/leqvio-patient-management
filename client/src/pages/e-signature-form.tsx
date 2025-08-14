@@ -413,7 +413,7 @@ export default function ESignatureForm() {
                     <div className="space-y-4">
                       <div className="text-center">
                         <Clipboard className="h-8 w-8 mx-auto mb-2 text-indigo-600" />
-                        <h3 className="font-medium mb-2">Copy and Paste Insurance</h3>
+                        <h3 className="font-medium mb-2">Insurance Copy and Paste</h3>
                         <p className="text-sm text-gray-600">Copy & paste insurance information from Epic or other systems</p>
                       </div>
                       <Button
@@ -433,7 +433,7 @@ export default function ESignatureForm() {
                     <div className="space-y-4">
                       <div className="text-center">
                         <Camera className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                        <h3 className="font-medium mb-2">Upload Insurance Screenshot</h3>
+                        <h3 className="font-medium mb-2">Insurance Upload Screenshot</h3>
                         <p className="text-sm text-gray-600">Upload screenshots of insurance cards or Epic insurance screens</p>
                       </div>
                       <DragDropFileUpload
@@ -444,6 +444,7 @@ export default function ESignatureForm() {
                         accept="image/*"
                         maxSizeMB={10}
                         placeholder="Drag and drop image here"
+                        className="[&>div:last-child]:p-2"
                       />
                     </div>
                   </CardContent>
