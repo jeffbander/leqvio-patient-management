@@ -237,7 +237,7 @@ export function DragDropFileUpload({
         onDrop={handleDrop}
         onClick={handleClick}
         className={cn(
-          "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-200 relative",
+          "border-2 border-dashed rounded-lg p-3 text-center cursor-pointer transition-all duration-200 relative",
           isDragOver && !disabled 
             ? "border-blue-500 bg-blue-50" 
             : "border-gray-300 hover:border-gray-400",
@@ -256,9 +256,9 @@ export function DragDropFileUpload({
         />
         
         {children ? children : (
-          <div className="space-y-2">
+          <div className="space-y-1">
             <Upload className={cn(
-              "h-8 w-8 mx-auto",
+              "h-6 w-6 mx-auto",
               isDragOver ? "text-blue-500" : "text-gray-400"
             )} />
             <p className={cn(
