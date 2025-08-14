@@ -3694,6 +3694,221 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Denial AI endpoint - trigger Denial_AI chain with same patient data
+  app.post('/api/patients/:id/denial-ai', async (req, res) => {
+    try {
+      const user = await getUserFromSession(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const patientId = parseInt(req.params.id);
+      if (!user.currentOrganizationId) {
+        return res.status(400).json({ error: 'User not associated with an organization' });
+      }
+      
+      const patient = await storage.getPatient(patientId, user.currentOrganizationId);
+      if (!patient) {
+        return res.status(404).json({ error: 'Patient not found' });
+      }
+
+      // Get all documents for this patient (same as leqvio_app chain)
+      const documents = await storage.getPatientDocuments(patientId);
+      
+      // Prepare Insurance_JSON from insurance-related documents as plain text
+      const insuranceDocuments = documents.filter(doc => 
+        doc.documentType === 'epic_insurance_screenshot' || 
+        doc.documentType === 'insurance_screenshot'
+      );
+      
+      // Build insurance information as a readable text summary (same format as leqvio_app)
+      let insuranceText = `Patient Insurance Information:\n\n`;
+      
+      // Current insurance info from patient record
+      insuranceText += `Primary Insurance:\n`;
+      insuranceText += `  Insurance Company: ${patient.primaryInsurance || 'Not specified'}\n`;
+      insuranceText += `  Plan: ${patient.primaryPlan || 'Not specified'}\n`;
+      insuranceText += `  Member Number: ${patient.primaryInsuranceNumber || 'Not specified'}\n`;
+      insuranceText += `  Group ID: ${patient.primaryGroupId || 'Not specified'}\n\n`;
+      
+      if (patient.secondaryInsurance || patient.secondaryPlan || patient.secondaryInsuranceNumber) {
+        insuranceText += `Secondary Insurance:\n`;
+        insuranceText += `  Insurance Company: ${patient.secondaryInsurance || 'Not specified'}\n`;
+        insuranceText += `  Plan: ${patient.secondaryPlan || 'Not specified'}\n`;
+        insuranceText += `  Member Number: ${patient.secondaryInsuranceNumber || 'Not specified'}\n`;
+        insuranceText += `  Group ID: ${patient.secondaryGroupId || 'Not specified'}\n\n`;
+      } else {
+        insuranceText += `Secondary Insurance: None\n\n`;
+      }
+      
+      // Add extracted insurance documents
+      if (insuranceDocuments.length > 0) {
+        insuranceText += `Insurance Documents (${insuranceDocuments.length}):\n`;
+        insuranceDocuments.forEach((doc, index) => {
+          insuranceText += `${index + 1}. Document: ${doc.fileName}\n`;
+          insuranceText += `   Type: ${doc.documentType}\n`;
+          insuranceText += `   Uploaded: ${new Date(doc.createdAt).toLocaleDateString()}\n`;
+          
+          // Add extracted insurance data if available
+          if (doc.extractedData) {
+            try {
+              const extracted = JSON.parse(doc.extractedData);
+              if (extracted.primary) {
+                insuranceText += `   Primary Insurance: ${extracted.primary.payer || 'Not specified'}\n`;
+                insuranceText += `   Plan: ${extracted.primary.plan || 'Not specified'}\n`;
+                insuranceText += `   Member ID: ${extracted.primary.subscriberId || 'Not specified'}\n`;
+                insuranceText += `   Group Number: ${extracted.primary.groupNumber || 'Not specified'}\n`;
+              }
+            } catch (e) {
+              // If not JSON, treat as plain text
+              insuranceText += `   Content: ${doc.extractedData}\n`;
+            }
+          }
+          insuranceText += `\n`;
+        });
+      } else {
+        insuranceText += `No insurance documents uploaded.\n`;
+      }
+
+      // Prepare Clinical_JSON (same format as leqvio_app)
+      const clinicalDocuments = documents.filter(doc => 
+        doc.documentType === 'epic_screenshot' || 
+        doc.documentType === 'clinical_note' ||
+        doc.documentType === 'leqvio_form'
+      );
+      
+      let clinicalText = `Patient Clinical Information:\n\n`;
+      clinicalText += `Patient: ${patient.firstName} ${patient.lastName}\n`;
+      clinicalText += `Date of Birth: ${patient.dateOfBirth}\n`;
+      clinicalText += `Ordering MD: ${patient.orderingMD}\n`;
+      clinicalText += `Diagnosis: ${patient.diagnosis}\n`;
+      clinicalText += `Status: ${patient.status}\n`;
+      clinicalText += `Authorization Status: ${patient.authStatus}\n\n`;
+      
+      if (clinicalDocuments.length > 0) {
+        clinicalText += `Clinical Documents (${clinicalDocuments.length}):\n`;
+        clinicalDocuments.forEach((doc, index) => {
+          clinicalText += `${index + 1}. Document: ${doc.fileName}\n`;
+          clinicalText += `   Type: ${doc.documentType}\n`;
+          clinicalText += `   Uploaded: ${new Date(doc.createdAt).toLocaleDateString()}\n`;
+          
+          if (doc.extractedData) {
+            try {
+              const extracted = JSON.parse(doc.extractedData);
+              clinicalText += `   Content: ${JSON.stringify(extracted, null, 2)}\n`;
+            } catch (e) {
+              // If not JSON, treat as plain text
+              clinicalText += `   Content: ${doc.extractedData}\n`;
+            }
+          }
+          clinicalText += `\n`;
+        });
+      } else {
+        clinicalText += `No clinical documents uploaded.\n`;
+      }
+
+      // Generate unique ID for tracking
+      const uniqueId = `denial_ai_${patient.id}_${Date.now()}`;
+
+      // Prepare AIGENTS payload for Denial_AI chain (same structure as leqvio_app)
+      const aigentsPayload = {
+        chain_name: 'Denial_AI',
+        start_variables: {
+          Patient_First_Name: patient.firstName,
+          Patient_Last_Name: patient.lastName,
+          Patient_Date_of_Birth: patient.dateOfBirth,
+          Patient_Ordering_MD: patient.orderingMD,
+          Patient_Diagnosis: patient.diagnosis,
+          Patient_Status: patient.status,
+          Patient_Authorization_Status: patient.authStatus || 'Denied',
+          Patient_Phone: patient.phone || '',
+          Patient_Email: patient.email || '',
+          Patient_Address: patient.address || '',
+          Patient_MRN: patient.mrn || '',
+          Patient_Campus: patient.campus || 'Mount Sinai West',
+          Patient_Auth_Number: patient.authNumber || '',
+          Patient_Ref_Number: patient.refNumber || '',
+          Patient_Start_Date: patient.startDate || '',
+          Patient_End_Date: patient.endDate || '',
+          Insurance_JSON: insuranceText,
+          Clinical_JSON: clinicalText,
+          Patient_Primary_Insurance: patient.primaryInsurance || '',
+          Patient_Primary_Plan: patient.primaryPlan || '',
+          Patient_Primary_Insurance_Number: patient.primaryInsuranceNumber || '',
+          Patient_Primary_Group_ID: patient.primaryGroupId || '',
+          Patient_Secondary_Insurance: patient.secondaryInsurance || '',
+          Patient_Secondary_Plan: patient.secondaryPlan || '',
+          Patient_Secondary_Insurance_Number: patient.secondaryInsuranceNumber || '',
+          Patient_Secondary_Group_ID: patient.secondaryGroupId || '',
+          Patient_Clinical_Info: clinicalText
+        }
+      };
+
+      // Call AIGENTS API
+      console.log('Sending Denial AI request to AIGENTS:', 'https://start-chain-run-943506065004.us-central1.run.app');
+      console.log('Denial AI Payload:', JSON.stringify(aigentsPayload, null, 2));
+      
+      const aigentsResponse = await fetch('https://start-chain-run-943506065004.us-central1.run.app', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(aigentsPayload)
+      });
+
+      console.log('Denial AI AIGENTS Response Status:', aigentsResponse.status, aigentsResponse.statusText);
+      
+      if (!aigentsResponse.ok) {
+        const errorText = await aigentsResponse.text();
+        console.error('Denial AI AIGENTS Error Response:', errorText);
+        throw new Error(`AIGENTS API error: ${aigentsResponse.statusText} - ${errorText}`);
+      }
+
+      const aigentsResult = await aigentsResponse.json() as any;
+      console.log('Denial AI AIGENTS Response Body:', JSON.stringify(aigentsResult, null, 2));
+      
+      // Extract the AIGENTS Chain Run ID from the response
+      let chainRunId = '';
+      if (aigentsResult.batchResults && aigentsResult.batchResults[0] && 
+          aigentsResult.batchResults[0].data && aigentsResult.batchResults[0].data.Rows && 
+          aigentsResult.batchResults[0].data.Rows[0]) {
+        chainRunId = aigentsResult.batchResults[0].data.Rows[0].ChainRun_ID || '';
+      }
+      
+      console.log('Denial AI AIGENTS Chain Run ID:', chainRunId);
+      
+      // Log the automation for tracking with the AIGENTS chain run ID
+      await storage.createAutomationLog({
+        chainName: 'Denial_AI',
+        email: patient.email || 'noemail@providerloop.com',
+        status: 'triggered',
+        response: JSON.stringify(aigentsResult),
+        requestData: aigentsPayload,
+        uniqueId: chainRunId || uniqueId,
+        patientId: patientId,
+        timestamp: new Date()
+      });
+
+      console.log('Denial AI chain triggered for patient:', patient.id);
+      
+      res.json({ 
+        success: true, 
+        message: 'Denial AI analysis started successfully',
+        chainRunId: chainRunId,
+        uniqueId: uniqueId,
+        documentsProcessed: {
+          insurance: insuranceDocuments.length,
+          clinical: clinicalDocuments.length
+        }
+      });
+      
+    } catch (error) {
+      console.error('Failed to run Denial AI analysis:', error);
+      res.status(500).json({ 
+        error: 'Failed to run Denial AI analysis',
+        details: (error as Error).message 
+      });
+    }
+  });
+
   // Multi-organization API endpoints
   app.get('/api/user/organizations', async (req, res) => {
     const userId = (req.session as any).userId;

@@ -451,6 +451,13 @@ export default function PatientDetail() {
   const furtherAnalysis = latestWebhookData?.websearch || latestWebhookData?.webSearch || latestWebhookData?.web_search || null
   const letterOfMedicalNecessity = latestWebhookData?.lettofneed || latestWebhookData?.letterOfNeed || latestWebhookData?.letter_of_need || null
 
+  // Get Denial AI analysis from automation logs
+  const denialAnalysisLog = automationLogs.find(log => log.chainname === 'Denial_AI')
+  const denialAppealLetter = denialAnalysisLog?.webhookpayload?.formalAppealLetter || 
+                            denialAnalysisLog?.webhookpayload?.formal_appeal_letter ||
+                            denialAnalysisLog?.webhookpayload?.appealLetter ||
+                            null
+
   const updatePatientMutation = useMutation({
     mutationFn: async (updates: Partial<Patient>) => {
       return apiRequest('PATCH', `/api/patients/${patientId}`, updates)
@@ -556,6 +563,32 @@ export default function PatientDetail() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to process patient data",
+        variant: "destructive"
+      })
+    }
+  })
+
+  const runDenialAIMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/patients/${patientId}/denial-ai`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (!response.ok) throw new Error('Failed to run Denial AI analysis')
+      return response.json()
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Success",
+        description: "Denial AI analysis completed successfully. The formal appeal letter has been generated."
+      })
+      // Refresh automation logs to show the new denial AI event
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/automation-logs`] })
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to run Denial AI analysis",
         variant: "destructive"
       })
     }
@@ -1944,6 +1977,65 @@ export default function PatientDetail() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Denial AI Section - only show when auth status is Denied */}
+            {(patient as any)?.authStatus === 'Denied' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-red-700">
+                    <AlertTriangle className="h-5 w-5" />
+                    Denial AI
+                  </CardTitle>
+                  <CardDescription>Generate a formal appeal letter for denied authorization</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-800 mb-3">
+                        This patient's authorization has been denied. Use Denial AI to generate a formal appeal letter.
+                      </p>
+                      <Button 
+                        onClick={() => runDenialAIMutation.mutate()}
+                        disabled={runDenialAIMutation.isPending}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        {runDenialAIMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Running Denial AI...
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="h-4 w-4 mr-2" />
+                            Run Denial AI Analysis
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    
+                    {/* Display Formal Appeal Letter if available */}
+                    {denialAppealLetter && (
+                      <div className="border-t pt-4">
+                        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <FileText className="h-5 w-5" />
+                          Formal Appeal Letter
+                        </h3>
+                        <div className="bg-red-50 p-4 rounded-lg">
+                          <ExpandableText
+                            text={denialAppealLetter}
+                            fieldKey="denialAppealLetter"
+                            maxLength={400}
+                            expandedFields={expandedFields}
+                            setExpandedFields={setExpandedFields}
+                            className="text-sm text-red-800"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* AI Analysis Content */}
             <Card>

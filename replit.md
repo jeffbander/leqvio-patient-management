@@ -42,6 +42,7 @@ Providerloop Chains is a comprehensive patient management system with integrated
 - Drag-and-drop file uploads: Implemented comprehensive drag-and-drop functionality across all file upload areas using DragDropFileUpload component for improved user experience. Fixed integration issues where drag-and-drop files weren't properly processed by upload handlers.
 - Direct patient creation from document uploads: Replaced automation chain workflow with direct patient creation endpoint `/api/patients/create-from-upload` that extracts patient data from uploaded LEQVIO forms (PDF) or medical screenshots and immediately creates patient records without triggering external automation chains. Created CreatePatientFromUpload component and test page at `/test-upload-patient` for demonstration.
 - Copy-paste functionality: Enhanced DragDropFileUpload component with clipboard support allowing users to paste images directly from clipboard (Ctrl+V) in addition to drag-and-drop and file selection. Added visual hints and automatic paste detection for improved user experience.
+- Denial AI functionality: Added specialized "Denial AI" section in patient detail AI analysis that appears when authorization status is "Denied". Includes button to trigger Denial_AI chain using same patient data as leqvio_app chain, generates formal appeal letters displayed similar to letter of medical necessity format with expandable text and red styling.
 
 ## System Architecture
 
