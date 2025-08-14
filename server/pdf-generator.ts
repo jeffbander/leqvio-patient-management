@@ -17,6 +17,7 @@ interface PatientData {
   primaryInsuranceNumber?: string;
   primaryGroupId?: string;
   signatureData?: string;
+  providerSignatureData?: string;
   signatureDate?: string;
   copayProgram?: boolean;
   ongoingSupport?: boolean;
@@ -98,20 +99,34 @@ export async function generateLEQVIOPDF(patientData: PatientData): Promise<Buffe
       doc.moveDown(2);
 
       // Signature Section
-      doc.fontSize(12).font('Helvetica-Bold').text('PATIENT SIGNATURE');
-      doc.moveDown(0.5);
+      // Two-column signature layout
+      const signatureY = doc.y;
       
-      // Add signature image if provided
+      // Patient signature (left side)
+      doc.fontSize(12).font('Helvetica-Bold').text('PATIENT SIGNATURE', 50, signatureY);
+      
+      // Add patient signature image if provided
       if (patientData.signatureData && patientData.signatureData.startsWith('data:image')) {
         const base64Data = patientData.signatureData.split(',')[1];
         const imgBuffer = Buffer.from(base64Data, 'base64');
-        doc.image(imgBuffer, 50, doc.y, { width: 200, height: 60 });
-        doc.moveDown(3);
+        doc.image(imgBuffer, 50, signatureY + 20, { width: 200, height: 60 });
       } else {
-        doc.moveDown(3);
-        doc.fontSize(10).font('Helvetica').text('_____________________________', 50, doc.y);
-        doc.moveDown(0.5);
+        doc.fontSize(10).font('Helvetica').text('_____________________________', 50, signatureY + 50);
       }
+      
+      // Provider signature (right side)
+      doc.fontSize(12).font('Helvetica-Bold').text('PROVIDER SIGNATURE', 320, signatureY);
+      
+      // Add provider signature image if provided
+      if (patientData.providerSignatureData && patientData.providerSignatureData.startsWith('data:image')) {
+        const base64Data = patientData.providerSignatureData.split(',')[1];
+        const imgBuffer = Buffer.from(base64Data, 'base64');
+        doc.image(imgBuffer, 320, signatureY + 20, { width: 200, height: 60 });
+      } else {
+        doc.fontSize(10).font('Helvetica').text('_____________________________', 320, signatureY + 50);
+      }
+      
+      doc.y = signatureY + 80; // Move cursor below both signatures
       
       doc.fontSize(10).font('Helvetica');
       doc.text(`Patient Name: ${patientData.firstName} ${patientData.lastName}`, 50, doc.y);

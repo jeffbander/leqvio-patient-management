@@ -39,8 +39,11 @@ export default function ESignatureForm() {
   const [, setLocation] = useLocation()
   const queryClient = useQueryClient()
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const providerCanvasRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
+  const [isProviderDrawing, setIsProviderDrawing] = useState(false)
   const [hasSignature, setHasSignature] = useState(false)
+  const [hasProviderSignature, setHasProviderSignature] = useState(false)
   const [submissionState, setSubmissionState] = useState<'form' | 'success' | 'uploading'>('form')
   const [createdPatient, setCreatedPatient] = useState<any>(null)
   
@@ -346,6 +349,56 @@ export default function ESignatureForm() {
     setHasSignature(false)
   }
 
+  // Provider signature functions
+  const startProviderDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
+    setIsProviderDrawing(true)
+    const canvas = providerCanvasRef.current
+    if (!canvas) return
+    
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    const coords = getCoordinates(e, canvas)
+    ctx.beginPath()
+    ctx.moveTo(coords.x, coords.y)
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    ctx.globalCompositeOperation = 'source-over'
+  }
+
+  const drawProvider = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isProviderDrawing) return
+    e.preventDefault()
+    
+    const canvas = providerCanvasRef.current
+    if (!canvas) return
+    
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    const coords = getCoordinates(e, canvas)
+    ctx.lineTo(coords.x, coords.y)
+    ctx.stroke()
+    setHasProviderSignature(true)
+  }
+
+  const stopProviderDrawing = (e?: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (e) e.preventDefault()
+    setIsProviderDrawing(false)
+  }
+
+  const clearProviderSignature = () => {
+    const canvas = providerCanvasRef.current
+    if (!canvas) return
+    
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    setHasProviderSignature(false)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -360,6 +413,7 @@ export default function ESignatureForm() {
     if (formData.diagnosis.length === 0) errors.push("Diagnosis (select at least one)")
     if (!formData.recipientEmail.trim()) errors.push("Email to send PDF")
     if (!hasSignature) errors.push("Patient signature")
+    if (!hasProviderSignature) errors.push("Provider signature")
     
     if (errors.length > 0) {
       toast({
@@ -371,14 +425,17 @@ export default function ESignatureForm() {
     }
 
     const canvas = canvasRef.current
-    if (!canvas) return
+    const providerCanvas = providerCanvasRef.current
+    if (!canvas || !providerCanvas) return
     
     const signatureData = canvas.toDataURL()
+    const providerSignatureData = providerCanvas.toDataURL()
     
     createPatientMutation.mutate({
       ...formData,
       diagnosis: formData.diagnosis.join(', '), // Convert array to comma-separated string for backend
       signatureData,
+      providerSignatureData,
       status: 'started',
       leqvioCopayProgram: formData.copayProgram
     })
@@ -903,41 +960,81 @@ export default function ESignatureForm() {
             <CardTitle>Patient Consent & E-Signature</CardTitle>
             <CardDescription>Please read and sign below</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm leading-relaxed">
                 Your doctor has initiated enrollment into Novartis Pharmaceuticals Patient Support Services for your newly prescribed medication. In order to provide services on your behalf such as confirming your coverage for the medication and assessing any financial assistance you may be eligible for; we will need you to complete the below authorization. This allows us to utilize your health information (called "Protected Health Information" or "PHI") and share it with your health plan and/or pharmacy that will receive your doctor's prescription. This authorization will allow your healthcare providers, health plans and health insurers that maintain PHI about you to disclose your PHI to Novartis Pharmaceuticals Corporation so that the Service Center may provide services to you or on your behalf.
               </p>
             </div>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-              <canvas
-                ref={canvasRef}
-                width={600}
-                height={200}
-                className="border border-gray-400 w-full cursor-crosshair touch-none"
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
-                style={{ touchAction: 'none' }}
-              />
-              <div className="mt-2 flex justify-between">
-                <p className="text-sm text-gray-500">Sign above</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={clearSignature}
-                >
-                  Clear
-                </Button>
+            
+            {/* Patient Signature */}
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-900">Patient Signature</h4>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                <canvas
+                  ref={canvasRef}
+                  width={600}
+                  height={150}
+                  className="border border-gray-400 w-full cursor-crosshair touch-none"
+                  onMouseDown={startDrawing}
+                  onMouseMove={draw}
+                  onMouseUp={stopDrawing}
+                  onMouseLeave={stopDrawing}
+                  onTouchStart={startDrawing}
+                  onTouchMove={draw}
+                  onTouchEnd={stopDrawing}
+                  style={{ touchAction: 'none' }}
+                />
+                <div className="mt-2 flex justify-between">
+                  <p className="text-sm text-gray-500">Patient signature required</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={clearSignature}
+                  >
+                    Clear
+                  </Button>
+                </div>
+                {!hasSignature && (
+                  <p className="text-sm text-red-600 mt-1">Patient signature is required</p>
+                )}
               </div>
-              {!hasSignature && (
-                <p className="text-sm text-red-600 mt-1">Patient signature is required</p>
-              )}
+            </div>
+
+            {/* Provider Signature */}
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-900">Provider Signature</h4>
+              <div className="border-2 border-dashed border-blue-300 rounded-lg p-4">
+                <canvas
+                  ref={providerCanvasRef}
+                  width={600}
+                  height={150}
+                  className="border border-blue-400 w-full cursor-crosshair touch-none"
+                  onMouseDown={startProviderDrawing}
+                  onMouseMove={drawProvider}
+                  onMouseUp={stopProviderDrawing}
+                  onMouseLeave={stopProviderDrawing}
+                  onTouchStart={startProviderDrawing}
+                  onTouchMove={drawProvider}
+                  onTouchEnd={stopProviderDrawing}
+                  style={{ touchAction: 'none' }}
+                />
+                <div className="mt-2 flex justify-between">
+                  <p className="text-sm text-gray-500">Provider signature required</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={clearProviderSignature}
+                  >
+                    Clear
+                  </Button>
+                </div>
+                {!hasProviderSignature && (
+                  <p className="text-sm text-red-600 mt-1">Provider signature is required</p>
+                )}
+              </div>
             </div>
 
             <div>

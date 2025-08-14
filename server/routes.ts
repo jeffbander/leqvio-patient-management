@@ -2228,7 +2228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const patientData = req.body;
-      const { signatureData, recipientEmail, ...patientInfo } = patientData;
+      const { signatureData, providerSignatureData, recipientEmail, ...patientInfo } = patientData;
       
       // Validate patient data
       const validatedPatient = insertPatientSchema.parse(patientInfo);
@@ -2241,11 +2241,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newPatient = await storage.createPatient(validatedPatient, user.id, user.currentOrganizationId);
       
       // If signature data provided, create e-signature form and send PDF
-      if (signatureData && recipientEmail) {
+      if (signatureData && providerSignatureData && recipientEmail) {
         const formRecord = await storage.createESignatureForm({
           patientId: newPatient.id,
           formData: patientInfo,
-          signatureData: signatureData
+          signatureData: signatureData,
+          providerSignatureData: providerSignatureData
         });
         
         // Generate and send PDF via SendGrid
@@ -2254,6 +2255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const pdfData = {
             ...patientInfo,
             signatureData: signatureData,
+            providerSignatureData: providerSignatureData,
             signatureDate: new Date().toLocaleDateString()
           };
           const pdfBuffer = await generateLEQVIOPDF(pdfData);

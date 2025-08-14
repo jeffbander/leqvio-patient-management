@@ -214,7 +214,8 @@ export const eSignatureForms = pgTable("e_signature_forms", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").references(() => patients.id),
   formData: jsonb("form_data").notNull(),
-  signatureData: text("signature_data").notNull(), // Base64 encoded signature
+  signatureData: text("signature_data").notNull(), // Base64 encoded patient signature
+  providerSignatureData: text("provider_signature_data"), // Base64 encoded provider signature
   pdfUrl: text("pdf_url"),
   emailSent: boolean("email_sent").default(false),
   emailSentTo: text("email_sent_to"),
