@@ -37,7 +37,8 @@ import {
   Plus,
   Copy,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Clipboard
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { EpicInsuranceExtractor } from '@/components/EpicInsuranceExtractor'
@@ -251,8 +252,10 @@ export default function PatientDetail() {
   const [isEditingLeqvio, setIsEditingLeqvio] = useState(false)
   const [editedData, setEditedData] = useState<any>({})
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [documentType, setDocumentType] = useState<string>('epic_insurance_screenshot')
+  const [documentType, setDocumentType] = useState<string>('insurance_screenshot')
   const [clinicalNotes, setClinicalNotes] = useState('')
+  const [showTextExtractor, setShowTextExtractor] = useState(false)
+  const [showClinicalNote, setShowClinicalNote] = useState(false)
   const [processResult, setProcessResult] = useState<any>(null)
   const [showAigentsData, setShowAigentsData] = useState(false)
   const [viewedDocument, setViewedDocument] = useState<PatientDocument | null>(null)
@@ -1530,88 +1533,163 @@ export default function PatientDetail() {
             <CardDescription>Upload screenshots or add clinical notes</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label>Document Type</Label>
-              <select
-                value={documentType}
-                onChange={(e) => setDocumentType(e.target.value)}
-                className="w-full border rounded px-3 py-2 mt-1"
-              >
-                <option value="epic_insurance_text">Epic Insurance Text (Copy & Paste)</option>
-                <option value="epic_insurance_screenshot">Epic Insurance Coverage Screenshot</option>
-                <option value="epic_screenshot">Epic Patient Screenshot</option>
-                <option value="insurance_screenshot">Insurance Card Screenshot</option>
-                <option value="clinical_note">Clinical Note</option>
-                <option value="leqvio_form">LEQVIO Form</option>
-              </select>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <Clipboard className="h-8 w-8 mx-auto mb-2 text-indigo-600" />
+                      <h3 className="font-medium mb-2">Insurance Copy and Paste</h3>
+                      <p className="text-sm text-gray-600">Copy & paste insurance information from Epic or other systems</p>
+                    </div>
+                    <Button
+                      onClick={() => setShowTextExtractor(true)}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      <Clipboard className="h-4 w-4 mr-2" />
+                      Open Text Extractor
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {documentType === 'epic_insurance_text' ? (
-              <EpicInsuranceExtractor
-                patientId={patient?.id}
-                onDataExtracted={(data) => {
-                  // Refresh patient data after extraction
-                  queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient?.id}`] });
-                }}
-              />
-            ) : documentType !== 'clinical_note' ? (
-              <div className="space-y-4">
-                <Label>Upload File</Label>
-                <DragDropFileUpload
-                  onFileSelect={(file) => {
-                    setSelectedFile(file);
-                  }}
-                  accept="image/*"
-                  maxSizeMB={10}
-                  disabled={uploadDocumentMutation.isPending}
-                  placeholder={uploadDocumentMutation.isPending ? "Uploading..." : "Drag and drop an image here, or click to select"}
-                />
-                {selectedFile && (
-                  <Button 
-                    onClick={handleUpload}
-                    disabled={!selectedFile || uploadDocumentMutation.isPending}
-                    className="w-full"
-                  >
-                    {uploadDocumentMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload {selectedFile.name}
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div>
-                <Label>Clinical Notes</Label>
-                <Textarea
-                  value={clinicalNotes}
-                  onChange={(e) => setClinicalNotes(e.target.value)}
-                  placeholder="Enter clinical notes..."
-                  className="mt-1 min-h-[120px]"
-                />
+              <Card>
+                <CardContent className="p-4">
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <Camera className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                      <h3 className="font-medium mb-2">Insurance Upload Screenshot</h3>
+                      <p className="text-sm text-gray-600">Upload screenshots of insurance cards or Epic insurance screens</p>
+                    </div>
+                    <DragDropFileUpload
+                      onFileSelect={(file) => {
+                        setSelectedFile(file);
+                        setDocumentType('insurance_screenshot');
+                      }}
+                      accept="image/*"
+                      maxSizeMB={10}
+                      placeholder="Drag and drop image here"
+                      className="[&>div:last-child]:p-2"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <FileText className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                      <h3 className="font-medium mb-2">Clinical Notes and Labs</h3>
+                      <p className="text-sm text-gray-600">Enter clinical notes, lab results, or other medical documentation</p>
+                    </div>
+                    <Button
+                      onClick={() => setShowClinicalNote(true)}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Add Clinical Notes
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Upload Status */}
+            {selectedFile && (
+              <div className="text-center py-4">
                 <Button 
-                  onClick={handleAddClinicalNote}
-                  disabled={!clinicalNotes.trim() || uploadDocumentMutation.isPending}
-                  className="mt-2"
+                  onClick={handleUpload}
+                  disabled={!selectedFile || uploadDocumentMutation.isPending}
+                  className="w-full"
                 >
                   {uploadDocumentMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Adding...
+                      Uploading...
                     </>
                   ) : (
                     <>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Add Clinical Note
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload {selectedFile.name}
                     </>
                   )}
                 </Button>
+              </div>
+            )}
+
+            {/* Text Extractor Modal */}
+            {showTextExtractor && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">Epic Insurance Text Extractor</h3>
+                    <Button
+                      onClick={() => setShowTextExtractor(false)}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <EpicInsuranceExtractor
+                    patientId={patient?.id}
+                    onDataExtracted={(data) => {
+                      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient?.id}`] });
+                      setShowTextExtractor(false);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Clinical Notes Modal */}
+            {showClinicalNote && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">Add Clinical Notes</h3>
+                    <Button
+                      onClick={() => setShowClinicalNote(false)}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-4">
+                    <Label>Clinical Notes</Label>
+                    <Textarea
+                      value={clinicalNotes}
+                      onChange={(e) => setClinicalNotes(e.target.value)}
+                      placeholder="Enter clinical notes..."
+                      className="min-h-[120px]"
+                    />
+                    <Button 
+                      onClick={async () => {
+                        await handleAddClinicalNote();
+                        setShowClinicalNote(false);
+                        setClinicalNotes('');
+                      }}
+                      disabled={!clinicalNotes.trim() || uploadDocumentMutation.isPending}
+                      className="w-full"
+                    >
+                      {uploadDocumentMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="mr-2 h-4 w-4" />
+                          Add Clinical Note
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>
