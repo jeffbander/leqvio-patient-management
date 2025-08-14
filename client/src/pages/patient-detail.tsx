@@ -2026,107 +2026,132 @@ export default function PatientDetail() {
 
             {/* Denial AI Section - only show when auth status is Denied */}
             {(patient as any)?.authStatus === 'Denied' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-red-700">
-                    <AlertTriangle className="h-5 w-5" />
-                    Denial AI
+              <Card className="border-red-200">
+                <CardHeader className="bg-red-50 border-b border-red-200">
+                  <CardTitle className="flex items-center gap-3 text-red-800">
+                    <div className="p-2 bg-red-100 rounded-lg">
+                      <AlertTriangle className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div>
+                      <div className="text-lg font-semibold">Denial AI Assistant</div>
+                      <div className="text-sm font-normal text-red-600 mt-1">Generate formal appeal letter for denied authorization</div>
+                    </div>
                   </CardTitle>
-                  <CardDescription>Generate a formal appeal letter for denied authorization</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Rejection Letter Upload Section */}
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <h3 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
-                        <Upload className="h-4 w-4" />
-                        Upload Rejection Letter (Optional)
-                      </h3>
-                      <p className="text-sm text-red-700 mb-4">
-                        Upload the insurance rejection letter to enhance the Denial AI analysis. You can upload an image of the letter or paste the text directly.
-                      </p>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Image Upload */}
-                        <div>
-                          <DragDropFileUpload
-                            onFileSelect={handleRejectionImageUpload}
-                            accept="image/*"
-                            maxSizeMB={10}
-                            uploadText="Upload Rejection Letter Image"
-                            dragText="Drop rejection letter image here"
-                            className="border-red-200 hover:border-red-300"
-                            disabled={isUploadingRejection}
-                          />
-                          {isUploadingRejection && (
-                            <div className="mt-2 text-xs text-red-600 flex items-center gap-1">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              Processing rejection letter...
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Text Paste */}
-                        <div>
-                          <Label className="text-sm font-medium text-red-800">Or Paste Rejection Letter Text</Label>
-                          <Textarea
-                            value={rejectionLetterText}
-                            onChange={(e) => setRejectionLetterText(e.target.value)}
-                            placeholder="Paste the rejection letter text here..."
-                            className="mt-2 min-h-[120px] border-red-200 focus:border-red-400 focus:ring-red-400"
-                          />
-                        </div>
+                <CardContent className="p-6">
+                  <div className="space-y-6">
+                    {/* Step 1: Rejection Letter Upload */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-red-800">
+                        <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center text-xs font-semibold text-red-700">1</div>
+                        <h3 className="font-semibold">Add Rejection Letter (Optional)</h3>
                       </div>
                       
-                      {(rejectionLetterExtracted || rejectionLetterText) && (
-                        <div className="mt-4 p-3 bg-white border border-red-200 rounded">
-                          <p className="text-xs font-medium text-red-800 mb-2">Rejection Letter Content:</p>
-                          <div className="text-xs text-red-700 max-h-24 overflow-y-auto whitespace-pre-wrap">
-                            {rejectionLetterExtracted || rejectionLetterText}
+                      <div className="ml-8 space-y-4">
+                        <p className="text-sm text-gray-600">
+                          Upload or paste your rejection letter to enhance the appeal analysis
+                        </p>
+                        
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          {/* Image Upload */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Upload Image</Label>
+                            <DragDropFileUpload
+                              onFileSelect={handleRejectionImageUpload}
+                              accept="image/*"
+                              maxSizeMB={10}
+                              uploadText="Upload rejection letter"
+                              dragText="Drop image here"
+                              className="border-gray-300 hover:border-red-400 transition-colors"
+                              disabled={isUploadingRejection}
+                            />
+                            {isUploadingRejection && (
+                              <div className="flex items-center gap-2 text-xs text-red-600">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <span>Extracting text from image...</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Text Paste */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Or Paste Text</Label>
+                            <Textarea
+                              value={rejectionLetterText}
+                              onChange={(e) => setRejectionLetterText(e.target.value)}
+                              placeholder="Paste the rejection letter text here..."
+                              className="min-h-[120px] resize-none"
+                            />
                           </div>
                         </div>
-                      )}
+                        
+                        {/* Preview extracted/pasted content */}
+                        {(rejectionLetterExtracted || rejectionLetterText) && (
+                          <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <FileText className="h-4 w-4 text-gray-500" />
+                              <span className="text-sm font-medium text-gray-700">Rejection Letter Content</span>
+                            </div>
+                            <div className="text-sm text-gray-600 max-h-32 overflow-y-auto whitespace-pre-wrap bg-white p-3 rounded border">
+                              {rejectionLetterExtracted || rejectionLetterText}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-sm text-red-800 mb-3">
-                        This patient's authorization has been denied. Use Denial AI to generate a formal appeal letter.
-                      </p>
-                      <Button 
-                        onClick={() => runDenialAIMutation.mutate()}
-                        disabled={runDenialAIMutation.isPending}
-                        className="bg-red-600 hover:bg-red-700"
-                      >
-                        {runDenialAIMutation.isPending ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Running Denial AI...
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="h-4 w-4 mr-2" />
-                            Run Denial AI Analysis
-                          </>
-                        )}
-                      </Button>
+                    {/* Step 2: Generate Appeal */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-red-800">
+                        <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center text-xs font-semibold text-red-700">2</div>
+                        <h3 className="font-semibold">Generate Appeal Letter</h3>
+                      </div>
+                      
+                      <div className="ml-8">
+                        <p className="text-sm text-gray-600 mb-4">
+                          Create a professional appeal letter based on patient data and rejection details
+                        </p>
+                        
+                        <Button 
+                          onClick={() => runDenialAIMutation.mutate()}
+                          disabled={runDenialAIMutation.isPending}
+                          size="lg"
+                          className="bg-red-600 hover:bg-red-700 text-white px-6 py-3"
+                        >
+                          {runDenialAIMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Generating Appeal Letter...
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="h-4 w-4 mr-2" />
+                              Generate Appeal Letter
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                     
-                    {/* Display Formal Appeal Letter if available */}
+                    {/* Step 3: Appeal Letter Result */}
                     {denialAppealLetter && (
-                      <div className="border-t pt-4">
-                        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                          <FileText className="h-5 w-5" />
-                          Formal Appeal Letter
-                        </h3>
-                        <div className="bg-red-50 p-4 rounded-lg">
-                          <ExpandableText
-                            text={denialAppealLetter}
-                            fieldKey="denialAppealLetter"
-                            maxLength={400}
-                            expandedFields={expandedFields}
-                            setExpandedFields={setExpandedFields}
-                            className="text-sm text-red-800"
-                          />
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-green-800">
+                          <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-xs font-semibold text-green-700">✓</div>
+                          <h3 className="font-semibold">Appeal Letter Generated</h3>
+                        </div>
+                        
+                        <div className="ml-8">
+                          <div className="bg-white border border-green-200 rounded-lg p-4">
+                            <ExpandableText
+                              text={denialAppealLetter}
+                              fieldKey="denialAppealLetter"
+                              maxLength={400}
+                              expandedFields={expandedFields}
+                              setExpandedFields={setExpandedFields}
+                              className="text-sm text-gray-800"
+                            />
+                          </div>
                         </div>
                       </div>
                     )}
