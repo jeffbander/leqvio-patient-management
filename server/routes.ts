@@ -3272,6 +3272,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Clinical note processing failed:', error);
           // Continue without extraction
         }
+      } else if (documentType === 'medical_document' && file.mimetype === 'application/pdf') {
+        // Handle PDF document extraction
+        try {
+          console.log('Processing PDF medical document:', file.originalname);
+          const { extractPatientInfoFromPDF } = await import('./openai-service');
+          const extraction = await extractPatientInfoFromPDF(file.buffer);
+          extractedData = JSON.stringify(extraction);
+          metadata = {
+            ...extraction,
+            contentType: 'pdf_document',
+            fileName: file.originalname,
+            fileSize: file.buffer.length,
+            timestamp: new Date().toISOString()
+          };
+          
+          // Auto-update patient information from PDF extraction if available
+          const user = await getUserFromSession(req);
+          if (user && user.currentOrganizationId && extraction.confidence > 0.5) {
+            const updates: any = {};
+            
+            // Map PDF extraction data to patient fields
+            if (extraction.patient_first_name) updates.firstName = extraction.patient_first_name;
+            if (extraction.patient_last_name) updates.lastName = extraction.patient_last_name;
+            if (extraction.date_of_birth) updates.dateOfBirth = extraction.date_of_birth;
+            if (extraction.patient_address) updates.address = extraction.patient_address;
+            if (extraction.patient_home_phone) updates.phone = extraction.patient_home_phone;
+            if (extraction.patient_cell_phone) updates.cellPhone = extraction.patient_cell_phone;
+            if (extraction.patient_email) updates.email = extraction.patient_email;
+            if (extraction.provider_name) updates.orderingMD = extraction.provider_name;
+            if (extraction.account_number) updates.mrn = extraction.account_number;
+            
+            if (Object.keys(updates).length > 0) {
+              await storage.updatePatient(patientId, updates, user.currentOrganizationId);
+              console.log('Patient information automatically updated from PDF document:', updates);
+              
+              // Log the PDF update in patient notes
+              const changeLog = `Updated: PDF document data extracted - ${new Date().toLocaleString()}`;
+              const changeDetails = Object.entries(updates).map(([key, value]) => `  ${key}: ${value}`).join('\n');
+              const logEntry = `${changeLog}\n${changeDetails}`;
+              
+              await addInsuranceChangeToNotes(patientId, logEntry, user.currentOrganizationId);
+              
+              // Store the updated fields to return to frontend
+              metadata.updatedFields = updates;
+            }
+          }
+        } catch (pdfError) {
+          console.error('PDF extraction failed:', pdfError);
+          // Continue without extraction
+          metadata = {
+            contentType: 'pdf_document',
+            fileName: file.originalname,
+            fileSize: file.buffer.length,
+            timestamp: new Date().toISOString(),
+            extractionError: 'PDF extraction failed'
+          };
+        }
       }
       
       // Save document record

@@ -464,7 +464,7 @@ export default function ESignatureForm() {
               </div>
               
               {/* Document Upload Options */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card>
                   <CardContent className="p-4">
                     <div className="space-y-4">
@@ -501,6 +501,28 @@ export default function ESignatureForm() {
                         accept="image/*"
                         maxSizeMB={10}
                         placeholder="Drag and drop image here"
+                        className="[&>div:last-child]:p-2"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <FileText className="h-8 w-8 mx-auto mb-2 text-red-600" />
+                        <h3 className="font-medium mb-2">Upload PDF Document</h3>
+                        <p className="text-sm text-gray-600">Upload LEQVIO forms, medical records, or other PDF documents</p>
+                      </div>
+                      <DragDropFileUpload
+                        onFileSelect={(file) => {
+                          setSubmissionState('uploading');
+                          uploadDocumentMutation.mutate({ file, documentType: 'medical_document' });
+                        }}
+                        accept=".pdf,application/pdf"
+                        maxSizeMB={25}
+                        placeholder="Drag and drop PDF here"
                         className="[&>div:last-child]:p-2"
                       />
                     </div>
