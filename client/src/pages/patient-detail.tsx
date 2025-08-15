@@ -1936,232 +1936,221 @@ export default function PatientDetail() {
         )}
 
         {activeTab === 'ai-analysis' && (
-          <div className="grid gap-6">
-            {/* Process Data */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Authorization AI</CardTitle>
-                <CardDescription>Send insurance and clinical information to see if LEQVIO can be approved</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Process History */}
-                  {automationLogs.length > 0 && (
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <History className="mr-2 h-4 w-4 text-blue-600" />
-                          <span className="text-sm font-medium text-blue-800">Last Processed</span>
+          <div className="space-y-6">
+            {/* Authorization AI and Denial AI Side by Side */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Authorization AI */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Authorization AI</CardTitle>
+                  <CardDescription>Send insurance and clinical information to see if LEQVIO can be approved</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Process History */}
+                    {automationLogs.length > 0 && (
+                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <History className="mr-2 h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-800">Last Processed</span>
+                          </div>
+                          <span className="text-sm text-blue-700">
+                            {new Date(automationLogs[0].timestamp || automationLogs[0].createdat).toLocaleString()}
+                          </span>
                         </div>
-                        <span className="text-sm text-blue-700">
-                          {new Date(automationLogs[0].timestamp || automationLogs[0].createdat).toLocaleString()}
-                        </span>
-                      </div>
-                      {automationLogs[0].iscompleted && (
-                        <p className="text-sm text-blue-700 mt-1">
-                          Status: Completed {automationLogs[0].agentresponse ? '✓' : '- Processing'}
-                        </p>
-                      )}
-                      <div className="flex items-center justify-between mt-2">
-                        {automationLogs.length > 1 && (
-                          <p className="text-xs text-blue-600">
-                            Total processes: {automationLogs.length}
+                        {automationLogs[0].iscompleted && (
+                          <p className="text-sm text-blue-700 mt-1">
+                            Status: Completed {automationLogs[0].agentresponse ? '✓' : '- Processing'}
                           </p>
                         )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowAigentsData(true)}
-                          className="text-xs"
-                        >
-                          View AIGENTS Data
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Ready to Process</p>
-                      <p className="text-sm text-gray-500">
-                        {documents.filter(d => d.documentType === 'epic_insurance_screenshot' || d.documentType === 'insurance_screenshot').length} insurance documents, {' '}
-                        {documents.filter(d => d.documentType === 'epic_screenshot' || d.documentType === 'clinical_note').length} clinical documents
-                      </p>
-                    </div>
-                    <Button 
-                      onClick={() => processDataMutation.mutate()}
-                      disabled={processDataMutation.isPending || documents.length === 0}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      {processDataMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="mr-2 h-4 w-4" />
-                          Process Data
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  
-                  {processResult && (
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-center">
-                        <Shield className="mr-2 h-4 w-4 text-green-600" />
-                        <span className="text-sm font-medium text-green-800">
-                          Data Processed Successfully
-                        </span>
-                      </div>
-                      <p className="text-sm text-green-700 mt-1">
-                        Unique ID: {processResult.uniqueId}
-                      </p>
-                      <p className="text-sm text-green-700">
-                        {processResult.documentsProcessed.insurance} insurance and {processResult.documentsProcessed.clinical} clinical documents sent to AIGENTS
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Denial AI Section - only show when auth status is Denied */}
-            {(patient as any)?.authStatus === 'Denied' && (
-              <Card className="border border-red-300 shadow-lg overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-red-50 to-red-50/30 border-b border-red-200 rounded-t-lg">
-                  <CardTitle className="flex items-center gap-3 text-red-800">
-                    <div className="p-2 bg-red-100 rounded-lg">
-                      <AlertTriangle className="h-5 w-5 text-red-600" />
-                    </div>
-                    <div>
-                      <div className="text-lg font-semibold">Denial AI</div>
-                      <div className="text-sm font-normal text-red-600 mt-1">Generate formal appeal letter for denied authorization</div>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-6">
-                    {/* Step 1: Rejection Letter Upload */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 text-red-800">
-                        <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center text-xs font-semibold text-red-700">1</div>
-                        <h3 className="font-semibold">Add Rejection Letter (Optional)</h3>
-                      </div>
-                      
-                      <div className="ml-8 space-y-4">
-                        <p className="text-sm text-gray-600">
-                          Upload or paste your rejection letter to enhance the appeal analysis
-                        </p>
-                        
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          {/* Image Upload */}
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">Upload Image</Label>
-                            <DragDropFileUpload
-                              onFileSelect={handleRejectionImageUpload}
-                              accept="image/*"
-                              maxSizeMB={10}
-                              uploadText="Upload rejection letter"
-                              dragText="Drop image here"
-                              className="border-gray-300 hover:border-red-400 transition-colors"
-                              disabled={isUploadingRejection}
-                            />
-                            {isUploadingRejection && (
-                              <div className="flex items-center gap-2 text-xs text-red-600">
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                <span>Extracting text from image...</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Text Paste */}
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">Or Paste Text</Label>
-                            <Textarea
-                              value={rejectionLetterText}
-                              onChange={(e) => setRejectionLetterText(e.target.value)}
-                              placeholder="Paste the rejection letter text here..."
-                              className="min-h-[120px] resize-none"
-                            />
-                          </div>
-                        </div>
-                        
-                        {/* Preview extracted/pasted content */}
-                        {(rejectionLetterExtracted || rejectionLetterText) && (
-                          <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                            <div className="flex items-center gap-2 mb-2">
-                              <FileText className="h-4 w-4 text-gray-500" />
-                              <span className="text-sm font-medium text-gray-700">Rejection Letter Content</span>
-                            </div>
-                            <div className="text-sm text-gray-600 max-h-32 overflow-y-auto whitespace-pre-wrap bg-white p-3 rounded border">
-                              {rejectionLetterExtracted || rejectionLetterText}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Step 2: Generate Appeal */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 text-red-800">
-                        <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center text-xs font-semibold text-red-700">2</div>
-                        <h3 className="font-semibold">Generate Appeal Letter</h3>
-                      </div>
-                      
-                      <div className="ml-8">
-                        <p className="text-sm text-gray-600 mb-4">
-                          Create a professional appeal letter based on patient data and rejection details
-                        </p>
-                        
-                        <Button 
-                          onClick={() => runDenialAIMutation.mutate()}
-                          disabled={runDenialAIMutation.isPending}
-                          size="lg"
-                          className="bg-red-600 hover:bg-red-700 text-white px-6 py-3"
-                        >
-                          {runDenialAIMutation.isPending ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              Generating Appeal Letter...
-                            </>
-                          ) : (
-                            <>
-                              <FileText className="h-4 w-4 mr-2" />
-                              Generate Appeal Letter
-                            </>
+                        <div className="flex items-center justify-between mt-2">
+                          {automationLogs.length > 1 && (
+                            <p className="text-xs text-blue-600">
+                              Total processes: {automationLogs.length}
+                            </p>
                           )}
-                        </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowAigentsData(true)}
+                            className="text-xs"
+                          >
+                            View AIGENTS Data
+                          </Button>
+                        </div>
                       </div>
+                    )}
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Ready to Process</p>
+                        <p className="text-sm text-gray-500">
+                          {documents.filter(d => d.documentType === 'epic_insurance_screenshot' || d.documentType === 'insurance_screenshot').length} insurance documents, {' '}
+                          {documents.filter(d => d.documentType === 'epic_screenshot' || d.documentType === 'clinical_note').length} clinical documents
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={() => processDataMutation.mutate()}
+                        disabled={processDataMutation.isPending || documents.length === 0}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {processDataMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Process Data
+                          </>
+                        )}
+                      </Button>
                     </div>
                     
-                    {/* Step 3: Appeal Letter Result */}
-                    {denialAppealLetter && (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-green-800">
-                          <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-xs font-semibold text-green-700">✓</div>
-                          <h3 className="font-semibold">Appeal Letter Generated</h3>
+                    {processResult && (
+                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center">
+                          <Shield className="mr-2 h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">
+                            Data Processed Successfully
+                          </span>
                         </div>
-                        
-                        <div className="ml-8">
-                          <div className="bg-white border border-green-200 rounded-lg p-4">
-                            <ExpandableText
-                              text={denialAppealLetter}
-                              fieldKey="denialAppealLetter"
-                              maxLength={400}
-                              expandedFields={expandedFields}
-                              setExpandedFields={setExpandedFields}
-                              className="text-sm text-gray-800"
-                            />
-                          </div>
-                        </div>
+                        <p className="text-sm text-green-700 mt-1">
+                          Unique ID: {processResult.uniqueId}
+                        </p>
+                        <p className="text-sm text-green-700">
+                          {processResult.documentsProcessed.insurance} insurance and {processResult.documentsProcessed.clinical} clinical documents sent to AIGENTS
+                        </p>
                       </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
-            )}
+
+              {/* Denial AI Section - only show when auth status is Denied */}
+              {(patient as any)?.authStatus === 'Denied' ? (
+                <Card className="border border-red-300 shadow-lg overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-red-50 to-red-50/30 border-b border-red-200">
+                    <CardTitle className="flex items-center gap-3 text-red-800">
+                      <div className="p-2 bg-red-100 rounded-lg">
+                        <AlertTriangle className="h-5 w-5 text-red-600" />
+                      </div>
+                      <div>
+                        <div className="text-lg font-semibold">Denial AI</div>
+                        <div className="text-sm font-normal text-red-600 mt-1">Generate formal appeal letter</div>
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-6">
+                      {/* Step 1: Rejection Letter Upload */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-red-800">
+                          <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center text-xs font-semibold text-red-700">1</div>
+                          <h3 className="font-semibold text-sm">Add Rejection Letter (Optional)</h3>
+                        </div>
+                        
+                        <div className="ml-8 space-y-3">
+                          <p className="text-xs text-gray-600">
+                            Upload or paste rejection letter to enhance appeal analysis
+                          </p>
+                          
+                          <div className="space-y-3">
+                            {/* Image Upload */}
+                            <div className="space-y-2">
+                              <Label className="text-xs font-medium text-gray-700">Upload Image</Label>
+                              <DragDropFileUpload
+                                onFileSelect={handleRejectionImageUpload}
+                                accept="image/*"
+                                maxSizeMB={10}
+                                uploadText="Upload rejection letter"
+                                dragText="Drop image here"
+                                className="border-gray-300 hover:border-red-400 transition-colors h-20"
+                                disabled={isUploadingRejection}
+                              />
+                              {isUploadingRejection && (
+                                <div className="flex items-center gap-2 text-xs text-red-600">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  <span>Extracting text...</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Text Paste */}
+                            <div className="space-y-2">
+                              <Label className="text-xs font-medium text-gray-700">Or Paste Text</Label>
+                              <Textarea
+                                value={rejectionLetterText}
+                                onChange={(e) => setRejectionLetterText(e.target.value)}
+                                placeholder="Paste rejection letter text here..."
+                                className="min-h-[80px] resize-none text-xs"
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* Preview extracted/pasted content */}
+                          {(rejectionLetterExtracted || rejectionLetterText) && (
+                            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                              <div className="flex items-center gap-2 mb-2">
+                                <FileText className="h-3 w-3 text-gray-500" />
+                                <span className="text-xs font-medium text-gray-700">Rejection Letter Content</span>
+                              </div>
+                              <div className="text-xs text-gray-600 max-h-24 overflow-y-auto whitespace-pre-wrap bg-white p-2 rounded border">
+                                {rejectionLetterExtracted || rejectionLetterText}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Step 2: Generate Appeal */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-red-800">
+                          <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center text-xs font-semibold text-red-700">2</div>
+                          <h3 className="font-semibold text-sm">Generate Appeal Letter</h3>
+                        </div>
+                        
+                        <div className="ml-8">
+                          <p className="text-xs text-gray-600 mb-3">
+                            Create professional appeal letter based on patient data
+                          </p>
+                          
+                          <Button 
+                            onClick={() => runDenialAIMutation.mutate()}
+                            disabled={runDenialAIMutation.isPending}
+                            size="sm"
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            {runDenialAIMutation.isPending ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <FileText className="h-3 w-3 mr-2" />
+                                Generate Appeal
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-dashed border-gray-300">
+                  <CardContent className="flex items-center justify-center h-full py-8">
+                    <div className="text-center text-gray-500">
+                      <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Denial AI available when authorization status is "Denied"</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
 
             {/* AI Analysis Content */}
             <Card>
@@ -2263,6 +2252,26 @@ export default function PatientDetail() {
                             expandedFields={expandedFields}
                             setExpandedFields={setExpandedFields}
                             className="text-sm text-blue-800"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Denial Appeal Letter - show if available */}
+                    {denialAppealLetter && (
+                      <div className="border-t pt-6">
+                        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <AlertTriangle className="h-5 w-5 text-red-600" />
+                          Denial Appeal Letter
+                        </h3>
+                        <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                          <ExpandableText
+                            text={denialAppealLetter}
+                            fieldKey="denialAppealLetterResults"
+                            maxLength={400}
+                            expandedFields={expandedFields}
+                            setExpandedFields={setExpandedFields}
+                            className="text-sm text-red-800"
                           />
                         </div>
                       </div>
