@@ -1,9 +1,13 @@
 import OpenAI from "openai";
+import { Mistral } from "@mistralai/mistralai";
 import fs from "fs";
 import { Readable } from "stream";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// Initialize Mistral client for PDF text extraction
+const mistral = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
 
 export interface ExtractedPatientData {
   firstName: string;
@@ -893,7 +897,7 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
       console.log("PDF text extracted successfully, length:", data.text.length);
       console.log("PDF text preview:", data.text.substring(0, 500));
       
-      const textResult = await extractPatientInfoFromPDFText(data.text);
+      const textResult = await extractPatientInfoFromPDFTextWithMistral(data.text);
       
       if (textResult && (textResult.patient_first_name || textResult.patient_last_name)) {
         console.log("PDF text extraction successful");
@@ -905,7 +909,7 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
       try {
         console.log("Trying simple string extraction as final fallback");
         const pdfString = pdfBuffer.toString('latin1');
-        const textResult = await extractPatientInfoFromPDFText(pdfString);
+        const textResult = await extractPatientInfoFromPDFTextWithMistral(pdfString);
         
         if (textResult && (textResult.patient_first_name || textResult.patient_last_name)) {
           console.log("Simple fallback text extraction successful");
@@ -1163,6 +1167,148 @@ Return JSON with extracted data:
     
   } catch (error) {
     console.error('Error in AI PDF text extraction:', error);
+    
+    // Fallback with basic pattern matching
+    const extractedData = {
+      patient_first_name: "",
+      patient_last_name: "",
+      date_of_birth: "",
+      patient_address: "",
+      patient_city: "",
+      patient_state: "",
+      patient_zip: "",
+      patient_home_phone: "",
+      patient_cell_phone: "",
+      patient_email: "",
+      provider_name: "",
+      account_number: "",
+      diagnosis: "ASCVD",
+      signature_date: "",
+      confidence: 0.3
+    };
+    
+    return extractedData;
+  }
+}
+
+// Extract patient information from PDF text using Mistral API
+export async function extractPatientInfoFromPDFTextWithMistral(pdfText: string): Promise<any> {
+  try {
+    console.log("Using Mistral AI to extract patient info from PDF text");
+    
+    // Pre-process the text to identify potential LEQVIO form patterns
+    const cleanedText = pdfText
+      .replace(/[^\w\s@.-]/g, ' ')  // Remove special characters except common ones
+      .replace(/\s+/g, ' ')         // Normalize spaces
+      .trim();
+    
+    // Look for common LEQVIO form patterns and names
+    const namePatterns = [
+      /patient\s*name[:\s]*([a-z]+\s+[a-z]+)/gi,
+      /name[:\s]*([a-z]+\s+[a-z]+)/gi,
+      /([A-Z][a-z]+)\s+([A-Z][a-z]+)/g,  // Two capitalized words (likely names)
+    ];
+    
+    let potentialNames = [];
+    for (const pattern of namePatterns) {
+      const matches = cleanedText.match(pattern);
+      if (matches) {
+        potentialNames.push(...matches);
+      }
+    }
+    
+    console.log("Potential names found:", potentialNames);
+    
+    // Enhanced prompt with specific LEQVIO form context and examples
+    const prompt = `You are a medical data extraction specialist for LEQVIO enrollment forms. The text below was extracted from a PDF and may contain artifacts.
+
+EXTRACTED PDF TEXT:
+${cleanedText.substring(0, 1500)}
+
+POTENTIAL PATIENT NAMES FOUND:
+${potentialNames.join(', ')}
+
+TASK: Extract patient information from this LEQVIO form. This is a real medical form with actual patient data.
+
+CRITICAL INSTRUCTIONS:
+1. LEQVIO forms contain actual patient names in standard "FirstName LastName" format
+2. Look for patterns: "Patient Name:", "DOB:", "Address:", "Phone:", "Provider:"
+3. Names are typically formatted as "FirstName LastName" (both capitalized)
+4. DOB is in MM/DD/YYYY format
+5. Addresses include street, city, state, zip
+6. Phone numbers are 10-digit format
+7. Provider names are doctor names (Dr. Smith, etc.)
+
+IGNORE THESE PDF ARTIFACTS:
+- Technical terms: "ReportLab", "Font", "Helvetica", "Anonymous"
+- Metadata: "Creator", "Producer", "Type", "Subtype"
+- Software strings: "Generated", "Application", "Title"
+
+RETURN JSON with these exact fields:
+{
+  "patient_first_name": "",
+  "patient_last_name": "",
+  "date_of_birth": "",
+  "patient_address": "",
+  "patient_city": "",
+  "patient_state": "",
+  "patient_zip": "",
+  "patient_home_phone": "",
+  "patient_cell_phone": "",
+  "patient_email": "",
+  "provider_name": "",
+  "account_number": "",
+  "diagnosis": "ASCVD",
+  "signature_date": "",
+  "confidence": 0.8
+}
+
+Focus on extracting real patient data, not form labels or PDF artifacts.`;
+
+    const response = await mistral.chat.complete({
+      model: "mistral-large-latest",
+      messages: [
+        {
+          role: "system",
+          content: "You are a medical data extraction expert specializing in LEQVIO enrollment forms. Extract patient information accurately and return only valid JSON without markdown formatting."
+        },
+        {
+          role: "user", 
+          content: prompt
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 1000
+    });
+
+    const result = response.choices[0].message.content;
+    // Remove markdown code blocks if present
+    const cleanResult = result?.replace(/```json\n?|\n?```/g, '').trim();
+    const extractedData = JSON.parse(cleanResult || '{}');
+    
+    console.log("Mistral PDF text extraction result:", {
+      patientName: `${extractedData.patient_first_name || ''} ${extractedData.patient_last_name || ''}`,
+      dateOfBirth: extractedData.date_of_birth || '',
+      provider: extractedData.provider_name || '',
+      confidence: extractedData.confidence || 0.1
+    });
+    
+    // If Mistral returned completely empty names, return placeholder data instead
+    if ((!extractedData.patient_first_name || extractedData.patient_first_name.trim() === '') && 
+        (!extractedData.patient_last_name || extractedData.patient_last_name.trim() === '')) {
+      console.log("Mistral returned empty names, returning placeholder data for manual review");
+      
+      // Return placeholder data that will be caught by the artifact filter
+      const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
+      extractedData.patient_first_name = "NEEDS_REVIEW";
+      extractedData.patient_last_name = `PDF_${timestamp}`;
+      extractedData.confidence = 0.1;
+    }
+    
+    return extractedData;
+    
+  } catch (error) {
+    console.error('Error in Mistral PDF text extraction:', error);
     
     // Fallback with basic pattern matching
     const extractedData = {
