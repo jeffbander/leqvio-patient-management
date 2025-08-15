@@ -998,13 +998,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Agent webhook received:', { 
         chainRunId, 
         hasResponse: !!agentResponse,
-        agentName 
+        agentName,
+        payload: JSON.stringify(payload, null, 2)
       });
       
       if (!chainRunId) {
         return res.status(400).json({ error: "chainRunId is required" });
       }
 
+      // First, update the automation log with the agent response
       const result = await storage.updateAutomationLogWithAgentResponse(
         chainRunId,
         agentResponse || 'No response content',
@@ -1012,16 +1014,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payload
       );
 
-      if (result) {
-        res.json({ 
-          message: "Agent response processed successfully",
-          chainRunId: chainRunId 
-        });
-      } else {
-        res.status(404).json({ 
+      if (!result) {
+        return res.status(404).json({ 
           error: "No automation found with the provided chainRunId" 
         });
       }
+
+      // Check if this is a Denial_AI chain response with appeal letter
+      const automationLog = await storage.getAutomationLogByChainRunId(chainRunId);
+      if (automationLog && automationLog.chainName === 'Denial_AI' && automationLog.patientId) {
+        // Look for Denial_Appeal_Letter in various possible locations in the payload
+        let denialAppealLetter = null;
+        
+        // Check common output variable locations
+        if (payload.output_variables && payload.output_variables.Denial_Appeal_Letter) {
+          denialAppealLetter = payload.output_variables.Denial_Appeal_Letter;
+        } else if (payload.outputs && payload.outputs.Denial_Appeal_Letter) {
+          denialAppealLetter = payload.outputs.Denial_Appeal_Letter;
+        } else if (payload.Denial_Appeal_Letter) {
+          denialAppealLetter = payload.Denial_Appeal_Letter;
+        } else if (payload.variables && payload.variables.Denial_Appeal_Letter) {
+          denialAppealLetter = payload.variables.Denial_Appeal_Letter;
+        }
+        
+        // Also check in agentResponse if it's structured
+        if (!denialAppealLetter && agentResponse) {
+          try {
+            const responseData = typeof agentResponse === 'string' ? JSON.parse(agentResponse) : agentResponse;
+            if (responseData.Denial_Appeal_Letter) {
+              denialAppealLetter = responseData.Denial_Appeal_Letter;
+            } else if (responseData.output_variables && responseData.output_variables.Denial_Appeal_Letter) {
+              denialAppealLetter = responseData.output_variables.Denial_Appeal_Letter;
+            }
+          } catch (e) {
+            // If parsing fails, check if the response itself contains the appeal letter
+            if (typeof agentResponse === 'string' && agentResponse.length > 100) {
+              denialAppealLetter = agentResponse;
+            }
+          }
+        }
+        
+        console.log('Denial_AI response processing:', {
+          patientId: automationLog.patientId,
+          hasAppealLetter: !!denialAppealLetter,
+          appealLetterLength: denialAppealLetter ? denialAppealLetter.length : 0
+        });
+        
+        // If we found a denial appeal letter, update the patient record
+        if (denialAppealLetter && denialAppealLetter.trim()) {
+          try {
+            await storage.updatePatientDenialAppealLetter(automationLog.patientId, denialAppealLetter.trim());
+            console.log('Successfully updated patient with denial appeal letter:', automationLog.patientId);
+          } catch (error) {
+            console.error('Error updating patient with denial appeal letter:', error);
+          }
+        }
+      }
+
+      res.json({ 
+        message: "Agent response processed successfully",
+        chainRunId: chainRunId 
+      });
+
     } catch (error) {
       console.error('Error processing agent webhook:', error);
       res.status(500).json({ 

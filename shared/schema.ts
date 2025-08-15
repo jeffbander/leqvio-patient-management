@@ -186,6 +186,7 @@ export const patients = pgTable("patients", {
   doseNumber: integer("dose_number").default(1),
   notes: text("notes").default(""),
   lastVoicemailAt: timestamp("last_voicemail_at"),
+  denialAppealLetter: text("denial_appeal_letter"), // Generated appeal letter from Denial_AI chain
   
   // LEQVIO Copay Program fields (only if opted in)
   leqvioCopayProgram: boolean("leqvio_copay_program").default(false),

@@ -46,6 +46,7 @@ Providerloop Chains is a comprehensive patient management system with integrated
 - Denial AI functionality: Added specialized "Denial AI" section in patient detail AI analysis that appears when authorization status is "Denied". Includes button to trigger Denial_AI chain using same patient data as leqvio_app chain, generates formal appeal letters displayed similar to letter of medical necessity format with expandable text and red styling.
 - Enhanced Denial AI interface: Redesigned the Denial AI section with a cleaner, step-by-step workflow including rejection letter upload (both image and text paste), improved visual hierarchy with numbered steps, better color coding, and organized layout for professional appeal letter generation.
 - Patient ID tracking: Both LEQVIO and Denial_AI chains now include Patient_ID in their starting variables for improved tracking and identification in automation workflows.
+- Webhook-based appeal letter processing: System now automatically processes Denial_AI chain webhook responses to extract the Denial_Appeal_Letter output variable and associate it with the correct patient using Patient_ID. Appeal letters are stored in the patient record and displayed immediately without requiring page refresh.
 
 ## System Architecture
 

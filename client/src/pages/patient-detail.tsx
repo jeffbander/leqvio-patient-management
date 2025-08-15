@@ -459,7 +459,8 @@ export default function PatientDetail() {
 
   // Get Denial AI analysis from automation logs
   const denialAnalysisLog = automationLogs.find(log => log.chainname === 'Denial_AI')
-  const denialAppealLetter = denialAnalysisLog?.webhookpayload?.formalAppealLetter || 
+  const denialAppealLetter = (patient as any)?.denialAppealLetter || 
+                            denialAnalysisLog?.webhookpayload?.formalAppealLetter || 
                             denialAnalysisLog?.webhookpayload?.formal_appeal_letter ||
                             denialAnalysisLog?.webhookpayload?.appealLetter ||
                             null
@@ -593,6 +594,8 @@ export default function PatientDetail() {
       })
       // Refresh automation logs to show the new denial AI event
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/automation-logs`] })
+      // Refresh patient data to show the appeal letter
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}`] })
     },
     onError: (error) => {
       toast({

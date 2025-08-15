@@ -911,6 +911,25 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
   }
+
+  // Automation log helper methods
+  async getAutomationLogByChainRunId(chainRunId: string): Promise<AutomationLog | undefined> {
+    const [log] = await db
+      .select()
+      .from(automationLogs)
+      .where(eq(automationLogs.uniqueId, chainRunId));
+    return log;
+  }
+
+  // Patient denial appeal letter method
+  async updatePatientDenialAppealLetter(patientId: number, appealLetter: string): Promise<Patient | undefined> {
+    const [updatedPatient] = await db
+      .update(patients)
+      .set({ denialAppealLetter: appealLetter, updatedAt: new Date() })
+      .where(eq(patients.id, patientId))
+      .returning();
+    return updatedPatient;
+  }
 }
 
 export const storage = new DatabaseStorage();
