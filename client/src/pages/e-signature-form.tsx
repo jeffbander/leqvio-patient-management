@@ -517,22 +517,6 @@ export default function ESignatureForm() {
                       </div>
                       <DragDropFileUpload
                         onFileSelect={(file) => {
-                          console.log('Selected file:', { name: file.name, type: file.type });
-                          
-                          // Check if it's a PDF file
-                          const isPDF = file.name.toLowerCase().endsWith('.pdf') || 
-                                       file.type === 'application/pdf' || 
-                                       file.type === 'application/x-pdf';
-                          
-                          if (!isPDF) {
-                            toast({
-                              title: "Invalid File Type",
-                              description: `Please select a PDF file only. Selected: ${file.name} (${file.type})`,
-                              variant: "destructive"
-                            });
-                            return;
-                          }
-                          
                           setSubmissionState('uploading');
                           uploadDocumentMutation.mutate({ file, documentType: 'medical_document' });
                         }}

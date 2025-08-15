@@ -40,14 +40,6 @@ export function DragDropFileUpload({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const validateFile = (file: File): string | null => {
-    console.log('Validating file:', { 
-      name: file.name, 
-      type: file.type, 
-      size: file.size, 
-      accept,
-      maxSizeMB 
-    });
-    
     if (maxSizeMB && file.size > maxSizeMB * 1024 * 1024) {
       return `File size must be less than ${maxSizeMB}MB`;
     }
@@ -57,36 +49,20 @@ export function DragDropFileUpload({
       const fileType = file.type;
       const fileName = file.name.toLowerCase();
       
-      console.log('Accept types:', acceptTypes);
-      console.log('File type:', fileType);
-      console.log('File name:', fileName);
-      
       const isAccepted = acceptTypes.some(acceptType => {
-        console.log('Checking accept type:', acceptType);
-        
         if (acceptType.startsWith('.')) {
-          const matches = fileName.endsWith(acceptType.toLowerCase());
-          console.log(`Extension check (${acceptType}):`, matches);
-          return matches;
+          return fileName.endsWith(acceptType.toLowerCase());
         }
         if (acceptType.includes('*')) {
           const baseType = acceptType.split('/')[0];
-          const matches = fileType.startsWith(baseType);
-          console.log(`Wildcard check (${baseType}/*):`, matches);
-          return matches;
+          return fileType.startsWith(baseType);
         }
         // Handle PDF files with various MIME types
         if (acceptType === 'application/pdf' || acceptType === 'application/x-pdf') {
-          const matches = fileType === 'application/pdf' || fileType === 'application/x-pdf' || fileName.endsWith('.pdf');
-          console.log(`PDF check (${acceptType}):`, matches);
-          return matches;
+          return fileType === 'application/pdf' || fileType === 'application/x-pdf' || fileName.endsWith('.pdf');
         }
-        const matches = fileType === acceptType;
-        console.log(`Exact type check (${acceptType}):`, matches);
-        return matches;
+        return fileType === acceptType;
       });
-      
-      console.log('Final validation result:', isAccepted);
       
       if (!isAccepted) {
         return `File type not accepted. Expected: ${accept}, but got: ${fileType}`;
