@@ -142,7 +142,6 @@ export function CreatePatientFromUpload({ onPatientCreated }: CreatePatientFromU
               <Input
                 id="file-upload"
                 type="file"
-                accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,application/pdf,image/*"
                 onChange={handleFileChange}
                 className="hidden"
               />
@@ -178,7 +177,7 @@ export function CreatePatientFromUpload({ onPatientCreated }: CreatePatientFromU
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={!selectedFile || !isValidFileType(selectedFile!) || createPatientMutation.isPending}
+            disabled={!selectedFile || createPatientMutation.isPending}
           >
             {createPatientMutation.isPending ? 'Creating Patient...' : 'Create Patient'}
           </Button>
