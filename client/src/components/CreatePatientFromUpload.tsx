@@ -142,7 +142,7 @@ export function CreatePatientFromUpload({ onPatientCreated }: CreatePatientFromU
               <Input
                 id="file-upload"
                 type="file"
-                accept=".pdf,.png,.jpg,.jpeg,.gif,.webp"
+                accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,application/pdf,image/*"
                 onChange={handleFileChange}
                 className="hidden"
               />
