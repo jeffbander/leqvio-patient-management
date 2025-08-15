@@ -924,30 +924,61 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
       console.log("Sample extracted content:", allExtractedText.substring(0, 200));
       
       if (allExtractedText.length > 20) {
-        // Try to identify actual names and data
+        // Try to identify actual patient names using generic patterns
         const namePatterns = [
-          /Daniel\s+Price/gi,
-          /Anthony\s+Wallace/gi,
-          /George\s+Lawson/gi,
-          /Michael\s+Harrington/gi,
-          /([A-Z][a-z]+)\s+([A-Z][a-z]+)/g  // General name pattern
+          /Patient\s*Name[:\s]+([A-Z][a-z]+)\s+([A-Z][a-z]+)/gi,
+          /Name[:\s]+([A-Z][a-z]+)\s+([A-Z][a-z]+)/gi,
+          /([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})/g  // Two capitalized words (likely names)
         ];
         
         let foundName = '';
+        let firstName = '';
+        let lastName = '';
+        
         for (const pattern of namePatterns) {
           const nameMatch = allExtractedText.match(pattern);
           if (nameMatch && nameMatch[0]) {
-            foundName = nameMatch[0];
-            console.log("Found potential patient name:", foundName);
-            break;
+            if (nameMatch.length >= 3) {
+              // Pattern with capture groups (like "Patient Name: John Doe")
+              firstName = nameMatch[1];
+              lastName = nameMatch[2];
+              foundName = `${firstName} ${lastName}`;
+            } else {
+              // Simple name pattern
+              const nameParts = nameMatch[0].split(/\s+/);
+              if (nameParts.length >= 2) {
+                firstName = nameParts[0];
+                lastName = nameParts[1];
+                foundName = nameMatch[0];
+              }
+            }
+            
+            // Validate that this looks like a real name (not PDF artifacts)
+            const artifactPatterns = [
+              /^(font|helvetica|arial|times|calibri|verdana)$/i,
+              /^(reportlab|pdf|library|anonymous|unspecified|creator|producer)$/i,
+              /^(subtype|type|text|image|decode|flate)$/i,
+              /^[0-9]+$/,
+              /www\./i
+            ];
+            
+            const isArtifact = artifactPatterns.some(pattern => 
+              pattern.test(firstName) || pattern.test(lastName)
+            );
+            
+            if (!isArtifact && firstName.length > 1 && lastName.length > 1) {
+              console.log("Found potential patient name:", foundName);
+              break;
+            } else {
+              foundName = '';
+            }
           }
         }
         
         if (foundName) {
-          const nameParts = foundName.split(/\s+/);
           return {
-            patient_first_name: nameParts[0] || "",
-            patient_last_name: nameParts[1] || "",
+            patient_first_name: firstName || "",
+            patient_last_name: lastName || "",
             date_of_birth: "",
             patient_address: "",
             patient_city: "",
@@ -1280,9 +1311,9 @@ ${potentialNames.join(', ')}
 TASK: Extract patient information from this LEQVIO form. This is a real medical form with actual patient data.
 
 CRITICAL INSTRUCTIONS:
-1. LEQVIO forms contain actual patient names like "Daniel Price", "Anthony Wallace", "Michael Harrington"
+1. LEQVIO forms contain actual patient names in standard "FirstName LastName" format
 2. Look for patterns: "Patient Name:", "DOB:", "Address:", "Phone:", "Provider:"
-3. Names are typically formatted as "FirstName LastName" 
+3. Names are typically formatted as "FirstName LastName" (both capitalized)
 4. DOB is in MM/DD/YYYY format
 5. Addresses include street, city, state, zip
 6. Phone numbers are 10-digit format
