@@ -881,80 +881,106 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
   try {
     console.log("Starting advanced PDF extraction");
     
-    // Method 1: Try to convert PDF to image and use Vision API
+    // Method 1: Use pdfjs-dist to extract text properly
     try {
-      const pdf2pic = await import('pdf2pic');
-      const fs = await import('fs');
-      const path = await import('path');
-      const { promisify } = await import('util');
-      const writeFile = promisify(fs.writeFile);
-      const unlink = promisify(fs.unlink);
+      console.log("Using pdfjs-dist for PDF text extraction");
+      const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.js');
       
-      // Save PDF temporarily
-      const tempPdfPath = `/tmp/temp_pdf_${Date.now()}.pdf`;
-      await writeFile(tempPdfPath, pdfBuffer);
+      // Load PDF document
+      const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
+      const pdf = await loadingTask.promise;
       
-      console.log("Converting PDF to image for Vision API");
+      console.log(`PDF loaded successfully. Pages: ${pdf.numPages}`);
       
-      // Convert first page to image with optimized settings
-      const convert = pdf2pic.fromPath(tempPdfPath, {
-        density: 300,           // Higher DPI for better text clarity
-        saveFilename: "leqvio_form",
-        savePath: "/tmp/",
-        format: "png",
-        width: 2100,           // Letter size width at 300 DPI 
-        height: 2700,          // Letter size height at 300 DPI
-        quality: 100           // Maximum quality for text extraction
-      });
+      // Extract text from first page
+      const page = await pdf.getPage(1);
+      const textContent = await page.getTextContent();
       
-      console.log("Converting PDF page 1 to PNG image...");
-      const result = await convert(1, { responseType: "buffer" });
-      
-      if (result && result.buffer && result.buffer.length > 1000) {
-        console.log("PDF successfully converted to image, buffer size:", result.buffer.length);
-        const base64Image = result.buffer.toString('base64');
-        
-        // Validate base64 image before processing
-        if (base64Image && base64Image.length > 1000) {
-          // Clean up temp files
-          try {
-            await unlink(tempPdfPath);
-          } catch (e) {
-            console.log("Temp file cleanup warning:", e);
-          }
-          
-          // Use specialized LEQVIO form extraction with Vision API
-          console.log("Using Vision API for LEQVIO form extraction");
-          const visionData = await extractLeqvioFormData(base64Image);
-          console.log("LEQVIO Vision API extraction result:", visionData);
-          
-          // Convert vision API result to PDF extraction format
-          const extractedData = {
-            patient_first_name: visionData.firstName || "",
-            patient_last_name: visionData.lastName || "",
-            date_of_birth: visionData.dateOfBirth || "",
-            patient_address: visionData.address || "",
-            patient_city: "",
-            patient_state: "",
-            patient_zip: "",
-            patient_home_phone: "",
-            patient_cell_phone: "",
-            patient_email: "",
-            provider_name: "",
-            account_number: "",
-            diagnosis: "ASCVD",
-            signature_date: "",
-            confidence: visionData.confidence || 0.8
-          };
-          
-          return extractedData;
-        } else {
-          console.log("Invalid base64 image generated, skipping Vision API");
+      // Combine all text items
+      let extractedText = '';
+      for (const item of textContent.items) {
+        if ('str' in item && item.str) {
+          extractedText += item.str + ' ';
         }
       }
       
-    } catch (conversionError) {
-      console.log("PDF to image conversion failed:", (conversionError as Error).message);
+      console.log("pdfjs-dist extraction successful, text length:", extractedText.length);
+      console.log("First 300 characters of extracted text:", extractedText.substring(0, 300));
+      
+      if (extractedText.length > 50) {
+        // Use AI to extract patient data from the properly extracted text
+        const aiResult = await extractPatientInfoFromPDFText(extractedText);
+        
+        // If AI extraction was successful and found meaningful data
+        if (aiResult && (aiResult.patient_first_name || aiResult.patient_last_name)) {
+          console.log("pdfjs-dist + AI extraction successful");
+          return aiResult;
+        }
+      }
+      
+    } catch (pdfjsError) {
+      console.log("pdfjs-dist extraction failed:", (pdfjsError as Error).message);
+    }
+    
+    // Method 2: Fallback to Vision API using base64 of entire PDF
+    try {
+      console.log("Trying direct PDF to Vision API approach");
+      
+      // Convert PDF buffer to base64 and send directly to Vision API
+      const base64Pdf = pdfBuffer.toString('base64');
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          {
+            role: "system",
+            content: "You are a medical data extraction specialist. Extract patient information from this LEQVIO enrollment form. Return only JSON with patient data."
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "This is a LEQVIO enrollment form PDF. Extract the patient name (like Daniel Price, Anthony Wallace, George Lawson), date of birth, address, phone, email, and provider information. Return JSON format."
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:application/pdf;base64,${base64Pdf}`
+                }
+              }
+            ]
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 1000
+      });
+
+      const result = JSON.parse(response.choices[0].message.content || '{}');
+      console.log("Direct PDF Vision API result:", result);
+      
+      if (result.patient_first_name || result.firstName || result.name) {
+        return {
+          patient_first_name: result.patient_first_name || result.firstName || result.first_name || "",
+          patient_last_name: result.patient_last_name || result.lastName || result.last_name || "",
+          date_of_birth: result.date_of_birth || result.dateOfBirth || result.dob || "",
+          patient_address: result.patient_address || result.address || "",
+          patient_city: result.patient_city || result.city || "",
+          patient_state: result.patient_state || result.state || "",
+          patient_zip: result.patient_zip || result.zip || "",
+          patient_home_phone: result.patient_home_phone || result.phone || "",
+          patient_cell_phone: result.patient_cell_phone || result.cell_phone || "",
+          patient_email: result.patient_email || result.email || "",
+          provider_name: result.provider_name || result.provider || "",
+          account_number: result.account_number || result.mrn || "",
+          diagnosis: "ASCVD",
+          signature_date: result.signature_date || "",
+          confidence: 0.8
+        };
+      }
+      
+    } catch (visionError) {
+      console.log("Direct PDF Vision API failed:", (visionError as Error).message);
     }
     
     // Method 2: Simple PDF text extraction without external dependencies
