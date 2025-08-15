@@ -57,11 +57,21 @@ export function DragDropFileUpload({
           const baseType = acceptType.split('/')[0];
           return fileType.startsWith(baseType);
         }
+        // Handle PDF files with various MIME types
+        if (acceptType === 'application/pdf' && (fileType === 'application/pdf' || fileType === 'application/x-pdf' || fileName.endsWith('.pdf'))) {
+          return true;
+        }
         return fileType === acceptType;
       });
       
       if (!isAccepted) {
-        return `File type not accepted. Accepted types: ${accept}`;
+        console.log('File validation failed:', { 
+          fileName, 
+          fileType, 
+          accept, 
+          acceptTypes 
+        });
+        return `File type not accepted. Expected: ${accept}, but got: ${fileType}`;
       }
     }
     

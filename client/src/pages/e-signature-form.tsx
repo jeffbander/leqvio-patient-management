@@ -520,7 +520,7 @@ export default function ESignatureForm() {
                           setSubmissionState('uploading');
                           uploadDocumentMutation.mutate({ file, documentType: 'medical_document' });
                         }}
-                        accept=".pdf,application/pdf"
+                        accept=".pdf,application/pdf,application/x-pdf"
                         maxSizeMB={25}
                         placeholder="Drag and drop PDF here"
                         className="[&>div:last-child]:p-2"
