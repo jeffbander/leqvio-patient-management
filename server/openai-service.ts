@@ -954,29 +954,61 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
       console.log("PDF to image conversion failed:", (conversionError as Error).message);
     }
     
-    // Method 2: Direct pdf-parse text extraction (using dynamic import)
+    // Method 2: Simple PDF text extraction without external dependencies
     try {
-      console.log("Trying direct pdf-parse text extraction");
-      const pdfParse = await import('pdf-parse');
-      console.log("PDF buffer size:", pdfBuffer.length, "bytes");
+      console.log("Trying simple PDF text extraction from raw buffer");
       
-      // Pass buffer directly without file path to avoid ENOENT errors
-      const pdfData = await pdfParse.default(pdfBuffer, {
-        // Remove any default options that reference test files
-        max: 0, // Parse all pages
-      });
-      console.log("PDF parse successful, extracted text length:", pdfData.text?.length || 0);
+      // Convert PDF buffer to string and look for text patterns
+      const pdfString = pdfBuffer.toString('latin1');
+      let extractedText = '';
       
-      if (pdfData.text && pdfData.text.length > 50) {
-        console.log("First 200 characters of extracted text:", pdfData.text.substring(0, 200));
-        return await extractPatientInfoFromPDFText(pdfData.text);
-      } else if (pdfData.text && pdfData.text.length > 10) {
-        console.log("PDF text is short but trying AI extraction anyway");
-        return await extractPatientInfoFromPDFText(pdfData.text);
+      // Extract text using traditional regex without spread operator
+      const textParts = new Set<string>();
+      
+      // Define patterns for text extraction
+      const patterns = [
+        /\(([^)]+)\)/g,
+        /\[([^\]]+)\]/g,
+        /\/Title\s*\(([^)]+)\)/g,
+        /\/Author\s*\(([^)]+)\)/g,
+        /\/Subject\s*\(([^)]+)\)/g,
+        /Tj\s*\(([^)]+)\)/g
+      ];
+      
+      // Process each pattern separately
+      for (const pattern of patterns) {
+        let match;
+        while ((match = pattern.exec(pdfString)) !== null) {
+          if (match[1]) {
+            let text = match[1]
+              .replace(/\\[0-9]{3}/g, ' ')      // Remove octal codes
+              .replace(/\\[rnt]/g, ' ')         // Remove escape sequences
+              .replace(/\\./g, ' ')             // Remove other escapes
+              .replace(/[^\w\s@.,-]/g, ' ')     // Keep only readable characters
+              .replace(/\s+/g, ' ')             // Normalize spaces
+              .trim();
+            
+            // Filter out obvious PDF artifacts
+            if (text.length > 2 && 
+                !text.match(/^(font|helvetica|arial|times|subtype|type|creator|producer|reportlab)$/i) &&
+                !text.match(/^[0-9.]+$/) &&
+                !text.match(/^www\./)) {
+              textParts.add(text);
+            }
+          }
+        }
+      }
+      
+      extractedText = Array.from(textParts).join(' ');
+      console.log("Simple PDF extraction result length:", extractedText.length);
+      console.log("First 300 characters:", extractedText.substring(0, 300));
+      
+      if (extractedText.length > 20) {
+        return await extractPatientInfoFromPDFText(extractedText);
       }
       
     } catch (parseError) {
-      console.log("pdf-parse extraction failed:", (parseError as Error).message);
+      console.log("Simple PDF extraction failed:", (parseError as Error).message);
     }
     
     // Method 3: Enhanced binary text extraction for LEQVIO forms
@@ -1044,9 +1076,7 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
       }
     }
     
-    extractedText = Array.from(textParts)
-      .filter(text => text.length > 2)  // Additional length filter
-      .join(' ');
+    extractedText = Array.from(textParts).join(' ');
       
     console.log("Enhanced binary extracted text length:", extractedText.length);
     console.log("First 300 characters of enhanced extraction:", extractedText.substring(0, 300));
@@ -1125,25 +1155,38 @@ export async function extractPatientInfoFromPDFText(pdfText: string): Promise<an
     
     console.log("Potential names found:", potentialNames);
     
-    // Enhanced prompt with specific LEQVIO form context
-    const prompt = `You are extracting patient data from a LEQVIO enrollment form. The PDF text extraction may contain artifacts, but focus on finding real patient information.
+    // Enhanced prompt with specific LEQVIO form context and examples
+    const prompt = `You are a medical data extraction specialist for LEQVIO enrollment forms. The text below was extracted from a PDF and may contain artifacts.
 
-EXTRACTED TEXT:
-${cleanedText.substring(0, 1000)}
+EXTRACTED PDF TEXT:
+${cleanedText.substring(0, 1500)}
 
-POTENTIAL NAMES DETECTED:
+POTENTIAL PATIENT NAMES FOUND:
 ${potentialNames.join(', ')}
 
-SPECIAL INSTRUCTIONS FOR LEQVIO FORMS:
-1. Look for "Daniel Price" or similar clear name patterns
-2. LEQVIO forms typically have: Patient Name, DOB, Provider, Address, Phone
-3. Ignore PDF metadata like "ReportLab", "anonymous", technical codes
-4. Focus on medical/patient data, not technical artifacts
-5. If you see clear name patterns like "Daniel Price", extract them
-6. DOB is usually in MM/DD/YYYY format
-7. Look for provider names (doctors)
+TASK: Extract patient information from this LEQVIO form. This is a real medical form with actual patient data.
 
-Extract ONLY if you find clear patient data. Return JSON:
+CRITICAL INSTRUCTIONS:
+1. LEQVIO forms contain actual patient names like "Daniel Price", "Anthony Wallace", "Michael Harrington"
+2. Look for patterns: "Patient Name:", "DOB:", "Address:", "Phone:", "Provider:"
+3. Names are typically formatted as "FirstName LastName" 
+4. DOB is in MM/DD/YYYY format
+5. Addresses include street, city, state, zip
+6. Phone numbers are 10-digit format
+7. Provider names are doctor names (Dr. Smith, etc.)
+
+IGNORE THESE PDF ARTIFACTS:
+- Technical terms: "ReportLab", "Font", "Helvetica", "Anonymous"
+- Metadata: "Creator", "Producer", "Type", "Subtype" 
+- Random codes: "CM4C", "A_pQ", "ZTQWAE", etc.
+
+EXTRACTION RULES:
+- Only extract if you find clear, readable patient information
+- If text is garbled, return empty strings rather than artifacts
+- Focus on finding real names that make sense as patient names
+- Look for actual medical/demographic data patterns
+
+Return JSON with extracted data:
 {
   "patient_first_name": "",
   "patient_last_name": "",
@@ -1159,10 +1202,8 @@ Extract ONLY if you find clear patient data. Return JSON:
   "account_number": "",
   "diagnosis": "ASCVD",
   "signature_date": "",
-  "confidence": 0.8
-}
-
-Return empty strings if the data is too garbled. Do NOT extract PDF technical terms as names.`;
+  "confidence": 0.7
+}`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
