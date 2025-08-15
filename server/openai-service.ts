@@ -954,13 +954,13 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
       console.log("PDF to image conversion failed:", (conversionError as Error).message);
     }
     
-    // Method 2: Direct pdf-parse text extraction (simplified approach)
+    // Method 2: Direct pdf-parse text extraction (using dynamic import)
     try {
       console.log("Trying direct pdf-parse text extraction");
-      const pdfParse = require('pdf-parse');
+      const pdfParse = await import('pdf-parse');
       console.log("PDF buffer size:", pdfBuffer.length, "bytes");
       
-      const pdfData = await pdfParse(pdfBuffer);
+      const pdfData = await pdfParse.default(pdfBuffer);
       console.log("PDF parse successful, extracted text length:", pdfData.text?.length || 0);
       
       if (pdfData.text && pdfData.text.length > 50) {
@@ -975,41 +975,79 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
       console.log("pdf-parse extraction failed:", (parseError as Error).message);
     }
     
-    // Method 3: Basic binary text extraction with enhanced patterns
-    console.log("Falling back to binary text extraction");
+    // Method 3: Enhanced binary text extraction for LEQVIO forms
+    console.log("Falling back to enhanced binary text extraction");
     const pdfString = pdfBuffer.toString('binary');
+    const latinString = pdfBuffer.toString('latin1');
     
     let extractedText = '';
+    
+    // Enhanced patterns specifically for LEQVIO forms and medical PDFs
     const textPatterns = [
+      // Standard PDF text objects
       /\(([^)]+)\)/g,
       /\[([^\]]+)\]/g,
-      /\/([A-Za-z0-9\s]+)/g,
-      /BT\s+([^ET]+)\s+ET/g
+      
+      // Text between stream markers
+      /stream\s*([^e]*?)endstream/g,
+      
+      // Text operations in PDFs
+      /BT\s+([^ET]+)\s+ET/g,
+      /Tj\s*\(([^)]+)\)/g,
+      /'([^']+)'/g,
+      /"([^"]+)"/g,
+      
+      // Look for form field values
+      /\/V\s*\(([^)]+)\)/g,
+      /\/T\s*\(([^)]+)\)/g,
     ];
     
     const textParts = new Set();
     
-    for (const pattern of textPatterns) {
-      let match;
-      while ((match = pattern.exec(pdfString)) !== null) {
-        let text = match[1];
-        if (text) {
-          text = text.replace(/\\[0-9]{3}/g, ' ')
-                    .replace(/\\[a-zA-Z]/g, ' ')
-                    .replace(/[^\w\s@.-]/g, ' ')
-                    .trim();
-          if (text.length > 2 && !/^[0-9.]+$/.test(text)) {
-            textParts.add(text);
+    // Process both binary and latin1 encodings
+    for (const sourceString of [pdfString, latinString]) {
+      for (const pattern of textPatterns) {
+        let match;
+        while ((match = pattern.exec(sourceString)) !== null) {
+          let text = match[1];
+          if (text) {
+            // Clean up the text more aggressively
+            text = text
+              .replace(/\\[0-9]{3}/g, ' ')      // Octal codes
+              .replace(/\\[a-zA-Z]/g, ' ')       // Escape sequences
+              .replace(/[^\w\s@.,-]/g, ' ')      // Keep only alphanumeric, spaces, @, ., comma, dash
+              .replace(/\s+/g, ' ')              // Normalize spaces
+              .trim();
+            
+            // Filter out obvious PDF artifacts and metadata
+            const artifactPatterns = [
+              /^(subtype|type|font|helvetica|arial|times|calibri|verdana)$/i,
+              /^(reportlab|pdf|library|anonymous|unspecified|creator|producer)$/i,
+              /^(bold|italic|roman|regular|normal)$/i,
+              /^[0-9\.\s]+$/,                    // Only numbers and periods
+              /^[a-z]{1,2}$/,                    // Single/double letters
+              /^.{1,2}$/,                        // Too short (1-2 chars)
+              /www\./i                           // URLs
+            ];
+            
+            const isArtifact = artifactPatterns.some(pattern => pattern.test(text));
+            
+            if (!isArtifact && text.length > 2) {
+              textParts.add(text);
+            }
           }
         }
       }
     }
     
-    extractedText = Array.from(textParts).join(' ');
-    console.log("Binary extracted text length:", extractedText.length);
-    console.log("First 200 characters of binary extraction:", extractedText.substring(0, 200));
+    extractedText = Array.from(textParts)
+      .filter(text => text.length > 2)  // Additional length filter
+      .join(' ');
+      
+    console.log("Enhanced binary extracted text length:", extractedText.length);
+    console.log("First 300 characters of enhanced extraction:", extractedText.substring(0, 300));
     
-    if (extractedText.length > 50) {
+    if (extractedText.length > 20) {  // Lower threshold since we're filtering better
       return await extractPatientInfoFromPDFText(extractedText);
     }
     
