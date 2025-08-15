@@ -100,19 +100,33 @@ export default function UploadStartForm() {
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
+    console.log('File selected:', { name: file?.name, type: file?.type, size: file?.size })
     if (file && validateFile(file)) {
       setSelectedFile(file)
     }
   }
 
   const validateFile = (file: File) => {
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp']
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'application/pdf']
     const maxSize = 50 * 1024 * 1024 // 50MB
+    const fileExtension = file.name.toLowerCase().split('.').pop()
     
-    if (!allowedTypes.includes(file.type)) {
+    console.log('Validating file:', { 
+      name: file.name, 
+      type: file.type, 
+      extension: fileExtension,
+      allowedTypes,
+      isTypeValid: allowedTypes.includes(file.type),
+      isPDFByExtension: fileExtension === 'pdf'
+    })
+    
+    // Check MIME type first, then fall back to file extension for PDFs
+    const isValidType = allowedTypes.includes(file.type) || (fileExtension === 'pdf')
+    
+    if (!isValidType) {
       toast({
         title: "Invalid File Type",
-        description: "Please select an image file (PNG, JPG, GIF, WEBP)",
+        description: "Please select a PDF document or image file (PNG, JPG, GIF, WEBP)",
         variant: "destructive"
       })
       return false
@@ -146,6 +160,8 @@ export default function UploadStartForm() {
     
     const files = Array.from(e.dataTransfer.files)
     const file = files[0]
+    
+    console.log('File dropped:', { name: file?.name, type: file?.type, size: file?.size })
     
     if (file && validateFile(file)) {
       setSelectedFile(file)
@@ -309,7 +325,7 @@ export default function UploadStartForm() {
                 Upload Medical Document
               </CardTitle>
               <CardDescription>
-                Select a medical screenshot or image containing patient information
+                Select a medical document, screenshot, or PDF containing patient information
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -345,12 +361,12 @@ export default function UploadStartForm() {
                       id="file-upload"
                       type="file"
                       className="hidden"
-                      accept="image/*"
+                      accept="*/*"
                       onChange={handleFileSelect}
                     />
                   </div>
                   <p className="text-gray-500 text-sm">
-                    Supports PNG, JPG, GIF, WEBP images up to 50MB
+                    Supports PDF documents, PNG, JPG, GIF, WEBP images up to 50MB
                   </p>
                 </div>
               </div>
