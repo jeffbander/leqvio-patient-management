@@ -1862,8 +1862,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Creating patient from uploaded file:", {
         fileName: req.file.originalname,
         fileExtension: fileExtension,
+        mimeType: req.file.mimetype,
         extractionType: req.body?.extractionType,
-        fileSize: req.file.size
+        fileSize: req.file.size,
+        isPDF: fileExtension === 'pdf',
+        isImage: supportedImageTypes.includes(fileExtension || '')
       });
       
       let uploadExtractedData: any = null;
@@ -1915,9 +1918,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           uploadExtractedData = await extractPatientInfoFromScreenshot(base64Image, 'medical_system');
         }
       } else {
+        // Log what file type we're rejecting for debugging
+        console.log("REJECTING FILE:", {
+          fileName: req.file.originalname,
+          fileExtension: fileExtension,
+          mimeType: req.file.mimetype,
+          supportedImageTypes,
+          isPDF: fileExtension === 'pdf'
+        });
+        
         return res.status(400).json({ 
           error: "Unsupported file format", 
-          details: `Please upload an image file (${supportedImageTypes.join(', ')}) or PDF for LEQVIO forms.` 
+          details: `Please upload an image file (${supportedImageTypes.join(', ')}) or PDF for LEQVIO forms. Got: ${fileExtension} (${req.file.mimetype})` 
         });
       }
 
