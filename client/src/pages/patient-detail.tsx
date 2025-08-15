@@ -2036,7 +2036,7 @@ export default function PatientDetail() {
                       <AlertTriangle className="h-5 w-5 text-red-600" />
                     </div>
                     <div>
-                      <div className="text-lg font-semibold">Denial AI Assistant</div>
+                      <div className="text-lg font-semibold">Denial AI</div>
                       <div className="text-sm font-normal text-red-600 mt-1">Generate formal appeal letter for denied authorization</div>
                     </div>
                   </CardTitle>
