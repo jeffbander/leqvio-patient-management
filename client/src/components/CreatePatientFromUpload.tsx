@@ -95,7 +95,22 @@ export function CreatePatientFromUpload({ onPatientCreated }: CreatePatientFromU
 
   const isValidFileType = (file: File) => {
     const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'application/pdf'];
-    return validTypes.includes(file.type);
+    const fileExtension = file.name.toLowerCase().split('.').pop();
+    
+    // Check MIME type first, then fall back to file extension
+    const isValidByMimeType = validTypes.includes(file.type);
+    const isValidByExtension = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf'].includes(fileExtension || '');
+    
+    console.log('File validation:', {
+      name: file.name,
+      type: file.type,
+      extension: fileExtension,
+      isValidByMimeType,
+      isValidByExtension,
+      finalResult: isValidByMimeType || isValidByExtension
+    });
+    
+    return isValidByMimeType || isValidByExtension;
   };
 
   return (
