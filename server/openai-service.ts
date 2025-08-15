@@ -885,18 +885,35 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
     // Instead, try direct text extraction first
     console.log("Skipping PDF to image conversion (not supported on Linux), using text extraction");
     
-    // Method 2: Simple text extraction fallback
-    console.log("Trying simple text extraction as fallback");
+    // Method 2: Use pdf-parse for proper text extraction
+    console.log("Using pdf-parse for proper text extraction");
     try {
-      const pdfString = pdfBuffer.toString('latin1');
-      const textResult = await extractPatientInfoFromPDFText(pdfString);
+      const pdf = (await import('pdf-parse')).default;
+      const data = await pdf(pdfBuffer);
+      console.log("PDF text extracted successfully, length:", data.text.length);
+      console.log("PDF text preview:", data.text.substring(0, 500));
+      
+      const textResult = await extractPatientInfoFromPDFText(data.text);
       
       if (textResult && (textResult.patient_first_name || textResult.patient_last_name)) {
-        console.log("Fallback text extraction successful");
+        console.log("PDF text extraction successful");
         return textResult;
       }
     } catch (fallbackError) {
-      console.log("Fallback text extraction failed:", (fallbackError as Error).message);
+      console.log("PDF text extraction failed:", (fallbackError as Error).message);
+      // Fallback to simple string extraction
+      try {
+        console.log("Trying simple string extraction as final fallback");
+        const pdfString = pdfBuffer.toString('latin1');
+        const textResult = await extractPatientInfoFromPDFText(pdfString);
+        
+        if (textResult && (textResult.patient_first_name || textResult.patient_last_name)) {
+          console.log("Simple fallback text extraction successful");
+          return textResult;
+        }
+      } catch (simpleError) {
+        console.log("Simple fallback text extraction failed:", (simpleError as Error).message);
+      }
     }
     
     // Method 3: Return placeholder for manual review
