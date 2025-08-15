@@ -884,6 +884,19 @@ EXTRACTION RULES:
 export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any> {
   try {
     console.log("Processing PDF directly with Mistral AI");
+    console.log("PDF Buffer length:", pdfBuffer.length);
+    
+    // Debug: Show first 1000 characters in different formats
+    console.log("=== PDF FIRST 1000 CHARACTERS DEBUG ===");
+    console.log("As UTF-8 string:");
+    console.log(pdfBuffer.toString('utf8').substring(0, 1000));
+    console.log("\nAs Latin1 string:");
+    console.log(pdfBuffer.toString('latin1').substring(0, 1000));
+    console.log("\nAs ASCII string:");
+    console.log(pdfBuffer.toString('ascii').substring(0, 1000));
+    console.log("\nAs hex (first 200 bytes):");
+    console.log(pdfBuffer.toString('hex').substring(0, 400));
+    console.log("=== END PDF DEBUG ===");
     
     // Convert PDF to base64 for direct AI processing
     const base64Pdf = pdfBuffer.toString('base64');
