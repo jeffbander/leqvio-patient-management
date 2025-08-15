@@ -881,66 +881,9 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
   try {
     console.log("Starting PDF to image conversion for Vision API processing");
     
-    // Method 1: Convert PDF to image and use Vision API (same process as image uploads)
-    try {
-      console.log("Converting PDF to image using pdf-poppler");
-      
-      // Import dependencies
-      const { convert } = await import('pdf-poppler');
-      const fs = await import('fs');
-      const path = await import('path');
-      const { promisify } = await import('util');
-      const writeFile = promisify(fs.writeFile);
-      const unlink = promisify(fs.unlink);
-      
-      // Create temporary file paths
-      const tempDir = '/tmp';
-      const pdfPath = path.join(tempDir, `temp_pdf_${Date.now()}.pdf`);
-      
-      // Write PDF buffer to temporary file
-      await writeFile(pdfPath, pdfBuffer);
-      console.log("PDF written to temporary file");
-      
-      // Convert PDF to image
-      const options = {
-        format: 'png',
-        out_dir: tempDir,
-        out_prefix: `temp_image_${Date.now()}`,
-        page: 1, // Convert only first page
-        single_file: true
-      };
-      
-      console.log("Converting PDF to image...");
-      await convert(pdfPath, options);
-      
-      // Read the converted image
-      const outputImagePath = path.join(tempDir, `${options.out_prefix}.1.png`);
-      const imageBuffer = fs.readFileSync(outputImagePath);
-      console.log("PDF converted to image successfully, size:", imageBuffer.length);
-      
-      // Convert image to base64 for Vision API
-      const base64Image = imageBuffer.toString('base64');
-      
-      // Use the same Vision API process as for uploaded images
-      console.log("Processing converted image with Vision API...");
-      const visionResult = await extractPatientInfoFromImage(base64Image);
-      
-      // Clean up temporary files
-      try {
-        await unlink(pdfPath);
-        await unlink(outputImagePath);
-      } catch (cleanupError) {
-        console.log("Cleanup error (non-critical):", (cleanupError as Error).message);
-      }
-      
-      if (visionResult && (visionResult.patient_first_name || visionResult.patient_last_name)) {
-        console.log("PDF to image + Vision API extraction successful");
-        return visionResult;
-      }
-      
-    } catch (conversionError) {
-      console.log("PDF to image conversion failed:", (conversionError as Error).message);
-    }
+    // Method 1: Skip PDF to image conversion on Linux (pdf-poppler not supported)
+    // Instead, try direct text extraction first
+    console.log("Skipping PDF to image conversion (not supported on Linux), using text extraction");
     
     // Method 2: Simple text extraction fallback
     console.log("Trying simple text extraction as fallback");
