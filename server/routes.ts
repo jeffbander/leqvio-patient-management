@@ -3272,7 +3272,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Clinical note processing failed:', error);
           // Continue without extraction
         }
-      } else if (documentType === 'medical_document' && file.mimetype === 'application/pdf') {
+      } else if (documentType === 'medical_document') {
+        // Check if it's a PDF file
+        const isPDF = file.mimetype === 'application/pdf' || 
+                     file.mimetype === 'application/x-pdf' || 
+                     file.originalname.toLowerCase().endsWith('.pdf');
+        
+        if (!isPDF) {
+          return res.status(400).json({ error: 'Only PDF files are allowed for medical documents' });
+        }
         // Handle PDF document extraction
         try {
           console.log('Processing PDF medical document:', file.originalname);

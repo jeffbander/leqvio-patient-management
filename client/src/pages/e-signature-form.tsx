@@ -517,12 +517,22 @@ export default function ESignatureForm() {
                       </div>
                       <DragDropFileUpload
                         onFileSelect={(file) => {
+                          // Check if it's a PDF file
+                          if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+                            toast({
+                              title: "Invalid File Type",
+                              description: "Please select a PDF file only.",
+                              variant: "destructive"
+                            });
+                            return;
+                          }
+                          
                           setSubmissionState('uploading');
                           uploadDocumentMutation.mutate({ file, documentType: 'medical_document' });
                         }}
-                        accept=".pdf,application/pdf,application/x-pdf"
+                        accept="*/*"
                         maxSizeMB={25}
-                        placeholder="Drag and drop PDF here"
+                        placeholder="Drag and drop PDF here or click to browse"
                         className="[&>div:last-child]:p-2"
                       />
                     </div>
