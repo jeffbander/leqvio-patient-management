@@ -75,14 +75,20 @@ export function CreatePatientFromUpload({ onPatientCreated }: CreatePatientFromU
     e.stopPropagation();
     setDragActive(false);
     
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setSelectedFile(e.dataTransfer.files[0]);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      const file = files[0];
+      console.log('Dropped file:', { name: file.name, type: file.type, size: file.size });
+      setSelectedFile(file);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      const file = files[0];
+      console.log('Selected file:', { name: file.name, type: file.type, size: file.size });
+      setSelectedFile(file);
     }
   };
 
@@ -94,23 +100,8 @@ export function CreatePatientFromUpload({ onPatientCreated }: CreatePatientFromU
   };
 
   const isValidFileType = (file: File) => {
-    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'application/pdf'];
-    const fileExtension = file.name.toLowerCase().split('.').pop();
-    
-    // Check MIME type first, then fall back to file extension
-    const isValidByMimeType = validTypes.includes(file.type);
-    const isValidByExtension = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf'].includes(fileExtension || '');
-    
-    console.log('File validation:', {
-      name: file.name,
-      type: file.type,
-      extension: fileExtension,
-      isValidByMimeType,
-      isValidByExtension,
-      finalResult: isValidByMimeType || isValidByExtension
-    });
-    
-    return isValidByMimeType || isValidByExtension;
+    // Accept all file types - let server handle validation
+    return true;
   };
 
   return (
@@ -129,34 +120,36 @@ export function CreatePatientFromUpload({ onPatientCreated }: CreatePatientFromU
           <div className="space-y-2">
             <Label htmlFor="file-upload">Upload Document</Label>
             <div
-              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
                 dragActive 
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
-                  : 'border-gray-300 dark:border-gray-600'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
               }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
+              onClick={() => document.getElementById('file-upload')?.click()}
             >
-              <Input
+              <input
                 id="file-upload"
                 type="file"
                 onChange={handleFileChange}
-                className="hidden"
+                style={{ display: 'none' }}
+                accept="*/*"
               />
-              <Label
-                htmlFor="file-upload"
-                className="cursor-pointer flex flex-col items-center gap-2"
-              >
-                <FileUp className="h-8 w-8 text-gray-400" />
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {selectedFile ? selectedFile.name : 'Click to upload or drag and drop'}
-                </span>
-                <span className="text-xs text-gray-500">
-                  PDF, PNG, JPG, GIF, or WEBP files
-                </span>
-              </Label>
+              <FileUp className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+              <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                {selectedFile ? selectedFile.name : 'Click to upload or drag and drop'}
+              </div>
+              <div className="text-xs text-gray-500">
+                PDF, PNG, JPG, GIF, WEBP, or any document file
+              </div>
+              {selectedFile && (
+                <div className="text-xs text-blue-600 mt-2">
+                  File: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                </div>
+              )}
             </div>
           </div>
 
@@ -164,12 +157,7 @@ export function CreatePatientFromUpload({ onPatientCreated }: CreatePatientFromU
             <Alert>
               <Check className="h-4 w-4" />
               <AlertDescription>
-                File selected: {selectedFile.name}
-                {!isValidFileType(selectedFile) && (
-                  <span className="text-red-600 block">
-                    Warning: Unsupported file type
-                  </span>
-                )}
+                File selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
               </AlertDescription>
             </Alert>
           )}
