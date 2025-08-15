@@ -902,6 +902,7 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
     const base64Pdf = pdfBuffer.toString('base64');
     
     // Send PDF directly to Mistral for processing
+    console.log('Calling Mistral API...');
     const response = await mistral.chat.complete({
       model: "mistral-large-latest",
       messages: [
@@ -948,11 +949,21 @@ PDF Data (base64): ${base64Pdf.substring(0, 4000)}`
       max_tokens: 1000
     });
 
+    console.log('Mistral API call completed');
     const result = response.choices[0].message.content;
     console.log("Raw Mistral response:", result);
+    
     const cleanResult = result?.replace(/```json\n?|\n?```/g, '').trim();
     console.log("Cleaned result:", cleanResult);
-    const extractedData = JSON.parse(cleanResult || '{}');
+    
+    let extractedData;
+    try {
+      extractedData = JSON.parse(cleanResult || '{}');
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError);
+      console.error('Failed to parse string:', cleanResult);
+      throw parseError;
+    }
     
     console.log("Direct PDF processing result:", {
       patientName: `${extractedData.patient_first_name || ''} ${extractedData.patient_last_name || ''}`,
@@ -991,6 +1002,11 @@ PDF Data (base64): ${base64Pdf.substring(0, 4000)}`
     
   } catch (error) {
     console.error('Direct PDF processing failed:', error);
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    if (error.stack) {
+      console.error('Error stack:', error.stack);
+    }
     
     const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
     
