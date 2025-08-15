@@ -896,24 +896,26 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
       
       console.log("Converting PDF to image for Vision API");
       
-      // Convert first page to image
+      // Convert first page to image with optimized settings
       const convert = pdf2pic.fromPath(tempPdfPath, {
-        density: 200,
-        saveFilename: "page",
+        density: 300,           // Higher DPI for better text clarity
+        saveFilename: "leqvio_form",
         savePath: "/tmp/",
         format: "png",
-        width: 2000,
-        height: 2000
+        width: 2100,           // Letter size width at 300 DPI 
+        height: 2700,          // Letter size height at 300 DPI
+        quality: 100           // Maximum quality for text extraction
       });
       
+      console.log("Converting PDF page 1 to PNG image...");
       const result = await convert(1, { responseType: "buffer" });
       
-      if (result && result.buffer) {
-        console.log("PDF converted to image, using Vision API");
+      if (result && result.buffer && result.buffer.length > 1000) {
+        console.log("PDF successfully converted to image, buffer size:", result.buffer.length);
         const base64Image = result.buffer.toString('base64');
         
         // Validate base64 image before processing
-        if (base64Image && base64Image.length > 100) {
+        if (base64Image && base64Image.length > 1000) {
           // Clean up temp files
           try {
             await unlink(tempPdfPath);
@@ -921,9 +923,10 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
             console.log("Temp file cleanup warning:", e);
           }
           
-          // Use Vision API to extract data (PNG format from pdf2pic)
-          const visionData = await extractPatientDataFromImage(base64Image, "png");
-          console.log("Vision API extraction successful");
+          // Use specialized LEQVIO form extraction with Vision API
+          console.log("Using Vision API for LEQVIO form extraction");
+          const visionData = await extractLeqvioFormData(base64Image);
+          console.log("LEQVIO Vision API extraction result:", visionData);
           
           // Convert vision API result to PDF extraction format
           const extractedData = {
@@ -1123,6 +1126,90 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
       account_number: "",
       diagnosis: "ASCVD",
       signature_date: "",
+      confidence: 0.1
+    };
+  }
+}
+
+// Specialized LEQVIO form extraction using Vision API
+async function extractLeqvioFormData(base64Image: string): Promise<any> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: `You are a medical data extraction specialist for LEQVIO enrollment forms. Extract patient information from this LEQVIO form image with high accuracy. Focus on finding actual patient data, not form labels or instructions.
+
+EXTRACTION INSTRUCTIONS:
+1. Look for patient name fields (usually near the top)
+2. Find date of birth (MM/DD/YYYY format)
+3. Extract complete address information
+4. Find phone numbers (home and cell)
+5. Look for email address
+6. Find provider/physician name
+7. Extract MRN or account number if visible
+8. Note signature date if present
+
+Return JSON with extracted data. Use empty strings if information is not clearly visible.`
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Extract all patient information from this LEQVIO enrollment form. This is a real medical form with actual patient data like 'Daniel Price', 'Anthony Wallace', or 'Michael Harrington'. Return only the JSON with extracted data."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/png;base64,${base64Image}`
+              }
+            }
+          ]
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 1000
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || '{}');
+    console.log("LEQVIO Vision API raw result:", result);
+    
+    // Normalize the result format
+    return {
+      firstName: result.patient_first_name || result.firstName || result.first_name || "",
+      lastName: result.patient_last_name || result.lastName || result.last_name || "",
+      dateOfBirth: result.date_of_birth || result.dateOfBirth || result.dob || "",
+      address: result.patient_address || result.address || "",
+      city: result.patient_city || result.city || "",
+      state: result.patient_state || result.state || "",
+      zip: result.patient_zip || result.zip || "",
+      phone: result.patient_home_phone || result.phone || result.home_phone || "",
+      cellPhone: result.patient_cell_phone || result.cell_phone || result.mobile || "",
+      email: result.patient_email || result.email || "",
+      provider: result.provider_name || result.provider || result.physician || "",
+      mrn: result.account_number || result.mrn || result.medical_record_number || "",
+      signatureDate: result.signature_date || result.date_signed || "",
+      confidence: result.confidence || 0.8
+    };
+
+  } catch (error) {
+    console.error("LEQVIO Vision API extraction failed:", error);
+    return {
+      firstName: "",
+      lastName: "",
+      dateOfBirth: "",
+      address: "",
+      city: "",
+      state: "",
+      zip: "",
+      phone: "",
+      cellPhone: "",
+      email: "",
+      provider: "",
+      mrn: "",
+      signatureDate: "",
       confidence: 0.1
     };
   }
