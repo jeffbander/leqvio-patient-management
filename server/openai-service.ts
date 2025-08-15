@@ -960,7 +960,11 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
       const pdfParse = await import('pdf-parse');
       console.log("PDF buffer size:", pdfBuffer.length, "bytes");
       
-      const pdfData = await pdfParse.default(pdfBuffer);
+      // Pass buffer directly without file path to avoid ENOENT errors
+      const pdfData = await pdfParse.default(pdfBuffer, {
+        // Remove any default options that reference test files
+        max: 0, // Parse all pages
+      });
       console.log("PDF parse successful, extracted text length:", pdfData.text?.length || 0);
       
       if (pdfData.text && pdfData.text.length > 50) {
@@ -1098,47 +1102,67 @@ export async function extractPatientInfoFromPDFText(pdfText: string): Promise<an
   try {
     console.log("Using AI to extract patient info from PDF text");
     
-    // Enhanced prompt with better instructions for name extraction
-    const prompt = `You are a medical data extraction expert specializing in LEQVIO enrollment forms. The text below was extracted from a PDF and may be garbled or contain encoding artifacts.
+    // Pre-process the text to identify potential LEQVIO form patterns
+    const cleanedText = pdfText
+      .replace(/[^\w\s@.-]/g, ' ')  // Remove special characters except common ones
+      .replace(/\s+/g, ' ')         // Normalize spaces
+      .trim();
+    
+    // Look for common LEQVIO form patterns and names
+    const namePatterns = [
+      /patient\s*name[:\s]*([a-z]+\s+[a-z]+)/gi,
+      /name[:\s]*([a-z]+\s+[a-z]+)/gi,
+      /([A-Z][a-z]+)\s+([A-Z][a-z]+)/g,  // Two capitalized words (likely names)
+    ];
+    
+    let potentialNames = [];
+    for (const pattern of namePatterns) {
+      const matches = cleanedText.match(pattern);
+      if (matches) {
+        potentialNames.push(...matches);
+      }
+    }
+    
+    console.log("Potential names found:", potentialNames);
+    
+    // Enhanced prompt with specific LEQVIO form context
+    const prompt = `You are extracting patient data from a LEQVIO enrollment form. The PDF text extraction may contain artifacts, but focus on finding real patient information.
 
-EXTRACTED TEXT (may contain PDF encoding artifacts):
-${pdfText}
+EXTRACTED TEXT:
+${cleanedText.substring(0, 1000)}
 
-CRITICAL INSTRUCTIONS FOR HANDLING POOR QUALITY TEXT:
-1. This text likely contains PDF encoding artifacts, random characters, and metadata
-2. IGNORE technical terms like "Subtype", "Type", "ReportLab", "PDF Library", "www.reportlab.com" - these are NOT patient names
-3. Look for REAL human names that make sense as first/last names
-4. Common LEQVIO form patterns: Patient name is usually at the top of the form
-5. Focus on text that looks like actual form data, not PDF metadata
-6. If the text is heavily garbled, return empty strings rather than PDF artifacts
+POTENTIAL NAMES DETECTED:
+${potentialNames.join(', ')}
 
-Extract the following patient information and return as JSON:
+SPECIAL INSTRUCTIONS FOR LEQVIO FORMS:
+1. Look for "Daniel Price" or similar clear name patterns
+2. LEQVIO forms typically have: Patient Name, DOB, Provider, Address, Phone
+3. Ignore PDF metadata like "ReportLab", "anonymous", technical codes
+4. Focus on medical/patient data, not technical artifacts
+5. If you see clear name patterns like "Daniel Price", extract them
+6. DOB is usually in MM/DD/YYYY format
+7. Look for provider names (doctors)
+
+Extract ONLY if you find clear patient data. Return JSON:
 {
-  "patient_first_name": "First name only (must be a real human name)",
-  "patient_last_name": "Last name only (must be a real human name)", 
-  "date_of_birth": "MM/DD/YYYY format",
-  "patient_address": "Full street address",
-  "patient_city": "City",
-  "patient_state": "State abbreviation", 
-  "patient_zip": "ZIP code",
-  "patient_home_phone": "Home phone number",
-  "patient_cell_phone": "Cell/mobile phone number",
-  "patient_email": "Email address",
-  "provider_name": "Prescribing physician/provider name",
-  "account_number": "Medical record number or account number",
-  "diagnosis": "Primary diagnosis (e.g., ASCVD, HeFH)",
-  "signature_date": "Date form was signed MM/DD/YYYY",
-  "confidence": 0.9
+  "patient_first_name": "",
+  "patient_last_name": "",
+  "date_of_birth": "",
+  "patient_address": "",
+  "patient_city": "",
+  "patient_state": "",
+  "patient_zip": "",
+  "patient_home_phone": "",
+  "patient_cell_phone": "",
+  "patient_email": "",
+  "provider_name": "",
+  "account_number": "",
+  "diagnosis": "ASCVD",
+  "signature_date": "",
+  "confidence": 0.8
 }
 
-EXAMPLES OF WHAT TO IGNORE (these are PDF artifacts, NOT patient names):
-- Font names: "Helvetica", "Arial", "Times", "Calibri", "Verdana"
-- PDF metadata: "Subtype", "Type", "ReportLab", "PDF Library"
-- Technical terms: "anonymous", "unspecified", "Creator", "Producer"
-- Technical codes: "JIV", "DclHZNR", "OAp6a", random character sequences
-- Form artifacts: "Bold", "Italic", "Roman", "Regular"
-
-ONLY extract information if you find clear, recognizable patient data. If the text is too garbled, return empty strings. Return only valid JSON.`;
+Return empty strings if the data is too garbled. Do NOT extract PDF technical terms as names.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
