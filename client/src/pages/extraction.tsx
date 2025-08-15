@@ -13,12 +13,16 @@ export default function UploadStartForm() {
   const queryClient = useQueryClient()
   
   // State management
-  const [activeTab, setActiveTab] = useState<'file' | 'text'>('file')
+  const [activeTab, setActiveTab] = useState<'file' | 'pdf' | 'text'>('file')
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [createdPatient, setCreatedPatient] = useState<any>(null)
   const [textContent, setTextContent] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
+  
+  // PDF Reader specific state
+  const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const [pdfDragOver, setPdfDragOver] = useState(false)
 
   // File upload mutation
   const createPatientFromFileMutation = useMutation({
@@ -188,12 +192,64 @@ export default function UploadStartForm() {
     }
   }
 
+  // PDF Reader specific handlers
+  const handlePdfDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setPdfDragOver(true)
+  }
+
+  const handlePdfDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setPdfDragOver(false)
+  }
+
+  const handlePdfDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setPdfDragOver(false)
+    const files = Array.from(e.dataTransfer.files)
+    const pdfFiles = files.filter(file => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))
+    if (pdfFiles.length > 0) {
+      setPdfFile(pdfFiles[0])
+    } else {
+      toast({
+        title: "Invalid File Type",
+        description: "Please select a PDF document",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handlePdfSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      const file = files[0]
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        setPdfFile(file)
+      } else {
+        toast({
+          title: "Invalid File Type",
+          description: "Please select a PDF document",
+          variant: "destructive"
+        })
+      }
+    }
+  }
+
+  const handlePdfUpload = () => {
+    if (pdfFile) {
+      setUploadStatus('uploading')
+      createPatientFromFileMutation.mutate(pdfFile)
+    }
+  }
+
   const resetForm = () => {
     setUploadStatus('idle')
     setCreatedPatient(null)
     setSelectedFile(null)
+    setPdfFile(null)
     setTextContent('')
     setIsDragOver(false)
+    setPdfDragOver(false)
   }
 
   const goToPatientDetail = () => {
@@ -299,6 +355,19 @@ export default function UploadStartForm() {
             <div className="flex items-center gap-2">
               <Upload className="h-4 w-4" />
               File Upload
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('pdf')}
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+              activeTab === 'pdf'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              PDF Reader
             </div>
           </button>
           <button
@@ -411,6 +480,108 @@ export default function UploadStartForm() {
                   <div>
                     <p className="font-medium">Medical Images</p>
                     <p className="text-sm text-gray-600">Insurance cards, documents</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* PDF Reader Tab */}
+        {activeTab === 'pdf' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                PDF Document Reader
+              </CardTitle>
+              <CardDescription>
+                Upload LEQVIO forms, medical records, and other PDF documents for specialized extraction
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div 
+                className={`border-2 border-dashed rounded-lg p-8 transition-colors ${
+                  pdfDragOver 
+                    ? 'border-red-400 bg-red-50' 
+                    : 'border-red-300 hover:border-red-400'
+                }`}
+                onDragOver={handlePdfDragOver}
+                onDragLeave={handlePdfDragLeave}
+                onDrop={handlePdfDrop}
+              >
+                <div className="text-center">
+                  <FileText className={`mx-auto h-12 w-12 mb-4 ${
+                    pdfDragOver ? 'text-red-500' : 'text-red-400'
+                  }`} />
+                  <div className="mb-4">
+                    {pdfDragOver ? (
+                      <p className="text-red-600 font-medium">Drop your PDF here</p>
+                    ) : (
+                      <>
+                        <p className="text-gray-600 mb-2">Drag and drop your PDF document here, or</p>
+                        <label
+                          htmlFor="pdf-upload"
+                          className="cursor-pointer text-red-600 hover:text-red-500 font-medium"
+                        >
+                          click to select PDF
+                        </label>
+                      </>
+                    )}
+                    <input
+                      id="pdf-upload"
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,application/pdf"
+                      onChange={handlePdfSelect}
+                    />
+                  </div>
+                  <p className="text-gray-500 text-sm">
+                    PDF documents only - LEQVIO forms, medical records up to 25MB
+                  </p>
+                </div>
+              </div>
+
+              {pdfFile && (
+                <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-8 w-8 text-red-600" />
+                    <div>
+                      <p className="font-medium text-red-800">{pdfFile.name}</p>
+                      <p className="text-sm text-red-600">
+                        {pdfFile.size < 1024 * 1024 
+                          ? `${(pdfFile.size / 1024).toFixed(1)} KB` 
+                          : `${(pdfFile.size / 1024 / 1024).toFixed(2)} MB`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handlePdfUpload} 
+                  disabled={!pdfFile}
+                  className="min-w-[120px] bg-red-600 hover:bg-red-700"
+                >
+                  Extract from PDF
+                </Button>
+              </div>
+
+              {/* PDF Features */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-red-600" />
+                  <div>
+                    <p className="font-medium">LEQVIO Forms</p>
+                    <p className="text-sm text-gray-600">Patient enrollment and enrollment forms</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-purple-600" />
+                  <div>
+                    <p className="font-medium">Medical Records</p>
+                    <p className="text-sm text-gray-600">Lab results, clinical notes, reports</p>
                   </div>
                 </div>
               </div>
