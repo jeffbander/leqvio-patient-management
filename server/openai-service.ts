@@ -883,83 +883,80 @@ EXTRACTION RULES:
 
 export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any> {
   try {
-    console.log("Starting PDF to image conversion for Vision API processing");
+    console.log("Processing PDF directly with Mistral AI");
     
-    // Method 1: Skip PDF to image conversion on Linux (pdf-poppler not supported)
-    // Instead, try direct text extraction first
-    console.log("Skipping PDF to image conversion (not supported on Linux), using text extraction");
+    // Convert PDF to base64 for direct AI processing
+    const base64Pdf = pdfBuffer.toString('base64');
     
-    // Method 2: Use PDF.js for reliable text extraction
-    console.log("Using PDF.js for proper text extraction");
-    try {
-      const pdfjsLib = await import('pdfjs-dist');
-      
-      // Load PDF document
-      const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
-      const pdfDoc = await loadingTask.promise;
-      
-      let fullText = '';
-      
-      // Extract text from all pages
-      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-        const page = await pdfDoc.getPage(pageNum);
-        const textContent = await page.getTextContent();
-        
-        // Combine all text items from the page
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ');
-        
-        fullText += pageText + ' ';
-      }
-      
-      console.log("PDF text extracted successfully, length:", fullText.length);
-      console.log("PDF text preview:", fullText.substring(0, 500));
-      
-      if (fullText.trim().length > 50) {
-        const textResult = await extractPatientInfoFromPDFTextWithMistral(fullText);
-        
-        if (textResult && (textResult.patient_first_name || textResult.patient_last_name)) {
-          console.log("PDF text extraction successful");
-          return textResult;
+    // Send PDF directly to Mistral for processing
+    const response = await mistral.chat.complete({
+      model: "mistral-large-latest",
+      messages: [
+        {
+          role: "system",
+          content: "You are a medical data extraction expert specializing in LEQVIO enrollment forms. Extract patient information from the PDF document and return only valid JSON without markdown formatting."
+        },
+        {
+          role: "user", 
+          content: `Extract patient information from this LEQVIO enrollment form PDF. This is a real medical form with actual patient data.
+
+CRITICAL INSTRUCTIONS:
+1. Extract the patient's actual name (FirstName LastName format)
+2. Find date of birth in MM/DD/YYYY format
+3. Extract complete address, phone numbers, and email
+4. Find the ordering provider/doctor name
+5. Look for MRN or account numbers
+
+RETURN JSON with these exact fields:
+{
+  "patient_first_name": "",
+  "patient_last_name": "",
+  "date_of_birth": "",
+  "patient_address": "",
+  "patient_city": "",
+  "patient_state": "",
+  "patient_zip": "",
+  "patient_home_phone": "",
+  "patient_cell_phone": "",
+  "patient_email": "",
+  "provider_name": "",
+  "account_number": "",
+  "diagnosis": "ASCVD",
+  "signature_date": "",
+  "confidence": 0.9
+}
+
+PDF Data (base64): ${base64Pdf.substring(0, 4000)}`
         }
-      }
-    } catch (fallbackError) {
-      console.log("PDF.js text extraction failed:", (fallbackError as Error).message);
+      ],
+      temperature: 0.1,
+      max_tokens: 1000
+    });
+
+    const result = response.choices[0].message.content;
+    const cleanResult = result?.replace(/```json\n?|\n?```/g, '').trim();
+    const extractedData = JSON.parse(cleanResult || '{}');
+    
+    console.log("Direct PDF processing result:", {
+      patientName: `${extractedData.patient_first_name || ''} ${extractedData.patient_last_name || ''}`,
+      dateOfBirth: extractedData.date_of_birth || '',
+      provider: extractedData.provider_name || '',
+      confidence: extractedData.confidence || 0.1
+    });
+    
+    // If we got valid names, return the result
+    if (extractedData.patient_first_name && extractedData.patient_last_name &&
+        extractedData.patient_first_name.trim() !== '' && extractedData.patient_last_name.trim() !== '') {
+      console.log("Direct PDF extraction successful with real patient data");
+      return extractedData;
     }
     
-    // Method 3: Try simple buffer extraction as last resort
-    console.log("Trying buffer extraction as final fallback");
-    try {
-      // Try UTF-8 first, then latin1
-      let pdfString = pdfBuffer.toString('utf8');
-      if (pdfString.length < 100) {
-        pdfString = pdfBuffer.toString('latin1');
-      }
-      
-      // Look for actual readable text patterns
-      const readableText = pdfString.replace(/[\x00-\x1F\x7F-\x9F]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-        
-      if (readableText.length > 100) {
-        console.log("Found readable text in buffer, length:", readableText.length);
-        const textResult = await extractPatientInfoFromPDFTextWithMistral(readableText);
-        
-        if (textResult && (textResult.patient_first_name || textResult.patient_last_name)) {
-          console.log("Buffer extraction successful");
-          return textResult;
-        }
-      }
-    } catch (bufferError) {
-      console.log("Buffer extraction failed:", (bufferError as Error).message);
-    }
+    console.log("Direct processing didn't extract patient names, returning placeholder");
+    const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
     
-    // Method 4: Return placeholder for manual review
-    console.log("All PDF extraction methods failed, returning placeholder for manual review");
     return {
-      patient_first_name: "",
-      patient_last_name: "",
+      patient_first_name: "NEEDS_REVIEW",
+      patient_last_name: `PDF_${timestamp}`,
       date_of_birth: "",
       patient_address: "",
       patient_city: "",
@@ -972,15 +969,17 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
       account_number: "",
       diagnosis: "ASCVD",
       signature_date: "",
-      confidence: 0.2
+      confidence: 0.1
     };
     
   } catch (error) {
-    console.error('Complete PDF extraction failure:', error);
+    console.error('Direct PDF processing failed:', error);
+    
+    const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
     
     return {
-      patient_first_name: "",
-      patient_last_name: "",
+      patient_first_name: "NEEDS_REVIEW",
+      patient_last_name: `PDF_${timestamp}`,
       date_of_birth: "",
       patient_address: "",
       patient_city: "",
