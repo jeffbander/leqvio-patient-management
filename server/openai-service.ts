@@ -889,38 +889,73 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any>
     // Instead, try direct text extraction first
     console.log("Skipping PDF to image conversion (not supported on Linux), using text extraction");
     
-    // Method 2: Use pdf-parse for proper text extraction
-    console.log("Using pdf-parse for proper text extraction");
+    // Method 2: Use PDF.js for reliable text extraction
+    console.log("Using PDF.js for proper text extraction");
     try {
-      const pdf = (await import('pdf-parse')).default;
-      const data = await pdf(pdfBuffer);
-      console.log("PDF text extracted successfully, length:", data.text.length);
-      console.log("PDF text preview:", data.text.substring(0, 500));
+      const pdfjsLib = await import('pdfjs-dist');
       
-      const textResult = await extractPatientInfoFromPDFTextWithMistral(data.text);
+      // Load PDF document
+      const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
+      const pdfDoc = await loadingTask.promise;
       
-      if (textResult && (textResult.patient_first_name || textResult.patient_last_name)) {
-        console.log("PDF text extraction successful");
-        return textResult;
+      let fullText = '';
+      
+      // Extract text from all pages
+      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+        const page = await pdfDoc.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        
+        // Combine all text items from the page
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        
+        fullText += pageText + ' ';
       }
-    } catch (fallbackError) {
-      console.log("PDF text extraction failed:", (fallbackError as Error).message);
-      // Fallback to simple string extraction
-      try {
-        console.log("Trying simple string extraction as final fallback");
-        const pdfString = pdfBuffer.toString('latin1');
-        const textResult = await extractPatientInfoFromPDFTextWithMistral(pdfString);
+      
+      console.log("PDF text extracted successfully, length:", fullText.length);
+      console.log("PDF text preview:", fullText.substring(0, 500));
+      
+      if (fullText.trim().length > 50) {
+        const textResult = await extractPatientInfoFromPDFTextWithMistral(fullText);
         
         if (textResult && (textResult.patient_first_name || textResult.patient_last_name)) {
-          console.log("Simple fallback text extraction successful");
+          console.log("PDF text extraction successful");
           return textResult;
         }
-      } catch (simpleError) {
-        console.log("Simple fallback text extraction failed:", (simpleError as Error).message);
       }
+    } catch (fallbackError) {
+      console.log("PDF.js text extraction failed:", (fallbackError as Error).message);
     }
     
-    // Method 3: Return placeholder for manual review
+    // Method 3: Try simple buffer extraction as last resort
+    console.log("Trying buffer extraction as final fallback");
+    try {
+      // Try UTF-8 first, then latin1
+      let pdfString = pdfBuffer.toString('utf8');
+      if (pdfString.length < 100) {
+        pdfString = pdfBuffer.toString('latin1');
+      }
+      
+      // Look for actual readable text patterns
+      const readableText = pdfString.replace(/[\x00-\x1F\x7F-\x9F]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+        
+      if (readableText.length > 100) {
+        console.log("Found readable text in buffer, length:", readableText.length);
+        const textResult = await extractPatientInfoFromPDFTextWithMistral(readableText);
+        
+        if (textResult && (textResult.patient_first_name || textResult.patient_last_name)) {
+          console.log("Buffer extraction successful");
+          return textResult;
+        }
+      }
+    } catch (bufferError) {
+      console.log("Buffer extraction failed:", (bufferError as Error).message);
+    }
+    
+    // Method 4: Return placeholder for manual review
     console.log("All PDF extraction methods failed, returning placeholder for manual review");
     return {
       patient_first_name: "",
