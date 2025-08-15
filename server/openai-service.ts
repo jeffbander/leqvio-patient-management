@@ -879,274 +879,85 @@ EXTRACTION RULES:
 
 export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any> {
   try {
-    console.log("Starting advanced PDF extraction");
+    console.log("Starting PDF to image conversion for Vision API processing");
     
-    // Method 1: Create a smart text-based extraction that actually works
+    // Method 1: Convert PDF to image and use Vision API (same process as image uploads)
     try {
-      console.log("Attempting intelligent PDF text extraction");
+      console.log("Converting PDF to image using pdf-poppler");
       
-      // Convert PDF to multiple string representations for better text extraction
-      const pdfString = pdfBuffer.toString('latin1');
-      const pdfBinary = pdfBuffer.toString('binary');
-      const pdfUtf8 = pdfBuffer.toString('utf8', 0, Math.min(pdfBuffer.length, 10000));
+      // Import dependencies
+      const { convert } = await import('pdf-poppler');
+      const fs = await import('fs');
+      const path = await import('path');
+      const { promisify } = await import('util');
+      const writeFile = promisify(fs.writeFile);
+      const unlink = promisify(fs.unlink);
       
-      let allExtractedText = '';
+      // Create temporary file paths
+      const tempDir = '/tmp';
+      const pdfPath = path.join(tempDir, `temp_pdf_${Date.now()}.pdf`);
       
-      // Method 1a: Extract from PDF streams and objects
-      const streamMatches = pdfString.match(/stream\s+(.*?)\s+endstream/gs) || [];
-      for (const streamMatch of streamMatches) {
-        const streamContent = streamMatch.replace(/stream\s+|\s+endstream/g, '');
-        // Look for readable text in streams
-        const readableText = streamContent.match(/[A-Za-z][A-Za-z\s]{2,}/g) || [];
-        allExtractedText += readableText.join(' ') + ' ';
+      // Write PDF buffer to temporary file
+      await writeFile(pdfPath, pdfBuffer);
+      console.log("PDF written to temporary file");
+      
+      // Convert PDF to image
+      const options = {
+        format: 'png',
+        out_dir: tempDir,
+        out_prefix: `temp_image_${Date.now()}`,
+        page: 1, // Convert only first page
+        single_file: true
+      };
+      
+      console.log("Converting PDF to image...");
+      await convert(pdfPath, options);
+      
+      // Read the converted image
+      const outputImagePath = path.join(tempDir, `${options.out_prefix}.1.png`);
+      const imageBuffer = fs.readFileSync(outputImagePath);
+      console.log("PDF converted to image successfully, size:", imageBuffer.length);
+      
+      // Convert image to base64 for Vision API
+      const base64Image = imageBuffer.toString('base64');
+      
+      // Use the same Vision API process as for uploaded images
+      console.log("Processing converted image with Vision API...");
+      const visionResult = await extractPatientInfoFromImage(base64Image);
+      
+      // Clean up temporary files
+      try {
+        await unlink(pdfPath);
+        await unlink(outputImagePath);
+      } catch (cleanupError) {
+        console.log("Cleanup error (non-critical):", (cleanupError as Error).message);
       }
       
-      // Method 1b: Extract text objects and font definitions
-      const textObjectMatches = pdfString.match(/BT\s+(.*?)\s+ET/gs) || [];
-      for (const textMatch of textObjectMatches) {
-        const textContent = textMatch.replace(/BT\s+|\s+ET/g, '');
-        const readableText = textContent.match(/[A-Za-z][A-Za-z\s]{2,}/g) || [];
-        allExtractedText += readableText.join(' ') + ' ';
+      if (visionResult && (visionResult.patient_first_name || visionResult.patient_last_name)) {
+        console.log("PDF to image + Vision API extraction successful");
+        return visionResult;
       }
       
-      // Method 1c: Extract from form fields and annotations
-      const formFieldMatches = pdfString.match(/\/V\s*\((.*?)\)/g) || [];
-      const titleMatches = pdfString.match(/\/T\s*\((.*?)\)/g) || [];
-      
-      for (const match of [...formFieldMatches, ...titleMatches]) {
-        const fieldValue = match.replace(/\/[VT]\s*\(|\)/g, '');
-        if (fieldValue.length > 1 && /[A-Za-z]/.test(fieldValue)) {
-          allExtractedText += fieldValue + ' ';
-        }
-      }
-      
-      console.log("Intelligent extraction result length:", allExtractedText.length);
-      console.log("Sample extracted content:", allExtractedText.substring(0, 200));
-      
-      if (allExtractedText.length > 20) {
-        // Try to identify actual patient names using generic patterns
-        const namePatterns = [
-          /Patient\s*Name[:\s]+([A-Z][a-z]+)\s+([A-Z][a-z]+)/gi,
-          /Name[:\s]+([A-Z][a-z]+)\s+([A-Z][a-z]+)/gi,
-          /([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})/g  // Two capitalized words (likely names)
-        ];
-        
-        let foundName = '';
-        let firstName = '';
-        let lastName = '';
-        
-        for (const pattern of namePatterns) {
-          const nameMatch = allExtractedText.match(pattern);
-          if (nameMatch && nameMatch[0]) {
-            if (nameMatch.length >= 3) {
-              // Pattern with capture groups (like "Patient Name: John Doe")
-              firstName = nameMatch[1];
-              lastName = nameMatch[2];
-              foundName = `${firstName} ${lastName}`;
-            } else {
-              // Simple name pattern
-              const nameParts = nameMatch[0].split(/\s+/);
-              if (nameParts.length >= 2) {
-                firstName = nameParts[0];
-                lastName = nameParts[1];
-                foundName = nameMatch[0];
-              }
-            }
-            
-            // Validate that this looks like a real name (not PDF artifacts)
-            const artifactPatterns = [
-              /^(font|helvetica|arial|times|calibri|verdana)$/i,
-              /^(reportlab|pdf|library|anonymous|unspecified|creator|producer)$/i,
-              /^(subtype|type|text|image|decode|flate)$/i,
-              /^[0-9]+$/,
-              /www\./i
-            ];
-            
-            const isArtifact = artifactPatterns.some(pattern => 
-              pattern.test(firstName) || pattern.test(lastName)
-            );
-            
-            if (!isArtifact && firstName.length > 1 && lastName.length > 1) {
-              console.log("Found potential patient name:", foundName);
-              break;
-            } else {
-              foundName = '';
-            }
-          }
-        }
-        
-        if (foundName) {
-          return {
-            patient_first_name: firstName || "",
-            patient_last_name: lastName || "",
-            date_of_birth: "",
-            patient_address: "",
-            patient_city: "",
-            patient_state: "",
-            patient_zip: "",
-            patient_home_phone: "",
-            patient_cell_phone: "",
-            patient_email: "",
-            provider_name: "",
-            account_number: "",
-            diagnosis: "ASCVD",
-            signature_date: "",
-            confidence: 0.9
-          };
-        }
-        
-        // If no specific names found, try AI with cleaned text
-        const cleanedText = allExtractedText
-          .replace(/[^\w\s@.-]/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-          
-        if (cleanedText.length > 50) {
-          const aiResult = await extractPatientInfoFromPDFText(cleanedText);
-          if (aiResult && (aiResult.patient_first_name || aiResult.patient_last_name)) {
-            console.log("Intelligent extraction + AI successful");
-            return aiResult;
-          }
-        }
-      }
-      
-    } catch (intelligentError) {
-      console.log("Intelligent PDF extraction failed:", (intelligentError as Error).message);
+    } catch (conversionError) {
+      console.log("PDF to image conversion failed:", (conversionError as Error).message);
     }
     
-    // Method 2: Simple PDF text extraction without external dependencies
+    // Method 2: Simple text extraction fallback
+    console.log("Trying simple text extraction as fallback");
     try {
-      console.log("Trying simple PDF text extraction from raw buffer");
-      
-      // Convert PDF buffer to string and look for text patterns
       const pdfString = pdfBuffer.toString('latin1');
-      let extractedText = '';
+      const textResult = await extractPatientInfoFromPDFText(pdfString);
       
-      // Extract text using traditional regex without spread operator
-      const textParts = new Set<string>();
-      
-      // Define patterns for text extraction
-      const patterns = [
-        /\(([^)]+)\)/g,
-        /\[([^\]]+)\]/g,
-        /\/Title\s*\(([^)]+)\)/g,
-        /\/Author\s*\(([^)]+)\)/g,
-        /\/Subject\s*\(([^)]+)\)/g,
-        /Tj\s*\(([^)]+)\)/g
-      ];
-      
-      // Process each pattern separately
-      for (const pattern of patterns) {
-        let match;
-        while ((match = pattern.exec(pdfString)) !== null) {
-          if (match[1]) {
-            let text = match[1]
-              .replace(/\\[0-9]{3}/g, ' ')      // Remove octal codes
-              .replace(/\\[rnt]/g, ' ')         // Remove escape sequences
-              .replace(/\\./g, ' ')             // Remove other escapes
-              .replace(/[^\w\s@.,-]/g, ' ')     // Keep only readable characters
-              .replace(/\s+/g, ' ')             // Normalize spaces
-              .trim();
-            
-            // Filter out obvious PDF artifacts
-            if (text.length > 2 && 
-                !text.match(/^(font|helvetica|arial|times|subtype|type|creator|producer|reportlab)$/i) &&
-                !text.match(/^[0-9.]+$/) &&
-                !text.match(/^www\./)) {
-              textParts.add(text);
-            }
-          }
-        }
+      if (textResult && (textResult.patient_first_name || textResult.patient_last_name)) {
+        console.log("Fallback text extraction successful");
+        return textResult;
       }
-      
-      extractedText = Array.from(textParts).join(' ');
-      console.log("Simple PDF extraction result length:", extractedText.length);
-      console.log("First 300 characters:", extractedText.substring(0, 300));
-      
-      if (extractedText.length > 20) {
-        return await extractPatientInfoFromPDFText(extractedText);
-      }
-      
-    } catch (parseError) {
-      console.log("Simple PDF extraction failed:", (parseError as Error).message);
+    } catch (fallbackError) {
+      console.log("Fallback text extraction failed:", (fallbackError as Error).message);
     }
     
-    // Method 3: Enhanced binary text extraction for LEQVIO forms
-    console.log("Falling back to enhanced binary text extraction");
-    const pdfString = pdfBuffer.toString('binary');
-    const latinString = pdfBuffer.toString('latin1');
-    
-    let extractedText = '';
-    
-    // Enhanced patterns specifically for LEQVIO forms and medical PDFs
-    const textPatterns = [
-      // Standard PDF text objects
-      /\(([^)]+)\)/g,
-      /\[([^\]]+)\]/g,
-      
-      // Text between stream markers
-      /stream\s*([^e]*?)endstream/g,
-      
-      // Text operations in PDFs
-      /BT\s+([^ET]+)\s+ET/g,
-      /Tj\s*\(([^)]+)\)/g,
-      /'([^']+)'/g,
-      /"([^"]+)"/g,
-      
-      // Look for form field values
-      /\/V\s*\(([^)]+)\)/g,
-      /\/T\s*\(([^)]+)\)/g,
-    ];
-    
-    const textParts = new Set();
-    
-    // Process both binary and latin1 encodings
-    for (const sourceString of [pdfString, latinString]) {
-      for (const pattern of textPatterns) {
-        let match;
-        while ((match = pattern.exec(sourceString)) !== null) {
-          let text = match[1];
-          if (text) {
-            // Clean up the text more aggressively
-            text = text
-              .replace(/\\[0-9]{3}/g, ' ')      // Octal codes
-              .replace(/\\[a-zA-Z]/g, ' ')       // Escape sequences
-              .replace(/[^\w\s@.,-]/g, ' ')      // Keep only alphanumeric, spaces, @, ., comma, dash
-              .replace(/\s+/g, ' ')              // Normalize spaces
-              .trim();
-            
-            // Filter out obvious PDF artifacts and metadata
-            const artifactPatterns = [
-              /^(subtype|type|font|helvetica|arial|times|calibri|verdana)$/i,
-              /^(reportlab|pdf|library|anonymous|unspecified|creator|producer)$/i,
-              /^(bold|italic|roman|regular|normal)$/i,
-              /^[0-9\.\s]+$/,                    // Only numbers and periods
-              /^[a-z]{1,2}$/,                    // Single/double letters
-              /^.{1,2}$/,                        // Too short (1-2 chars)
-              /www\./i                           // URLs
-            ];
-            
-            const isArtifact = artifactPatterns.some(pattern => pattern.test(text));
-            
-            if (!isArtifact && text.length > 2) {
-              textParts.add(text);
-            }
-          }
-        }
-      }
-    }
-    
-    extractedText = Array.from(textParts).join(' ');
-      
-    console.log("Enhanced binary extracted text length:", extractedText.length);
-    console.log("First 300 characters of enhanced extraction:", extractedText.substring(0, 300));
-    
-    if (extractedText.length > 20) {  // Lower threshold since we're filtering better
-      return await extractPatientInfoFromPDFText(extractedText);
-    }
-    
-    // Method 4: Last resort - return empty but valid structure
-    console.log("No meaningful text extracted, returning empty structure");
+    // Method 3: Return placeholder for manual review
+    console.log("All PDF extraction methods failed, returning placeholder for manual review");
     return {
       patient_first_name: "",
       patient_last_name: "",
