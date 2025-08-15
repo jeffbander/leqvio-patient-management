@@ -3877,10 +3877,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate unique ID for tracking
       const uniqueId = `denial_ai_${patient.id}_${Date.now()}`;
 
-      // Prepare AIGENTS payload for Denial_AI chain (same structure as leqvio_app)
+      // Prepare AIGENTS payload for Denial_AI chain (matching AIGENTS API format)
       const aigentsPayload = {
-        chain_name: 'Denial_AI',
-        start_variables: {
+        run_email: "jeffrey.Bander@providerloop.com",
+        chain_to_run: "Denial_AI",
+        human_readable_record: `Denial_AI processing for patient ${patient.firstName} ${patient.lastName}`,
+        source_id: `${patient.lastName}_${patient.firstName}__${patient.dateOfBirth?.replace(/-/g, '_')}_denial`,
+        first_step_user_input: "",
+        starting_variables: {
           Patient_ID: patient.id.toString(),
           Patient_First_Name: patient.firstName,
           Patient_Last_Name: patient.lastName,
