@@ -3827,6 +3827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const aigentsPayload = {
         chain_name: 'Denial_AI',
         start_variables: {
+          Patient_ID: patient.id.toString(),
           Patient_First_Name: patient.firstName,
           Patient_Last_Name: patient.lastName,
           Patient_Date_of_Birth: patient.dateOfBirth,
