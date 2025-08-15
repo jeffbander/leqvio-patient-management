@@ -2170,7 +2170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const processingTime = Date.now() - startTime;
       
       // Format response based on extraction type
-      const responseData = {
+      const responseData: any = {
         extractedData: extractedData,
         processingTime_ms: processingTime,
         extractionType: extractionType
@@ -2178,7 +2178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // For rejection letter extraction, also return the extracted text directly
       if (extractionType === 'rejection_letter') {
-        responseData.extractedText = extractedData.extractedText || extractedData.rawData || '';
+        responseData.extractedText = extractedData.extractedData?.extractedText || extractedData.extractedData?.rawData || '';
       }
       
       console.log("Patient info extraction completed:", {
