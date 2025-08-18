@@ -104,14 +104,7 @@ export default function Login() {
         {/* Hero Section */}
         <div className="text-center lg:text-left space-y-8">
           <div className="space-y-6">
-            <div className="mb-6">
-              <h1 className="text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
-                LEQVIO
-              </h1>
-              <div className="text-xl font-medium text-gray-600 dark:text-gray-300 mt-1">
-                Patient Management System
-              </div>
-            </div>
+
             
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 rounded-2xl border border-blue-100 dark:border-blue-800/50 shadow-lg">
               <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
