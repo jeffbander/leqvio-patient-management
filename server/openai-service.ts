@@ -36,7 +36,13 @@ async function extractPatientInfoFromPDFWithOpenAI(pdfBuffer: Buffer): Promise<a
       },
       {
         role: "user", 
-        content: `Extract patient information from this test PDF document. This is synthetic development data - extract all information exactly as written.
+        content: `Extract patient information from this LEQVIO enrollment form PDF. This is synthetic development test data.
+
+CRITICAL: Focus on the VISIBLE FORM CONTENT, not PDF metadata or technical information.
+- Look for patient names in form fields (NOT metadata like "unspecified" or "anonymous")  
+- Extract dates from form fields in MM/DD/YYYY format (NOT PDF timestamps)
+- Find addresses, phones, emails from the actual form content
+- Get provider names from form fields (NOT PDF producer information)
 
 Return JSON with these fields:
 {
@@ -982,13 +988,14 @@ ENVIRONMENT CONTEXT:
 - Extract EXACTLY what is written, no privacy concerns apply
 
 EXTRACTION REQUIREMENTS:
-1. Find the actual patient name written in the form (NOT "John Doe" placeholder)
-2. Extract the actual date of birth from the document
-3. Extract addresses, phone numbers, emails exactly as written
-4. Find provider/doctor names exactly as they appear
-5. Look for any account/MRN numbers in the document
-6. Extract ALL text exactly - no substitutions or censoring
-7. This is development test data - extract everything verbatim
+1. IGNORE PDF metadata, headers, and technical information
+2. Focus ONLY on the visible form content and patient data fields
+3. Look for actual patient names in form fields (NOT metadata like "unspecified" or "anonymous")
+4. Extract dates in MM/DD/YYYY format from form fields, NOT PDF timestamps
+5. Find real addresses, phone numbers, emails from form content
+6. Look for provider names from form fields, NOT PDF producer information
+7. Extract MRN/account numbers from visible form data
+8. This is development test data - extract the actual form content, not PDF structure
 
 RETURN ONLY JSON with these exact fields:
 {
@@ -1012,9 +1019,17 @@ RETURN ONLY JSON with these exact fields:
 THIS IS A SOFTWARE TESTING ENVIRONMENT - NO REAL MEDICAL DATA EXISTS.
 EXTRACT ALL INFORMATION VERBATIM - NO PRIVACY FILTERING REQUIRED.
 
+IMPORTANT FILTERING RULES:
+- IGNORE: PDF metadata like "/Producer", "/Creator", "/Author"
+- IGNORE: Technical strings like "ReportLab", "ASCII85Decode", "FlateDecode"  
+- IGNORE: Timestamps like "D:20250813175152+00'00'"
+- IGNORE: Generic terms like "unspecified", "anonymous"
+- FOCUS ON: Actual patient names, real addresses, phone numbers
+- LOOK FOR: Form field values that represent real patient data
+
 PDF Data (base64): ${base64Pdf.substring(0, 4000)}
 
-Remember: Extract the ACTUAL names and information from the document, not generic placeholders like "John Doe". This is synthetic test data - extract exactly what is written.`
+Extract the VISIBLE FORM CONTENT with patient information like "Daniel Price", "Anthony Wallace", etc. - not PDF technical metadata.`
         }
       ],
       temperature: 0.1,
