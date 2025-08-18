@@ -26,13 +26,38 @@ function isPlaceholderName(firstName: string, lastName: string): boolean {
 async function extractPatientInfoFromPDFWithOpenAI(pdfBuffer: Buffer): Promise<any> {
   console.log("Attempting OpenAI fallback for PDF extraction");
   
-  // Extract text from PDF first
+  // Extract text from PDF first using manual extraction
   let pdfText: string;
   try {
-    const pdfParse = (await import('pdf-parse')).default;
-    const pdfData = await pdfParse(pdfBuffer);
-    pdfText = pdfData.text;
-    console.log("✅ OpenAI fallback: PDF text extraction successful");
+    const pdfString = pdfBuffer.toString('utf8');
+    
+    // Extract text between 'BT' and 'ET' markers (PDF text objects)
+    const textMatches = pdfString.match(/BT[\s\S]*?ET/g);
+    let extractedText = '';
+    
+    if (textMatches) {
+      for (const match of textMatches) {
+        const textCommands = match.match(/\((.*?)\)\s*Tj?/g);
+        if (textCommands) {
+          for (const cmd of textCommands) {
+            const text = cmd.match(/\((.*?)\)/);
+            if (text && text[1]) {
+              extractedText += text[1] + ' ';
+            }
+          }
+        }
+      }
+    }
+    
+    if (!extractedText.trim()) {
+      const readableText = pdfString.match(/[A-Za-z0-9\s\-\.\(\)\/\@\:]{10,}/g);
+      if (readableText) {
+        extractedText = readableText.join(' ');
+      }
+    }
+    
+    pdfText = extractedText.trim() || pdfString;
+    console.log("✅ OpenAI fallback: PDF text extraction completed");
   } catch (pdfError) {
     console.error("❌ OpenAI fallback: PDF text extraction failed:", pdfError);
     pdfText = pdfBuffer.toString('utf8');
@@ -965,19 +990,49 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer, fileName?: st
     console.log("Processing PDF with text extraction and Mistral AI");
     console.log("PDF Buffer length:", pdfBuffer.length);
     
-    // First, extract actual text content from the PDF using pdf-parse
+    // First, extract actual text content from the PDF
     console.log("=== EXTRACTING TEXT FROM PDF ===");
     let pdfText: string;
     try {
-      const pdfParse = (await import('pdf-parse')).default;
-      const pdfData = await pdfParse(pdfBuffer);
-      pdfText = pdfData.text;
-      console.log("✅ PDF text extraction successful");
+      // Try to extract readable text from PDF buffer
+      // First attempt: look for text streams in PDF structure
+      const pdfString = pdfBuffer.toString('utf8');
+      
+      // Extract text between 'BT' and 'ET' markers (PDF text objects)
+      const textMatches = pdfString.match(/BT[\s\S]*?ET/g);
+      let extractedText = '';
+      
+      if (textMatches) {
+        for (const match of textMatches) {
+          // Extract text from PDF commands like "Tj" and "TJ"
+          const textCommands = match.match(/\((.*?)\)\s*Tj?/g);
+          if (textCommands) {
+            for (const cmd of textCommands) {
+              const text = cmd.match(/\((.*?)\)/);
+              if (text && text[1]) {
+                extractedText += text[1] + ' ';
+              }
+            }
+          }
+        }
+      }
+      
+      // If no text extracted from PDF structure, look for readable content in raw buffer
+      if (!extractedText.trim()) {
+        // Look for readable text patterns in the PDF
+        const readableText = pdfString.match(/[A-Za-z0-9\s\-\.\(\)\/\@\:]{10,}/g);
+        if (readableText) {
+          extractedText = readableText.join(' ');
+        }
+      }
+      
+      pdfText = extractedText.trim() || pdfString;
+      console.log("✅ PDF text extraction completed");
       console.log("Extracted text length:", pdfText.length);
       console.log("Text preview (first 500 chars):", pdfText.substring(0, 500));
     } catch (pdfError) {
       console.error("❌ PDF text extraction failed:", pdfError);
-      console.log("Falling back to raw buffer processing...");
+      console.log("Using raw buffer as fallback...");
       pdfText = pdfBuffer.toString('utf8');
     }
     console.log("=== END PDF TEXT EXTRACTION ===");
