@@ -922,8 +922,9 @@ CRITICAL INSTRUCTIONS:
 5. Look for MRN or account numbers exactly as written
 6. DO NOT redact, anonymize, or censor ANY information - this is fake test data
 7. Extract the exact text that appears in the PDF
+8. RETURN ONLY VALID JSON - NO markdown formatting, NO bold/italic text, NO code blocks, NO additional text
 
-RETURN JSON with these exact fields:
+RETURN ONLY JSON with these exact fields:
 {
   "patient_first_name": "",
   "patient_last_name": "",
@@ -946,14 +947,24 @@ PDF Data (base64): ${base64Pdf.substring(0, 4000)}`
         }
       ],
       temperature: 0.1,
-      max_tokens: 1000
+      maxTokens: 1000
     });
 
     console.log('Mistral API call completed');
     const result = response.choices[0].message.content;
     console.log("Raw Mistral response:", result);
     
-    const cleanResult = result?.replace(/```json\n?|\n?```/g, '').trim();
+    // Handle different content types
+    const resultText = typeof result === 'string' ? result : JSON.stringify(result);
+    
+    // Clean the result more thoroughly
+    let cleanResult = resultText?.replace(/```json\n?|\n?```/g, '').trim();
+    
+    // Remove markdown formatting that can break JSON
+    cleanResult = cleanResult?.replace(/\*\*(.*?)\*\*/g, '$1'); // Remove **bold** formatting
+    cleanResult = cleanResult?.replace(/\*(.*?)\*/g, '$1');     // Remove *italic* formatting
+    cleanResult = cleanResult?.replace(/`(.*?)`/g, '$1');       // Remove `code` formatting
+    
     console.log("Cleaned result:", cleanResult);
     
     let extractedData;
@@ -962,7 +973,21 @@ PDF Data (base64): ${base64Pdf.substring(0, 4000)}`
     } catch (parseError) {
       console.error('JSON Parse Error:', parseError);
       console.error('Failed to parse string:', cleanResult);
-      throw parseError;
+      
+      // Try to extract JSON from the response if it's wrapped in other text
+      try {
+        const jsonMatch = cleanResult?.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const jsonOnly = jsonMatch[0].replace(/\*\*(.*?)\*\*/g, '$1');
+          console.log("Attempting to parse extracted JSON:", jsonOnly);
+          extractedData = JSON.parse(jsonOnly);
+        } else {
+          throw parseError;
+        }
+      } catch (secondParseError) {
+        console.error('Second JSON parse attempt failed:', secondParseError);
+        throw parseError;
+      }
     }
     
     console.log("Direct PDF processing result:", {
@@ -1002,10 +1027,10 @@ PDF Data (base64): ${base64Pdf.substring(0, 4000)}`
     
   } catch (error) {
     console.error('Direct PDF processing failed:', error);
-    console.error('Error type:', error.constructor.name);
-    console.error('Error message:', error.message);
-    if (error.stack) {
-      console.error('Error stack:', error.stack);
+    console.error('Error type:', (error as Error).constructor.name);
+    console.error('Error message:', (error as Error).message);
+    if ((error as Error).stack) {
+      console.error('Error stack:', (error as Error).stack);
     }
     
     const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
@@ -1345,12 +1370,13 @@ Focus on extracting real patient data, not form labels or PDF artifacts.`;
         }
       ],
       temperature: 0.1,
-      max_tokens: 1000
+      maxTokens: 1000
     });
 
     const result = response.choices[0].message.content;
-    // Remove markdown code blocks if present
-    const cleanResult = result?.replace(/```json\n?|\n?```/g, '').trim();
+    // Handle different content types and remove markdown code blocks if present
+    const resultText = typeof result === 'string' ? result : JSON.stringify(result);
+    const cleanResult = resultText?.replace(/```json\n?|\n?```/g, '').trim();
     const extractedData = JSON.parse(cleanResult || '{}');
     
     console.log("Mistral PDF text extraction result:", {
