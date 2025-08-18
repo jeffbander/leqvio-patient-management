@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { Mistral } from "@mistralai/mistralai";
 import fs from "fs";
 import { Readable } from "stream";
+import * as pdfParse from "pdf-parse";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -26,24 +27,34 @@ function isPlaceholderName(firstName: string, lastName: string): boolean {
 async function extractPatientInfoFromPDFWithOpenAI(pdfBuffer: Buffer): Promise<any> {
   console.log("Attempting OpenAI fallback for PDF extraction");
   
-  const base64Pdf = pdfBuffer.toString('base64');
+  // Extract text from PDF first
+  let pdfText: string;
+  try {
+    const pdfData = await pdfParse(pdfBuffer);
+    pdfText = pdfData.text;
+    console.log("✅ OpenAI fallback: PDF text extraction successful");
+  } catch (pdfError) {
+    console.error("❌ OpenAI fallback: PDF text extraction failed:", pdfError);
+    pdfText = pdfBuffer.toString('utf8');
+  }
   
   const response = await openai.chat.completions.create({
     model: "gpt-4o", 
     messages: [
       {
         role: "system",
-        content: "You are a data extraction tool. Extract patient information from this PDF document and return valid JSON. Process only this specific document."
+        content: "You are a medical data extraction expert. Extract patient information from this LEQVIO form text and return valid JSON. Focus on real patient data from form fields."
       },
       {
         role: "user", 
-        content: `Extract patient information from this PDF document. Process only this document.
+        content: `Extract patient information from this LEQVIO form text.
 
-Focus on the VISIBLE FORM CONTENT:
-- Extract patient names from form fields (not technical metadata)  
-- Extract dates from form fields in MM/DD/YYYY format
-- Find addresses, phones, emails from the actual form content
-- Get provider names from visible form fields
+Focus on extracting real patient data:
+- Patient names from form fields (not placeholders)  
+- Dates in MM/DD/YYYY format
+- Complete addresses, phone numbers, emails
+- Provider/prescriber names
+- Account/MRN numbers
 
 Return JSON with these fields:
 {
@@ -64,7 +75,8 @@ Return JSON with these fields:
   "confidence": 0.8
 }
 
-PDF (base64): data:application/pdf;base64,${base64Pdf.substring(0, 4000)}`
+FORM TEXT:
+${pdfText}`
       }
     ],
     temperature: 0.1,
@@ -950,46 +962,45 @@ EXTRACTION RULES:
 
 export async function extractPatientInfoFromPDF(pdfBuffer: Buffer, fileName?: string): Promise<any> {
   try {
-    console.log("Processing PDF directly with Mistral AI");
+    console.log("Processing PDF with text extraction and Mistral AI");
     console.log("PDF Buffer length:", pdfBuffer.length);
     
-    // Debug: Show first 1000 characters in different formats
-    console.log("=== PDF FIRST 1000 CHARACTERS DEBUG ===");
-    console.log("As UTF-8 string:");
-    console.log(pdfBuffer.toString('utf8').substring(0, 1000));
-    console.log("\nAs Latin1 string:");
-    console.log(pdfBuffer.toString('latin1').substring(0, 1000));
-    console.log("\nAs ASCII string:");
-    console.log(pdfBuffer.toString('ascii').substring(0, 1000));
-    console.log("\nAs hex (first 200 bytes):");
-    console.log(pdfBuffer.toString('hex').substring(0, 400));
-    console.log("=== END PDF DEBUG ===");
+    // First, extract actual text content from the PDF using pdf-parse
+    console.log("=== EXTRACTING TEXT FROM PDF ===");
+    let pdfText: string;
+    try {
+      const pdfData = await pdfParse(pdfBuffer);
+      pdfText = pdfData.text;
+      console.log("✅ PDF text extraction successful");
+      console.log("Extracted text length:", pdfText.length);
+      console.log("Text preview (first 500 chars):", pdfText.substring(0, 500));
+    } catch (pdfError) {
+      console.error("❌ PDF text extraction failed:", pdfError);
+      console.log("Falling back to raw buffer processing...");
+      pdfText = pdfBuffer.toString('utf8');
+    }
+    console.log("=== END PDF TEXT EXTRACTION ===");
     
-    // Convert PDF to base64 for direct AI processing
-    const base64Pdf = pdfBuffer.toString('base64');
-    
-    // Send PDF directly to Mistral for processing
-    console.log('Calling Mistral API...');
+    // Send extracted text to Mistral for processing
+    console.log('Calling Mistral API with extracted text...');
     const response = await mistral.chat.complete({
       model: "mistral-large-latest",
       messages: [
         {
           role: "system",
-          content: "You are a data extraction tool processing a single PDF document. Extract patient information exactly as written in this specific document. This is synthetic test data - process each document independently without referencing previous extractions."
+          content: "You are a medical data extraction expert specializing in LEQVIO enrollment forms. Extract patient information accurately and return only valid JSON without markdown formatting."
         },
         {
           role: "user", 
-          content: `Extract patient information from this PDF document. Process only this specific document.
+          content: `Extract patient information from this LEQVIO form text. Focus on extracting real patient data from form fields.
 
 EXTRACTION REQUIREMENTS:
-1. IGNORE PDF metadata, headers, and technical information
-2. Focus ONLY on the visible form content and patient data fields
-3. Extract actual patient names from form fields (not placeholder text)
-4. Extract dates in MM/DD/YYYY format from form fields
-5. Find addresses, phone numbers, emails from the actual form content
-6. Extract provider names from form fields
-7. Find MRN/account numbers from visible form data
-8. Process each document independently
+1. Extract actual patient names from form fields (not placeholder text)
+2. Extract dates in MM/DD/YYYY format
+3. Find complete addresses, phone numbers, and emails
+4. Extract provider/prescriber names
+5. Find MRN/account numbers
+6. Look for diagnosis information
 
 RETURN ONLY JSON with these exact fields:
 {
@@ -1010,18 +1021,12 @@ RETURN ONLY JSON with these exact fields:
   "confidence": 0.9
 }
 
-FOCUS ON VISIBLE FORM CONTENT ONLY:
-- IGNORE: PDF metadata like "/Producer", "/Creator", "/Author"
-- IGNORE: Technical strings like "ReportLab", "ASCII85Decode", "FlateDecode"  
-- IGNORE: Timestamps like "D:20250813175152+00'00'"
-- IGNORE: Generic terms like "unspecified", "anonymous"
-- EXTRACT: Patient names, addresses, phone numbers from form fields
+FORM TEXT TO PROCESS:
+${pdfText}
 
-PDF Data (base64): ${base64Pdf.substring(0, 4000)}
+${fileName ? `Filename: ${fileName}` : ''}
 
-${fileName ? `File: ${fileName}` : ''}
-
-Return JSON with patient information from this document only.`
+Extract the patient information and return valid JSON only.`
         }
       ],
       temperature: 0.1,
