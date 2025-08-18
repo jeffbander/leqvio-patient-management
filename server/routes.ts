@@ -1876,7 +1876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("Processing PDF file for patient creation using advanced extraction");
         
         try {
-          uploadExtractedData = await extractPatientInfoFromPDF(req.file.buffer);
+          uploadExtractedData = await extractPatientInfoFromPDF(req.file.buffer, req.file.originalname);
           console.log("PDF extraction successful:", {
             name: `${uploadExtractedData.patient_first_name} ${uploadExtractedData.patient_last_name}`,
             confidence: uploadExtractedData.confidence

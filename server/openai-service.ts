@@ -947,7 +947,7 @@ EXTRACTION RULES:
 
 
 
-export async function extractPatientInfoFromPDF(pdfBuffer: Buffer): Promise<any> {
+export async function extractPatientInfoFromPDF(pdfBuffer: Buffer, fileName?: string): Promise<any> {
   try {
     console.log("Processing PDF directly with Mistral AI");
     console.log("PDF Buffer length:", pdfBuffer.length);
@@ -1029,7 +1029,9 @@ IMPORTANT FILTERING RULES:
 
 PDF Data (base64): ${base64Pdf.substring(0, 4000)}
 
-Extract the VISIBLE FORM CONTENT with patient information like "Daniel Price", "Anthony Wallace", etc. - not PDF technical metadata.`
+${fileName ? `FILENAME CONTEXT: This file is named "${fileName}" - if the filename suggests a patient name like "Teresa_Molina", verify the extracted name matches the expected patient.` : ''}
+
+Extract the VISIBLE FORM CONTENT with patient information - not PDF technical metadata. Ensure the extracted patient name makes sense and matches any filename context provided.`
         }
       ],
       temperature: 0.1,
@@ -1039,6 +1041,14 @@ Extract the VISIBLE FORM CONTENT with patient information like "Daniel Price", "
     console.log('Mistral API call completed');
     const result = response.choices[0].message.content;
     console.log("Raw Mistral response:", result);
+    console.log("=== FILENAME DEBUG ===");
+    if (fileName) {
+      console.log("Processing file:", fileName);
+      // Extract expected name from filename
+      const expectedName = fileName.replace(/_Leqvio_Form\.pdf$/i, '').replace(/_/g, ' ');
+      console.log("Expected patient name from filename:", expectedName);
+    }
+    console.log("=== END FILENAME DEBUG ===");
     
     // Handle different content types
     const resultText = typeof result === 'string' ? result : JSON.stringify(result);
@@ -1082,6 +1092,28 @@ Extract the VISIBLE FORM CONTENT with patient information like "Daniel Price", "
       provider: extractedData.provider_name || '',
       confidence: extractedData.confidence || 0.1
     });
+    
+    // Validate extracted name against filename if available
+    if (fileName && extractedData.patient_first_name && extractedData.patient_last_name) {
+      const extractedFullName = `${extractedData.patient_first_name} ${extractedData.patient_last_name}`.toLowerCase();
+      const expectedName = fileName.replace(/_Leqvio_Form\.pdf$/i, '').replace(/_/g, ' ').toLowerCase();
+      console.log("=== NAME VALIDATION ===");
+      console.log("Extracted name:", extractedFullName);
+      console.log("Expected from filename:", expectedName);
+      
+      // Check if names are reasonably similar (allowing for some variation)
+      const nameMatches = extractedFullName.includes(expectedName) || expectedName.includes(extractedFullName) ||
+                         extractedData.patient_first_name.toLowerCase().includes(expectedName.split(' ')[0]) ||
+                         extractedData.patient_last_name.toLowerCase().includes(expectedName.split(' ')[1] || '');
+      
+      if (!nameMatches) {
+        console.log("⚠️ WARNING: Extracted name doesn't match filename expectation");
+        console.log("This may indicate PDF processing is reading wrong content or cached data");
+      } else {
+        console.log("✓ Name validation passed");
+      }
+      console.log("=== END NAME VALIDATION ===");
+    }
     
     // Check if we got valid, non-placeholder names
     const hasValidNames = extractedData.patient_first_name && extractedData.patient_last_name &&
