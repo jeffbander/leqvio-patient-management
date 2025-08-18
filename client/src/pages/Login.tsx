@@ -151,7 +151,7 @@ export default function Login() {
                     Patient Adherence
                   </h3>
                   <p className="text-gray-600 dark:text-gray-300 text-sm">
-                    Automated scheduling and coordinated care
+                    AI assisted scheduling and coordinated care
                   </p>
                 </div>
               </div>
