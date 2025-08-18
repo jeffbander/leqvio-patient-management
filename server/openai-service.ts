@@ -1037,6 +1037,11 @@ Extract the patient information and return valid JSON only.`
     console.log('Mistral API call completed');
     const result = response.choices[0].message.content;
     console.log("Raw Mistral response:", result);
+    console.log("=== PDF TEXT EXTRACTION DEBUG ===");
+    console.log("PDF text that was sent to Mistral (first 1000 chars):");
+    console.log(pdfText.substring(0, 1000));
+    console.log("PDF text length:", pdfText.length);
+    console.log("=== END PDF TEXT DEBUG ===");
     console.log("=== FILENAME DEBUG ===");
     if (fileName) {
       console.log("Processing file:", fileName);
@@ -1111,6 +1116,20 @@ Extract the patient information and return valid JSON only.`
       console.log("=== END NAME VALIDATION ===");
     }
     
+    // If Mistral didn't extract names but we have a filename, try extracting from filename as fallback
+    if (fileName && (!extractedData.patient_first_name || !extractedData.patient_last_name)) {
+      console.log("=== FILENAME FALLBACK EXTRACTION ===");
+      const expectedName = fileName.replace(/_Leqvio_Form\.pdf$/i, '').replace(/_/g, ' ');
+      console.log("Extracting name from filename:", expectedName);
+      const nameParts = expectedName.split(' ');
+      if (nameParts.length >= 2) {
+        extractedData.patient_first_name = nameParts[0];
+        extractedData.patient_last_name = nameParts.slice(1).join(' ');
+        console.log("Applied filename-based names:", extractedData.patient_first_name, extractedData.patient_last_name);
+      }
+      console.log("=== END FILENAME FALLBACK ===");
+    }
+
     // Check if we got valid, non-placeholder names
     const hasValidNames = extractedData.patient_first_name && extractedData.patient_last_name &&
         extractedData.patient_first_name.trim() !== '' && extractedData.patient_last_name.trim() !== '' &&
