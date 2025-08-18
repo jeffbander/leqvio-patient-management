@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, CheckCircle } from "lucide-react";
+import { Mail, CheckCircle, Heart, Shield, FileText } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -59,7 +59,7 @@ export default function LoginPage() {
 
   if (emailSent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
@@ -79,9 +79,9 @@ export default function LoginPage() {
                   </p>
                   <Button
                     onClick={() => window.location.href = magicLink}
-                    className="w-full"
+                    className="w-full bg-blue-600 hover:bg-blue-700"
                   >
-                    Login to AIGENTS Automations
+                    Login to LEQVIO Patient Management
                   </Button>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     Link expires in 15 minutes
@@ -110,17 +110,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
       <div className="w-full max-w-6xl px-4 grid lg:grid-cols-2 gap-8 items-center">
         {/* Login Form */}
         <Card className="w-full max-w-md mx-auto">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <img src="/assets/aigents-logo.png" alt="AIGENTS" className="h-6 w-6" />
-              Login to AIGENTS Automations
+            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+              <Heart className="h-6 w-6 text-red-500" />
+              LEQVIO Patient Management
             </CardTitle>
-            <CardDescription>
-              Enter your email to receive a secure login link
+            <CardDescription className="text-gray-600 dark:text-gray-300">
+              Secure access to LEQVIO patient enrollment and management system
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -145,10 +145,10 @@ export default function LoginPage() {
                 />
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                   disabled={sendMagicLinkMutation.isPending}
                 >
-                  {sendMagicLinkMutation.isPending ? "Sending..." : "Send Magic Link"}
+                  {sendMagicLinkMutation.isPending ? "Sending..." : "Send Secure Login Link"}
                 </Button>
               </form>
             </Form>
@@ -158,47 +158,58 @@ export default function LoginPage() {
         {/* Hero Section */}
         <div className="text-center lg:text-left space-y-6">
           <div className="space-y-4">
-            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white">
-              AIGENTS Automations
-            </h1>
+            <div className="flex items-center justify-center lg:justify-start gap-3 mb-4">
+              <Heart className="h-10 w-10 text-red-500" />
+              <h1 className="text-4xl lg:text-5xl font-bold text-blue-700 dark:text-blue-400">
+                LEQVIO
+              </h1>
+            </div>
+            <h2 className="text-2xl lg:text-3xl font-semibold text-gray-800 dark:text-gray-200">
+              Patient Management System
+            </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300">
-              Intelligent automation platform for streamlined workflow integrations and real-time tracking
+              Streamlined patient enrollment, insurance verification, and clinical documentation for LEQVIO® (inclisiran) treatment
             </p>
+            <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>LEQVIO® (inclisiran)</strong> is indicated as an adjunct to diet and maximally tolerated statin therapy for the treatment of adults with primary hyperlipidemia or mixed dyslipidemia.
+              </p>
+            </div>
           </div>
           
           <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <div className="mt-1 h-2 w-2 rounded-full bg-blue-500"></div>
+              <FileText className="mt-1 h-5 w-5 text-blue-500" />
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white">
-                  Real-time Automation Tracking
+                  Digital Patient Enrollment
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Monitor your automation chains with unique ID-based tracking and live logs
+                  Complete e-signature forms with automated PDF generation and secure document management
                 </p>
               </div>
             </div>
             
             <div className="flex items-start gap-3">
-              <div className="mt-1 h-2 w-2 rounded-full bg-green-500"></div>
+              <Shield className="mt-1 h-5 w-5 text-green-500" />
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white">
-                  Email Response Integration
+                  Insurance Verification
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Automatically capture and link email responses to your automation workflows
+                  AI-powered insurance card processing and authorization tracking with real-time status updates
                 </p>
               </div>
             </div>
             
             <div className="flex items-start gap-3">
-              <div className="mt-1 h-2 w-2 rounded-full bg-purple-500"></div>
+              <Heart className="mt-1 h-5 w-5 text-red-500" />
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white">
-                  Secure Access
+                  Clinical Integration
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Magic link authentication ensures secure, passwordless access to your automations
+                  Seamless integration with EPIC systems and automated workflow management for cardiovascular care
                 </p>
               </div>
             </div>
