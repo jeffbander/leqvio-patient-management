@@ -38,9 +38,6 @@ export default function Login() {
         <Card className="w-full max-w-md mx-auto shadow-2xl border-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
           <CardHeader className="space-y-4 pb-6">
             <div className="text-center flex flex-col items-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-red-500 to-pink-500 mb-4 shadow-lg">
-                <Heart className="h-8 w-8 text-white" />
-              </div>
               <CardTitle className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 LEQVIO Platform
               </CardTitle>
