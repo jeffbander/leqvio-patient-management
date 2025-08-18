@@ -38,6 +38,9 @@ export default function Login() {
         <Card className="w-full max-w-md mx-auto shadow-2xl border-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
           <CardHeader className="space-y-4 pb-6">
             <div className="text-center flex flex-col items-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-red-500 to-pink-500 mb-4 shadow-lg">
+                <Heart className="h-8 w-8 text-white" />
+              </div>
               <CardTitle className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 LEQVIO Platform
               </CardTitle>
@@ -101,20 +104,12 @@ export default function Login() {
         {/* Hero Section */}
         <div className="text-center lg:text-left space-y-8">
           <div className="space-y-6">
-            <div className="flex items-center justify-center lg:justify-start gap-4 mb-6">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-pink-400 rounded-full blur-lg opacity-50"></div>
-                <div className="relative bg-gradient-to-r from-red-500 to-pink-500 p-4 rounded-full shadow-2xl">
-                  <Heart className="h-12 w-12 text-white" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
-                  LEQVIO
-                </h1>
-                <div className="text-xl font-medium text-gray-600 dark:text-gray-300 mt-1">
-                  Patient Management System
-                </div>
+            <div className="mb-6">
+              <h1 className="text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+                LEQVIO
+              </h1>
+              <div className="text-xl font-medium text-gray-600 dark:text-gray-300 mt-1">
+                Patient Management System
               </div>
             </div>
             
