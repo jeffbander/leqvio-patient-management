@@ -102,66 +102,56 @@ export default function Login() {
         </Card>
 
         {/* Hero Section */}
-        <div className="text-center lg:text-left space-y-8">
-          <div className="space-y-6">
-
-            
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 rounded-2xl border border-blue-100 dark:border-blue-800/50 shadow-lg">
-              <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-                Advanced patient management for <span className="font-semibold text-blue-600 dark:text-blue-400">LEQVIO® (inclisiran)</span> treatment programs
-              </p>
-              <div className="bg-white/60 dark:bg-gray-800/60 p-4 rounded-lg border border-blue-200/50 dark:border-blue-700/50">
-                <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
-                  <strong>LEQVIO® (inclisiran)</strong> is indicated as an adjunct to diet and maximally tolerated statin therapy for the treatment of adults with primary hyperlipidemia or mixed dyslipidemia.
-                </p>
-              </div>
-            </div>
+        <div className="text-center lg:text-left space-y-6">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800/50 shadow-sm">
+            <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+              Advanced patient management for <span className="font-semibold text-blue-600 dark:text-blue-400">LEQVIO® (inclisiran)</span> cardiovascular treatment
+            </p>
           </div>
-          
-          <div className="grid gap-6">
-            <div className="bg-white/50 dark:bg-gray-800/50 p-6 rounded-xl border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow duration-300">
-              <div className="flex items-start gap-4">
-                <div className="bg-blue-100 dark:bg-blue-900/50 p-3 rounded-lg flex-shrink-0">
-                  <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          <div className="grid gap-4">
+            <div className="bg-white/70 dark:bg-gray-800/70 p-4 rounded-lg border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm">
+              <div className="flex items-start gap-3">
+                <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-lg">
+                  <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
                     Digital Patient Enrollment
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
-                    Complete e-signature forms with automated PDF generation and secure document management
+                  <p className="text-gray-600 dark:text-gray-300 text-sm">
+                    E-signature forms with automated PDF generation
                   </p>
                 </div>
               </div>
             </div>
             
-            <div className="bg-white/50 dark:bg-gray-800/50 p-6 rounded-xl border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow duration-300">
-              <div className="flex items-start gap-4">
-                <div className="bg-green-100 dark:bg-green-900/50 p-3 rounded-lg flex-shrink-0">
-                  <Shield className="h-6 w-6 text-green-600 dark:text-green-400" />
+            <div className="bg-white/70 dark:bg-gray-800/70 p-4 rounded-lg border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm">
+              <div className="flex items-start gap-3">
+                <div className="bg-green-100 dark:bg-green-900/50 p-2 rounded-lg">
+                  <Shield className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
                     AI Insurance Authorization
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
-                    AI-powered insurance processing and authorization tracking with real-time status updates
+                  <p className="text-gray-600 dark:text-gray-300 text-sm">
+                    Automated processing and real-time status tracking
                   </p>
                 </div>
               </div>
             </div>
             
-            <div className="bg-white/50 dark:bg-gray-800/50 p-6 rounded-xl border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow duration-300">
-              <div className="flex items-start gap-4">
-                <div className="bg-purple-100 dark:bg-purple-900/50 p-3 rounded-lg flex-shrink-0">
-                  <Heart className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            <div className="bg-white/70 dark:bg-gray-800/70 p-4 rounded-lg border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm">
+              <div className="flex items-start gap-3">
+                <div className="bg-purple-100 dark:bg-purple-900/50 p-2 rounded-lg">
+                  <Heart className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
                     Patient Adherence
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
-                    Reduces missed appointments and ensures timely, coordinated care through automated scheduling and patient engagement
+                  <p className="text-gray-600 dark:text-gray-300 text-sm">
+                    Automated scheduling and coordinated care
                   </p>
                 </div>
               </div>
