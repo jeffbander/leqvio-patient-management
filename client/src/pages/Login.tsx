@@ -102,9 +102,9 @@ export default function Login() {
         </Card>
 
         {/* Hero Section */}
-        <div className="text-center lg:text-right space-y-8">
+        <div className="text-center lg:text-left space-y-8">
           <div className="space-y-6">
-            <div className="flex items-center justify-center lg:justify-end gap-4 mb-6">
+            <div className="flex items-center justify-center lg:justify-start gap-4 mb-6">
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-pink-400 rounded-full blur-lg opacity-50"></div>
                 <div className="relative bg-gradient-to-r from-red-500 to-pink-500 p-4 rounded-full shadow-2xl">
