@@ -2,7 +2,6 @@ import OpenAI from "openai";
 import { Mistral } from "@mistralai/mistralai";
 import fs from "fs";
 import { Readable } from "stream";
-import * as pdfParse from "pdf-parse";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -30,6 +29,7 @@ async function extractPatientInfoFromPDFWithOpenAI(pdfBuffer: Buffer): Promise<a
   // Extract text from PDF first
   let pdfText: string;
   try {
+    const pdfParse = (await import('pdf-parse')).default;
     const pdfData = await pdfParse(pdfBuffer);
     pdfText = pdfData.text;
     console.log("✅ OpenAI fallback: PDF text extraction successful");
@@ -969,6 +969,7 @@ export async function extractPatientInfoFromPDF(pdfBuffer: Buffer, fileName?: st
     console.log("=== EXTRACTING TEXT FROM PDF ===");
     let pdfText: string;
     try {
+      const pdfParse = (await import('pdf-parse')).default;
       const pdfData = await pdfParse(pdfBuffer);
       pdfText = pdfData.text;
       console.log("✅ PDF text extraction successful");
