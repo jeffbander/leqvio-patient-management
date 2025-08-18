@@ -37,18 +37,15 @@ export default function Login() {
         {/* Login Form */}
         <Card className="w-full max-w-md mx-auto shadow-2xl border-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
           <CardHeader className="space-y-4 pb-6">
-            <div className="text-center">
+            <div className="text-center flex flex-col items-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-red-500 to-pink-500 mb-4 shadow-lg">
                 <Heart className="h-8 w-8 text-white" />
               </div>
               <CardTitle className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                LEQVIO
+                LEQVIO Platform
               </CardTitle>
-              <div className="text-lg font-semibold text-blue-600 dark:text-blue-400 mb-3">
-                Patient Management System
-              </div>
-              <CardDescription className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                Secure access to comprehensive patient enrollment and clinical management platform
+              <CardDescription className="text-gray-600 dark:text-gray-300 leading-relaxed text-center max-w-sm mx-auto">
+                Secure access to comprehensive patient enrollment and clinical management
               </CardDescription>
             </div>
           </CardHeader>
@@ -119,7 +116,7 @@ export default function Login() {
                   LEQVIO
                 </h1>
                 <div className="text-xl font-medium text-gray-600 dark:text-gray-300 mt-1">
-                  Cardiovascular Care Platform
+                  Patient Management System
                 </div>
               </div>
             </div>
