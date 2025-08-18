@@ -1,7 +1,7 @@
 # Providerloop Chains
 
 ## Overview
-Providerloop Chains is a comprehensive patient management system with integrated medical form processing. The system features a complete e-signature workflow for LEQVIO forms, automated PDF generation, and seamless integration with clinical systems through AIGENTS API. It streamlines patient data collection, insurance verification, and clinical documentation through intelligent automation and OCR extraction capabilities.
+Providerloop Chains is a comprehensive patient management system designed to streamline patient data collection, insurance verification, and clinical documentation. It integrates medical form processing, features a complete e-signature workflow for LEQVIO forms, automates PDF generation, and provides seamless integration with clinical systems. The system leverages intelligent automation and OCR extraction capabilities to enhance efficiency in patient management.
 
 ## User Preferences
 - Prefers simple, everyday language
@@ -45,6 +45,7 @@ Providerloop Chains is a comprehensive patient management system with integrated
 - Copy-paste functionality: Enhanced DragDropFileUpload component with clipboard support allowing users to paste images directly from clipboard (Ctrl+V) in addition to drag-and-drop and file selection. Added visual hints and automatic paste detection for improved user experience.
 - Denial AI functionality: Added specialized "Denial AI" section in patient detail AI analysis that appears when authorization status is "Denied". Includes button to trigger Denial_AI chain using same patient data as leqvio_app chain, generates formal appeal letters displayed similar to letter of medical necessity format with expandable text and red styling.
 - Enhanced Denial AI interface: Redesigned the Denial AI section with a cleaner, step-by-step workflow including rejection letter upload (both image and text paste), improved visual hierarchy with numbered steps, better color coding, and organized layout for professional appeal letter generation.
+- Premium login screen design: Completely redesigned login interface with professional medical branding featuring LEQVIO cardiovascular care platform identity, gradient backgrounds, glassmorphism effects, enhanced typography with gradient text, animated loading states, improved form styling with larger inputs, and modern card-based feature showcase with hover effects.
 - Patient ID tracking: Both LEQVIO and Denial_AI chains now include Patient_ID in their starting variables for improved tracking and identification in automation workflows.
 - Webhook-based appeal letter processing: System now automatically processes Denial_AI chain webhook responses to extract the Denial_Appeal_Letter output variable and associate it with the correct patient using Patient_ID. Appeal letters are stored in the patient record and displayed immediately without requiring page refresh.
 - PDF document upload functionality: Added comprehensive PDF support to the e-signature form success screen with new "Upload PDF Document" option. PDFs are automatically processed using OCR extraction to populate patient data fields (name, DOB, address, phone, email, MRN, provider) with automatic data mapping and notes logging. Supports LEQVIO forms, medical records, and other PDF documents up to 25MB.
@@ -54,67 +55,34 @@ Providerloop Chains is a comprehensive patient management system with integrated
 ## System Architecture
 
 ### Frontend
-- **Technology Stack**: React with TypeScript, Tailwind CSS for styling, TanStack React Query for data management, Wouter for routing.
-- **Access**: Direct access, no authentication required.
-- **Main Routes**:
-    - `/patients` - Patient list view with search and filtering
-    - `/patient/new` - E-signature form for new patient enrollment
-    - `/patient/:id` - Detailed patient view with document management
-- **Core Features**:
-    - **E-Signature Form**: Complete LEQVIO patient enrollment with canvas-based signature capture
-    - **Patient List**: Real-time searchable list with status badges (started, in_progress, completed, cancelled)
-    - **Patient Details**: Comprehensive view with tabbed interface for demographics, insurance, and documents
-    - **Document Upload**: Support for Epic screenshots, insurance cards, and clinical documents with OCR
-    - **PDF Generation**: Automated LEQVIO form generation with patient data and signature
-    - **Email Delivery**: SendGrid integration for automated form distribution
+- **Technology Stack**: React with TypeScript, Tailwind CSS, TanStack React Query, Wouter.
+- **Access**: Direct access.
+- **Main Routes**: `/patients` (list), `/patient/new` (e-signature form), `/patient/:id` (detail view).
+- **Core Features**: E-Signature Form (LEQVIO enrollment, signature capture), Patient List (searchable, status badges), Patient Details (tabbed interface), Document Upload (Epic screenshots, insurance cards, clinical documents with OCR), PDF Generation (LEQVIO forms), Email Delivery (SendGrid integration).
 
 ### Backend
-- **Technology Stack**: Express.js server, PostgreSQL database with Drizzle ORM, PDFKit for PDF generation.
-- **Database Schema**: 
-    - **patients**: Complete patient records with demographics, insurance (primary/secondary), and status tracking
-    - **patient_documents**: Document storage with extracted OCR data, linked to patients and automation chains
-    - **e_signature_forms**: Form submissions with base64 signature data and email delivery tracking
-    - **automation_logs**: AIGENTS chain execution tracking with webhook payloads
-- **Key Endpoints**:
-    - `POST /api/patients` - Create patient with e-signature data
-    - `POST /api/patients/create-from-upload` - Create patient directly from uploaded documents (LEQVIO PDFs, screenshots)
-    - `GET /api/patients` - List patients with optional search
-    - `PUT /api/patients/:id` - Update patient information
-    - `POST /api/patients/:id/documents` - Upload and process documents
-    - `POST /api/extract-patient-info` - OCR extraction for Epic screenshots (data only, no patient creation)
-- **Integrations**: 
-    - OpenAI Vision API for comprehensive OCR extraction
-    - AIGENTS API for automated workflow triggering
-    - SendGrid for PDF delivery with attachments
+- **Technology Stack**: Express.js, PostgreSQL with Drizzle ORM, PDFKit.
+- **Database Schema**: `patients` (records, demographics, insurance, status), `patient_documents` (storage, OCR data, linked to patients/chains), `e_signature_forms` (submissions, signature, email tracking), `automation_logs` (AIGENTS chain execution, webhooks).
+- **Key Endpoints**: `POST /api/patients` (create with e-signature), `POST /api/patients/create-from-upload` (create from documents), `GET /api/patients` (list), `PUT /api/patients/:id` (update), `POST /api/patients/:id/documents` (upload/process documents), `POST /api/extract-patient-info` (OCR extraction).
 
 ### Technical Implementations
-- **Source ID Generation**: Automated generation from patient demographics (LAST_FIRST__MM_DD_YYYY format)
-- **PDF Generation**: PDFKit-based LEQVIO form creation with:
-    - Complete patient demographics and insurance data
-    - Canvas-captured signature embedded as image
-    - Professional medical form layout matching original
-- **OCR Processing**: Multi-source extraction supporting:
-    - Epic/medical system screenshots (8-field mapping)
-    - Insurance cards (member ID, group, plan details)
-    - Clinical documents and LEQVIO forms
-- **Automation Workflow**:
-    1. Document upload triggers OCR extraction
-    2. Extracted data populates patient fields
-    3. AIGENTS "leqvio" chain triggered automatically
-    4. Webhook responses tracked in real-time
-- **Error Handling**: Comprehensive validation and user feedback at each step
+- **Source ID Generation**: Automated from patient demographics (LAST_FIRST__MM_DD_YYYY).
+- **PDF Generation**: PDFKit-based LEQVIO form creation with patient data, signature, and professional layout.
+- **OCR Processing**: Multi-source extraction for Epic screenshots, insurance cards, clinical documents, and LEQVIO forms.
+- **Automation Workflow**: Document upload triggers OCR, extracted data populates fields, AIGENTS "leqvio" chain triggered, webhook responses tracked.
+- **Error Handling**: Comprehensive validation and user feedback.
 
 ### UI/UX Decisions
-- Clean and simple interface design with a focus on streamlining workflows.
-- Tabbed interfaces for organizing extracted data and for manual data entry options.
-- Visual feedback for loading states and processing.
+- Clean and simple interface focused on streamlining workflows.
+- Tabbed interfaces for organizing data.
+- Visual feedback for loading and processing states.
+- Redesigned login screen with professional medical branding and modern UI elements.
+- Optimized tables and sidebars for better screen utilization.
 
 ## External Dependencies
 
-- **OpenAI API**:
-    - **OpenAI Vision**: For optical character recognition and data extraction from various medical documents and images (LEQVIO forms, medical database screenshots, patient ID cards, insurance cards).
-    - **OpenAI Whisper**: For real-time speech-to-text transcription of audio recordings.
-- **AIGENTS System**: Primary automation platform for triggering chains and processing patient data.
-- **PostgreSQL**: Database for storing application data.
-- **SendGrid**: (Previously used for email notifications, now replaced by direct webhook UI display).
-- **Vosk**: (Previously used for offline speech recognition, now primarily relying on OpenAI Whisper).
+- **OpenAI API**: OpenAI Vision (OCR, data extraction), OpenAI Whisper (speech-to-text transcription).
+- **AIGENTS System**: Primary automation platform.
+- **PostgreSQL**: Database.
+- **SendGrid**: For PDF delivery with attachments.
+```
