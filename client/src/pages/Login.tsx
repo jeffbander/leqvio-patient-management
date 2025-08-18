@@ -160,7 +160,7 @@ export default function Login() {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                    Insurance Verification
+                    AI Insurance Authorization
                   </h3>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
                     AI-powered insurance processing and authorization tracking with real-time status updates
@@ -171,15 +171,15 @@ export default function Login() {
             
             <div className="bg-white/50 dark:bg-gray-800/50 p-6 rounded-xl border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow duration-300">
               <div className="flex items-start gap-4">
-                <div className="bg-red-100 dark:bg-red-900/50 p-3 rounded-lg">
-                  <Heart className="h-6 w-6 text-red-600 dark:text-red-400" />
+                <div className="bg-purple-100 dark:bg-purple-900/50 p-3 rounded-lg">
+                  <Heart className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                    Clinical Integration
+                    Patient Adherence & Scheduling
                   </h3>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Seamless EPIC system integration with automated cardiovascular care workflows
+                    Automated appointment scheduling with adherence monitoring and patient engagement tracking
                   </p>
                 </div>
               </div>
