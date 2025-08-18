@@ -136,14 +136,14 @@ export default function Login() {
           <div className="grid gap-6">
             <div className="bg-white/50 dark:bg-gray-800/50 p-6 rounded-xl border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow duration-300">
               <div className="flex items-start gap-4">
-                <div className="bg-blue-100 dark:bg-blue-900/50 p-3 rounded-lg">
+                <div className="bg-blue-100 dark:bg-blue-900/50 p-3 rounded-lg flex-shrink-0">
                   <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                     Digital Patient Enrollment
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
                     Complete e-signature forms with automated PDF generation and secure document management
                   </p>
                 </div>
@@ -152,14 +152,14 @@ export default function Login() {
             
             <div className="bg-white/50 dark:bg-gray-800/50 p-6 rounded-xl border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow duration-300">
               <div className="flex items-start gap-4">
-                <div className="bg-green-100 dark:bg-green-900/50 p-3 rounded-lg">
+                <div className="bg-green-100 dark:bg-green-900/50 p-3 rounded-lg flex-shrink-0">
                   <Shield className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                     AI Insurance Authorization
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
                     AI-powered insurance processing and authorization tracking with real-time status updates
                   </p>
                 </div>
@@ -168,15 +168,15 @@ export default function Login() {
             
             <div className="bg-white/50 dark:bg-gray-800/50 p-6 rounded-xl border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow duration-300">
               <div className="flex items-start gap-4">
-                <div className="bg-purple-100 dark:bg-purple-900/50 p-3 rounded-lg">
+                <div className="bg-purple-100 dark:bg-purple-900/50 p-3 rounded-lg flex-shrink-0">
                   <Heart className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                    Patient Adherence & Scheduling
+                    Adherence Management
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Improves patient adherence and scheduling by reducing missed appointments and ensuring timely, coordinated care
+                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
+                    Reduces missed appointments and ensures timely, coordinated care through automated scheduling and patient engagement
                   </p>
                 </div>
               </div>
