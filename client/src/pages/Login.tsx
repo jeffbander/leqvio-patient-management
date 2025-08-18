@@ -179,7 +179,7 @@ export default function Login() {
                     Patient Adherence & Scheduling
                   </h3>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Automated appointment scheduling with adherence monitoring and patient engagement tracking
+                    Improves patient adherence and scheduling by reducing missed appointments and ensuring timely, coordinated care
                   </p>
                 </div>
               </div>
