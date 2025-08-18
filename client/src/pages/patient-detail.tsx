@@ -548,6 +548,41 @@ export default function PatientDetail() {
     }
   })
 
+  const saveRejectionLetterMutation = useMutation({
+    mutationFn: async (rejectionText: string) => {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const formData = new FormData();
+      
+      // Create a fake file-like object for the document endpoint
+      const blob = new Blob([rejectionText], { type: 'text/plain' });
+      formData.append('document', blob, `Rejection_Letter_${timestamp}.txt`);
+      formData.append('documentType', 'rejection_letter');
+      formData.append('extractionType', 'rejection_letter');
+      
+      const response = await fetch(`/api/patients/${patientId}/documents`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) throw new Error('Failed to save rejection letter');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Success",
+        description: "Rejection letter saved to documents"
+      })
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] })
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save rejection letter",
+        variant: "destructive"
+      })
+    }
+  })
+
   const processDataMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch(`/api/patients/${patientId}/process`, {
@@ -909,32 +944,56 @@ export default function PatientDetail() {
   const handleRejectionImageUpload = async (file: File) => {
     setIsUploadingRejection(true)
     try {
+      // First upload and save the document
       const formData = new FormData()
-      formData.append('photo', file)
+      formData.append('document', file)
+      formData.append('documentType', 'rejection_letter')
       formData.append('extractionType', 'rejection_letter')
 
-      const response = await fetch('/api/extract-patient-info', {
+      const response = await fetch(`/api/patients/${patientId}/documents`, {
         method: 'POST',
         body: formData
       })
 
       if (!response.ok) {
-        throw new Error('Failed to process rejection letter')
+        throw new Error('Failed to save rejection letter document')
       }
 
       const result = await response.json()
-      if (result.extractedText) {
-        setRejectionLetterExtracted(result.extractedText)
-        toast({
-          title: "Rejection Letter Processed",
-          description: "The rejection letter text has been extracted successfully.",
+      
+      // Refresh documents list
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] })
+
+      // Try to extract text for immediate display
+      try {
+        const extractFormData = new FormData()
+        extractFormData.append('photo', file)
+        extractFormData.append('extractionType', 'rejection_letter')
+
+        const extractResponse = await fetch('/api/extract-patient-info', {
+          method: 'POST',
+          body: extractFormData
         })
+
+        if (extractResponse.ok) {
+          const extractResult = await extractResponse.json()
+          if (extractResult.extractedText) {
+            setRejectionLetterExtracted(extractResult.extractedText)
+          }
+        }
+      } catch (extractError) {
+        console.error('Text extraction failed (document was still saved):', extractError)
       }
+
+      toast({
+        title: "Rejection Letter Saved",
+        description: "The rejection letter has been saved to documents and text extracted.",
+      })
     } catch (error) {
       console.error('Error processing rejection letter:', error)
       toast({
         title: "Upload Failed",
-        description: "Failed to process the rejection letter. Please try again or paste the text manually.",
+        description: "Failed to save the rejection letter. Please try again.",
         variant: "destructive"
       })
     } finally {
@@ -1889,6 +1948,10 @@ export default function PatientDetail() {
                     <div className="flex items-center gap-3">
                       {doc.documentType === 'clinical_note' ? (
                         <FileText className="h-5 w-5 text-gray-400" />
+                      ) : doc.documentType === 'rejection_letter' ? (
+                        <AlertTriangle className="h-5 w-5 text-red-400" />
+                      ) : doc.documentType === 'appeal_letter' ? (
+                        <FileSearch className="h-5 w-5 text-green-400" />
                       ) : (
                         <Camera className="h-5 w-5 text-gray-400" />
                       )}
@@ -2081,12 +2144,35 @@ export default function PatientDetail() {
                             {/* Text Paste */}
                             <div className="space-y-2">
                               <Label className="text-xs font-medium text-gray-700">Or Paste Text</Label>
-                              <Textarea
-                                value={rejectionLetterText}
-                                onChange={(e) => setRejectionLetterText(e.target.value)}
-                                placeholder="Paste rejection letter text here..."
-                                className="min-h-[80px] resize-none text-xs"
-                              />
+                              <div className="space-y-2">
+                                <Textarea
+                                  value={rejectionLetterText}
+                                  onChange={(e) => setRejectionLetterText(e.target.value)}
+                                  placeholder="Paste rejection letter text here..."
+                                  className="min-h-[80px] resize-none text-xs"
+                                />
+                                {rejectionLetterText.trim() && (
+                                  <Button
+                                    onClick={() => saveRejectionLetterMutation.mutate(rejectionLetterText)}
+                                    disabled={saveRejectionLetterMutation.isPending}
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs"
+                                  >
+                                    {saveRejectionLetterMutation.isPending ? (
+                                      <>
+                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                        Saving...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Save className="h-3 w-3 mr-1" />
+                                        Save to Documents
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
                           
@@ -2427,6 +2513,10 @@ export default function PatientDetail() {
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
               {viewedDocument.documentType === 'clinical_note' && viewedDocument.metadata?.content ? (
                 <div className="whitespace-pre-wrap text-sm">{viewedDocument.metadata.content}</div>
+              ) : (viewedDocument.documentType === 'rejection_letter' || viewedDocument.documentType === 'appeal_letter') && viewedDocument.extractedData ? (
+                <div className="whitespace-pre-wrap text-sm p-4 bg-gray-50 border rounded-lg">
+                  {viewedDocument.extractedData}
+                </div>
               ) : viewedDocument.extractedData ? (
                 <div className="space-y-4">
                   <div>

@@ -1060,11 +1060,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           appealLetterLength: denialAppealLetter ? denialAppealLetter.length : 0
         });
         
-        // If we found a denial appeal letter, update the patient record
+        // If we found a denial appeal letter, update the patient record and save as document
         if (denialAppealLetter && denialAppealLetter.trim()) {
           try {
+            // Update patient record with appeal letter
             await storage.updatePatientDenialAppealLetter(automationLog.patientId, denialAppealLetter.trim());
-            console.log('Successfully updated patient with denial appeal letter:', automationLog.patientId);
+            
+            // Save appeal letter as a document
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const appealDocument = await storage.createPatientDocument({
+              patientId: automationLog.patientId,
+              documentType: 'appeal_letter',
+              fileName: `Denial_Appeal_Letter_${timestamp}.txt`,
+              fileUrl: null,
+              extractedData: denialAppealLetter.trim(),
+              metadata: {
+                content: denialAppealLetter.trim(),
+                generatedByDenialAI: true,
+                chainRunId: chainRunId,
+                createdAt: new Date().toISOString()
+              }
+            });
+            
+            console.log('Successfully updated patient with denial appeal letter and saved as document:', {
+              patientId: automationLog.patientId,
+              documentId: appealDocument.id
+            });
           } catch (error) {
             console.error('Error updating patient with denial appeal letter:', error);
           }
@@ -3855,6 +3876,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Extract rejection letter text from request body
       const { rejectionLetterText } = req.body || {};
+
+      // Save rejection letter as a document if provided
+      if (rejectionLetterText && rejectionLetterText.trim()) {
+        try {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+          const document = await storage.createPatientDocument({
+            patientId: patientId,
+            documentType: 'rejection_letter',
+            fileName: `Rejection_Letter_${timestamp}.txt`,
+            fileUrl: null,
+            extractedData: rejectionLetterText.trim(),
+            metadata: {
+              content: rejectionLetterText.trim(),
+              createdViaAPI: true,
+              denialAIProcess: true,
+              uploadedAt: new Date().toISOString()
+            }
+          });
+          
+          console.log('Rejection letter saved as document:', {
+            documentId: document.id,
+            patientId: patientId,
+            textLength: rejectionLetterText.length
+          });
+        } catch (error) {
+          console.error('Failed to save rejection letter as document:', error);
+          // Continue with denial AI process even if document save fails
+        }
+      }
 
       // Get all documents for this patient (same as leqvio_app chain)
       const documents = await storage.getPatientDocuments(patientId);
