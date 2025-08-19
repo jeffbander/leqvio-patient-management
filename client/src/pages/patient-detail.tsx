@@ -95,7 +95,15 @@ const ExpandableText = ({
 }
 
 // Component to display organized notes with sections
-const OrganizedNotesDisplay = ({ notes }: { notes?: string | null }) => {
+const OrganizedNotesDisplay = ({ 
+  notes, 
+  expandedFields, 
+  setExpandedFields 
+}: { 
+  notes?: string | null,
+  expandedFields: {[key: string]: boolean},
+  setExpandedFields: (fields: {[key: string]: boolean}) => void
+}) => {
   if (!notes) {
     return <div className="text-gray-400 italic">No notes</div>
   }
@@ -137,7 +145,16 @@ const OrganizedNotesDisplay = ({ notes }: { notes?: string | null }) => {
   const hasOrganizedSections = notes.includes('=== USER NOTES ===') || notes.includes('=== VOICEMAILS ===') || notes.includes('=== INSURANCE & AUTH UPDATES ===')
   
   if (!hasOrganizedSections) {
-    return <div className="whitespace-pre-line">{notes}</div>
+    return (
+      <ExpandableText
+        text={notes}
+        fieldKey="legacy-notes"
+        maxLength={300}
+        expandedFields={expandedFields}
+        setExpandedFields={setExpandedFields}
+        className="text-sm text-gray-700"
+      />
+    )
   }
 
   return (
@@ -148,10 +165,15 @@ const OrganizedNotesDisplay = ({ notes }: { notes?: string | null }) => {
             <FileText className="h-4 w-4" />
             User Notes
           </h4>
-          <div className="pl-6 space-y-1">
-            {sections.userNotes.map((note, idx) => (
-              <div key={idx} className="text-sm text-gray-700 whitespace-pre-line">{note}</div>
-            ))}
+          <div className="pl-6">
+            <ExpandableText
+              text={sections.userNotes.join('\n')}
+              fieldKey="user-notes"
+              maxLength={300}
+              expandedFields={expandedFields}
+              setExpandedFields={setExpandedFields}
+              className="text-sm text-gray-700"
+            />
           </div>
         </div>
       )}
@@ -162,10 +184,15 @@ const OrganizedNotesDisplay = ({ notes }: { notes?: string | null }) => {
             <Phone className="h-4 w-4" />
             Voicemails
           </h4>
-          <div className="pl-6 space-y-1">
-            {sections.voicemails.map((voicemail, idx) => (
-              <div key={idx} className="text-sm text-blue-700 whitespace-pre-line">{voicemail}</div>
-            ))}
+          <div className="pl-6">
+            <ExpandableText
+              text={sections.voicemails.join('\n')}
+              fieldKey="voicemails"
+              maxLength={300}
+              expandedFields={expandedFields}
+              setExpandedFields={setExpandedFields}
+              className="text-sm text-blue-700"
+            />
           </div>
         </div>
       )}
@@ -176,10 +203,15 @@ const OrganizedNotesDisplay = ({ notes }: { notes?: string | null }) => {
             <Shield className="h-4 w-4" />
             Insurance & Auth Updates
           </h4>
-          <div className="pl-6 space-y-1">
-            {sections.insuranceUpdates.map((update, idx) => (
-              <div key={idx} className="text-sm text-green-700 whitespace-pre-line">{update}</div>
-            ))}
+          <div className="pl-6">
+            <ExpandableText
+              text={sections.insuranceUpdates.join('\n')}
+              fieldKey="insurance-updates"
+              maxLength={300}
+              expandedFields={expandedFields}
+              setExpandedFields={setExpandedFields}
+              className="text-sm text-green-700"
+            />
           </div>
         </div>
       )}
@@ -269,7 +301,11 @@ export default function PatientDetail() {
     furtherAnalysis: false,
     letterOfMedicalNecessity: false,
     approvalLikelihood: false,
-    denialAppealLetter: false
+    denialAppealLetter: false,
+    "legacy-notes": false,
+    "user-notes": false,
+    "voicemails": false,
+    "insurance-updates": false
   })
   
   // Rejection letter states
@@ -1789,12 +1825,20 @@ export default function PatientDetail() {
                 
                 {/* Show read-only view of other sections while editing */}
                 <div className="text-sm text-gray-700 p-4 bg-gray-50 rounded border">
-                  <OrganizedNotesDisplay notes={patient.notes} />
+                  <OrganizedNotesDisplay 
+                    notes={patient.notes} 
+                    expandedFields={expandedFields}
+                    setExpandedFields={setExpandedFields}
+                  />
                 </div>
               </div>
             ) : (
               <div className="text-sm text-gray-700 min-h-8 p-4 bg-gray-50 rounded border">
-                <OrganizedNotesDisplay notes={patient.notes} />
+                <OrganizedNotesDisplay 
+                  notes={patient.notes}
+                  expandedFields={expandedFields}
+                  setExpandedFields={setExpandedFields}
+                />
               </div>
             )}
           </CardContent>
