@@ -1565,7 +1565,7 @@ export default function PatientDetail() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="space-y-3 text-sm">
                       <div className="space-y-1">
-                        <span className="font-medium block">Patient ID:</span>
+                        <span className="font-medium block">LEQVIO Patient ID:</span>
                         {isEditingInsurance ? (
                           <Input
                             value={editedData.leqvioPatientId || ''}
