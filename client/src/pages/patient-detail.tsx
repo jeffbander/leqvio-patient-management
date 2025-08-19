@@ -2148,18 +2148,42 @@ export default function PatientDetail() {
                             {/* Image Upload */}
                             <div className="space-y-2">
                               <Label className="text-xs font-medium text-gray-700">Upload Image</Label>
-                              <DragDropFileUpload
-                                onFileSelect={handleRejectionImageUpload}
-                                accept="image/*"
-                                maxSizeMB={10}
-                                className="border-red-200 hover:border-red-400 transition-colors text-xs [&>div]:!h-16 [&>div]:!p-3 [&>div]:!flex [&>div]:!items-center [&>div]:!justify-center"
-                                disabled={isUploadingRejection}
+                              <div
+                                onClick={() => document.getElementById('rejection-file-input')?.click()}
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  e.currentTarget.classList.add('border-blue-500', 'bg-blue-50');
+                                }}
+                                onDragLeave={(e) => {
+                                  e.preventDefault();
+                                  e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50');
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50');
+                                  const files = e.dataTransfer.files;
+                                  if (files.length > 0) {
+                                    handleRejectionImageUpload(files[0]);
+                                  }
+                                }}
+                                className="h-16 w-full rounded-md border border-red-200 bg-background px-3 py-2 text-xs ring-offset-background hover:border-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer transition-colors flex items-center justify-center"
                               >
+                                <input
+                                  id="rejection-file-input"
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleRejectionImageUpload(file);
+                                  }}
+                                  disabled={isUploadingRejection}
+                                />
                                 <div className="flex flex-col items-center justify-center space-y-1">
                                   <Upload className="h-4 w-4 text-gray-400" />
-                                  <p className="text-xs text-gray-600">Drop image here</p>
+                                  <p className="text-xs text-gray-600">Drop image here or click</p>
                                 </div>
-                              </DragDropFileUpload>
+                              </div>
                               {isUploadingRejection && (
                                 <div className="flex items-center gap-2 text-xs text-red-600">
                                   <Loader2 className="h-3 w-3 animate-spin" />
