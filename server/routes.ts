@@ -3316,12 +3316,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (extraction.insurer?.group_number) updates.primaryGroupId = extraction.insurer.group_number;
           if (extraction.insurer?.plan_name) updates.primaryPlan = extraction.insurer.plan_name;
           
-          // Map LEQVIO Copay Program fields (takes priority regardless of where found)
+          // Debug: Log the extraction structure
+          console.log('LEQVIO extraction data:', JSON.stringify(extraction.leqvio_copay, null, 2));
+          
+          // Map LEQVIO Copay Program fields - Try multiple approaches to find the Patient ID
           if (extraction.leqvio_copay?.program_found) updates.leqvioCopayProgram = extraction.leqvio_copay.program_found;
-          if (extraction.leqvio_copay?.subscriber_id) updates.leqvioPatientId = extraction.leqvio_copay.subscriber_id;
-          if (extraction.leqvio_copay?.effective_from) updates.leqvioEnrollmentDate = extraction.leqvio_copay.effective_from;
-          if (extraction.leqvio_copay?.coverage_status) updates.leqvioCopayIdNumber = extraction.leqvio_copay.coverage_status;
-          // Note: subscriber (name) is not mapped to avoid name confusion
+          
+          // Smart mapping based on data patterns - find the right data regardless of which field it's in
+          const leqvioData = extraction.leqvio_copay || {};
+          const allFields = [leqvioData.coverage_status, leqvioData.subscriber, leqvioData.effective_from, leqvioData.subscriber_id].filter(Boolean);
+          
+          // Find date field (MM/DD/YYYY pattern)
+          const dateField = allFields.find(field => /^\d{2}\/\d{2}\/\d{4}$/.test(field));
+          if (dateField) updates.leqvioEnrollmentDate = dateField;
+          
+          // Find ID field (alphanumeric, longer than 8 chars, not a name or date)
+          const idField = allFields.find(field => 
+            field && 
+            field.length > 8 && 
+            /^[A-Z0-9]+$/i.test(field) && 
+            !/^\d{2}\/\d{2}\/\d{4}$/.test(field) &&
+            !/\s/.test(field) // No spaces (not a name)
+          );
+          if (idField) updates.leqvioPatientId = idField;
+          
+          // Don't map names or short status fields to avoid confusion
           
           // Map BIN and PCN from pharmacy section
           if (extraction.pharmacy?.bin) updates.leqvioBin = extraction.pharmacy.bin;
