@@ -166,6 +166,7 @@ export interface ExtractedInsuranceData {
     subscriber: string;
     effective_from: string;
     subscriber_id: string;
+    group_id: string;
   };
   security: {
     card_number: string;
@@ -637,10 +638,11 @@ Return JSON with this exact structure:
   },
   "leqvio_copay": {
     "program_found": "boolean - true if LEQVIO Copay Program is found",
-    "coverage_status": "string or empty - LEQVIO Patient ID (unique program identifier)",
+    "coverage_status": "string or empty - Coverage status (Active/Inactive)",
     "subscriber": "string or empty - Patient/subscriber name enrolled in LEQVIO",
     "effective_from": "string or empty - LEQVIO enrollment/effective date (MM/DD/YYYY)",
-    "subscriber_id": "string or empty - LEQVIO Copay ID Number for assistance program"
+    "subscriber_id": "string or empty - LEQVIO Copay ID Number for assistance program",
+    "group_id": "string or empty - LEQVIO Group ID or Group Number"
   },
   "security": {
     "card_number": "Card number if separate from member ID",
@@ -738,7 +740,8 @@ EXTRACTION RULES:
         coverage_status: result.leqvio_copay?.coverage_status || "",
         subscriber: result.leqvio_copay?.subscriber || "",
         effective_from: result.leqvio_copay?.effective_from || "",
-        subscriber_id: result.leqvio_copay?.subscriber_id || ""
+        subscriber_id: result.leqvio_copay?.subscriber_id || "",
+        group_id: result.leqvio_copay?.group_id || ""
       },
       security: {
         card_number: result.security?.card_number || "",
