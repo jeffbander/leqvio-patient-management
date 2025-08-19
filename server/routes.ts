@@ -3270,6 +3270,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const extraction = await extractInsuranceCardData(base64Image);
           extractedData = JSON.stringify(extraction);
           metadata = extraction;
+          
+          // Automatically map and update patient insurance fields from insurance card
+          const updates: any = {};
+          
+          // Map insurance card data to patient fields
+          if (extraction.insurer?.name) updates.primaryInsurance = extraction.insurer.name;
+          if (extraction.member?.member_id) updates.primaryInsuranceNumber = extraction.member.member_id;
+          if (extraction.insurer?.group_number) updates.primaryGroupId = extraction.insurer.group_number;
+          if (extraction.insurer?.plan_name) updates.primaryPlan = extraction.insurer.plan_name;
+          
+          if (Object.keys(updates).length > 0) {
+            await storage.updatePatient(patientId, updates, organizationId);
+            console.log('Patient insurance information automatically updated from insurance card:', updates);
+            
+            // Log the insurance update in patient notes
+            const changeLog = `Updated: Insurance card data - ${new Date().toLocaleString()}`;
+            const changeDetails = Object.entries(updates).map(([key, value]) => `  ${key}: ${value}`).join('\n');
+            const logEntry = `${changeLog}\n${changeDetails}`;
+            
+            await addInsuranceChangeToNotes(patientId, logEntry, organizationId);
+            
+            // Store the updated fields to return to frontend
+            metadata.updatedFields = updates;
+          }
         } catch (ocrError) {
           console.error('Insurance card extraction failed:', ocrError);
           // Continue without extraction
@@ -3315,7 +3339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update document with error status
       await storage.updatePatientDocument(documentId, {
         processingStatus: 'failed',
-        processingError: error.message
+        processingError: (error as Error).message
       });
     }
   }
