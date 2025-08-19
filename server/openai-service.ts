@@ -591,12 +591,18 @@ export async function extractInsuranceCardData(base64Image: string): Promise<Ext
           role: "system",
           content: `You are an insurance card OCR expert. Extract ALL insurance information from insurance card images (front or back).
 
-SPECIAL HANDLING FOR LEQVIO COPAY PROGRAM:
-If you find ANY mention of "LEQVIO Copay Program" or "LEQVIO" copay assistance anywhere on the card, extract these specific fields in the leqvio_copay section:
-- patient_id: The LEQVIO Patient ID (numeric ID typically 7-8 digits, like 2431706)
+CRITICAL: SPECIAL HANDLING FOR LEQVIO COPAY PROGRAM:
+Look for ANY of these LEQVIO-related terms ANYWHERE on the card:
+- "LEQVIO", "Leqvio", "LEQVIO Copay Program", "LEQVIO Copay", "LEQVIO Patient Support"
+- "Evolocumab copay", "cholesterol medication assistance", "PCSK9 inhibitor copay"
+- Numeric Patient IDs (7-8 digits like: 2431706, 1234567, 8765432)
+- Alphanumeric Copay IDs (like: K53100755401, G42812345678, H98765432109)
+
+When found, extract these fields in the leqvio_copay section:
+- patient_id: The LEQVIO Patient ID (numeric, 7-8 digits like 2431706) - SEARCH CAREFULLY for standalone numbers
 - subscriber: The patient/subscriber name enrolled in LEQVIO program  
-- effective_from: The enrollment date or effective date for LEQVIO coverage (MM/DD/YYYY format)
-- subscriber_id: The LEQVIO Copay ID Number (alphanumeric code like K53100755401)
+- effective_from: The enrollment/effective date (MM/DD/YYYY format)
+- subscriber_id: The LEQVIO Copay ID Number (alphanumeric like K53100755401)
 - coverage_status: The coverage status (Active/Inactive/Pending)
 
 Return JSON with this exact structure:
@@ -923,9 +929,15 @@ export async function extractEpicInsuranceData(base64Image: string): Promise<Epi
 
 Extract insurance information from Epic insurance coverage reports that show Primary and Secondary coverage sections.
 
-SPECIAL HANDLING FOR LEQVIO COPAY PROGRAM:
-If you find ANY mention of "LEQVIO Copay Program" or "LEQVIO" copay assistance anywhere in the Epic screenshot (even under secondary insurance), extract these specific fields in the leqvio_copay section:
-- Patient ID: LEQVIO Patient ID (numeric, typically 7-8 digits like 2431706)
+CRITICAL: SPECIAL HANDLING FOR LEQVIO COPAY PROGRAM:
+Look for ANY of these LEQVIO-related terms ANYWHERE in the Epic screenshot:
+- "LEQVIO", "Leqvio", "LEQVIO Copay Program", "LEQVIO Copay", "LEQVIO Patient Support"
+- "Evolocumab copay", "cholesterol medication assistance", "PCSK9 inhibitor copay"
+- Numeric Patient IDs (7-8 digits like: 2431706, 1234567, 8765432)
+- Alphanumeric Copay IDs (like: K53100755401, G42812345678, H98765432109)
+
+When found, extract these fields in the leqvio_copay section:
+- Patient ID: LEQVIO Patient ID (numeric, 7-8 digits like 2431706) - SEARCH CAREFULLY for standalone numbers
 - Subscriber name
 - Effective dates (from/to dates)
 - Subscriber ID: LEQVIO Copay ID Number (alphanumeric like K53100755401)
