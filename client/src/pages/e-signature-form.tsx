@@ -104,6 +104,10 @@ export default function ESignatureForm() {
 
   const uploadDocumentMutation = useMutation({
     mutationFn: async ({ file, documentType }: { file: File; documentType: string }) => {
+      if (!createdPatient?.id) {
+        throw new Error('No patient record found. Please try creating the patient again.')
+      }
+      
       const formData = new FormData()
       formData.append('document', file)
       formData.append('documentType', documentType)
@@ -113,7 +117,10 @@ export default function ESignatureForm() {
         body: formData
       })
       
-      if (!response.ok) throw new Error('Upload failed')
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Upload failed: ${errorText}`)
+      }
       const result = await response.json()
       
       // If this is an Epic insurance screenshot, automatically extract and apply the data
@@ -133,7 +140,7 @@ export default function ESignatureForm() {
       return result
     },
     onSuccess: (data) => {
-      setSubmissionState('success') // Return to success state after upload
+      // Stay in success state - don't change it
       
       // Show different messages based on document type
       if (data?.extractedData && data?.updatedFields) {
@@ -148,11 +155,11 @@ export default function ESignatureForm() {
         })
       }
     },
-    onError: () => {
-      setSubmissionState('success') // Return to success state even if upload fails
+    onError: (error) => {
+      // Stay in success state - don't change it
       toast({
         title: "Upload failed",
-        description: "Failed to upload document. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to upload document. Please try again.",
         variant: "destructive"
       })
     }
@@ -409,7 +416,7 @@ export default function ESignatureForm() {
               </div>
               
               {/* Document Upload Options */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card>
                   <CardContent className="p-4">
                     <div className="space-y-4">
@@ -438,21 +445,55 @@ export default function ESignatureForm() {
                         <h3 className="font-medium mb-2">Insurance Upload Screenshot</h3>
                         <p className="text-sm text-gray-600">Upload screenshots of insurance cards or Epic insurance screens</p>
                       </div>
-                      <DragDropFileUpload
-                        onFileSelect={(file) => {
-                          setSubmissionState('uploading');
-                          uploadDocumentMutation.mutate({ file, documentType: 'insurance_screenshot' });
-                        }}
-                        accept="image/*"
-                        maxSizeMB={10}
-                        placeholder="Drag and drop image here"
-                        className="[&>div:last-child]:p-2"
-                      />
+                      {uploadDocumentMutation.isPending ? (
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-gray-400" />
+                          <p className="text-sm text-gray-600">Uploading document...</p>
+                        </div>
+                      ) : (
+                        <DragDropFileUpload
+                          onFileSelect={(file) => {
+                            uploadDocumentMutation.mutate({ file, documentType: 'insurance_screenshot' });
+                          }}
+                          accept="image/*"
+                          maxSizeMB={10}
+                          placeholder="Drag and drop image here"
+                          className="[&>div:last-child]:p-2"
+                        />
+                      )}
                     </div>
                   </CardContent>
                 </Card>
 
 
+
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <Upload className="h-8 w-8 mx-auto mb-2 text-orange-600" />
+                        <h3 className="font-medium mb-2">Upload PDF Document</h3>
+                        <p className="text-sm text-gray-600">Upload PDF documents like LEQVIO forms, medical records, or lab results</p>
+                      </div>
+                      {uploadDocumentMutation.isPending ? (
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-gray-400" />
+                          <p className="text-sm text-gray-600">Uploading PDF...</p>
+                        </div>
+                      ) : (
+                        <DragDropFileUpload
+                          onFileSelect={(file) => {
+                            uploadDocumentMutation.mutate({ file, documentType: 'pdf_document' });
+                          }}
+                          accept=".pdf,application/pdf"
+                          maxSizeMB={25}
+                          placeholder="Drag and drop PDF here"
+                          className="[&>div:last-child]:p-2"
+                        />
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
 
                 <Card>
                   <CardContent className="p-4">
