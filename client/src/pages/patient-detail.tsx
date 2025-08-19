@@ -2152,7 +2152,7 @@ export default function PatientDetail() {
                                 onFileSelect={handleRejectionImageUpload}
                                 accept="image/*"
                                 maxSizeMB={10}
-                                className="border-red-200 hover:border-red-400 transition-colors h-16 text-xs"
+                                className="border-red-200 hover:border-red-400 transition-colors h-12 text-xs"
                                 disabled={isUploadingRejection}
                               />
                               {isUploadingRejection && (
