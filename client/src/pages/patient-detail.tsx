@@ -2152,7 +2152,7 @@ export default function PatientDetail() {
                                 onFileSelect={handleRejectionImageUpload}
                                 accept="image/*"
                                 maxSizeMB={10}
-                                className="border-red-200 hover:border-red-400 transition-colors h-12 text-xs"
+                                className="border-red-200 hover:border-red-400 transition-colors h-20 text-xs"
                                 disabled={isUploadingRejection}
                               />
                               {isUploadingRejection && (
@@ -2170,7 +2170,7 @@ export default function PatientDetail() {
                                 value={rejectionLetterText}
                                 onChange={(e) => setRejectionLetterText(e.target.value)}
                                 placeholder="Paste rejection letter text..."
-                                className="min-h-[64px] resize-none text-xs border-red-200 focus:border-red-400"
+                                className="h-20 resize-none text-xs border-red-200 focus:border-red-400"
                               />
                               {rejectionLetterText.trim() && (
                                 <Button
