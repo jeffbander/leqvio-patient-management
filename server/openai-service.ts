@@ -591,10 +591,10 @@ export async function extractInsuranceCardData(base64Image: string): Promise<Ext
 
 SPECIAL HANDLING FOR LEQVIO COPAY PROGRAM:
 If you find ANY mention of "LEQVIO Copay Program" or "LEQVIO" copay assistance anywhere on the card, extract these specific fields in the leqvio_copay section:
-- Coverage Status (Active, Inactive, etc.)
-- Subscriber name
-- Effective dates (from/to dates)  
-- Subscriber ID/Member ID
+- coverage_status: The LEQVIO Patient ID (numeric or alphanumeric ID unique to LEQVIO program)
+- subscriber: The patient/subscriber name enrolled in LEQVIO program  
+- effective_from: The enrollment date or effective date for LEQVIO coverage (MM/DD/YYYY format)
+- subscriber_id: The LEQVIO Copay ID Number or Member ID for copay assistance
 
 Return JSON with this exact structure:
 {
@@ -637,10 +637,10 @@ Return JSON with this exact structure:
   },
   "leqvio_copay": {
     "program_found": "boolean - true if LEQVIO Copay Program is found",
-    "coverage_status": "string or empty - Coverage Status for LEQVIO",
-    "subscriber": "string or empty - Subscriber name for LEQVIO",
-    "effective_from": "string or empty - Effective from date for LEQVIO",
-    "subscriber_id": "string or empty - Subscriber ID for LEQVIO"
+    "coverage_status": "string or empty - LEQVIO Patient ID (unique program identifier)",
+    "subscriber": "string or empty - Patient/subscriber name enrolled in LEQVIO",
+    "effective_from": "string or empty - LEQVIO enrollment/effective date (MM/DD/YYYY)",
+    "subscriber_id": "string or empty - LEQVIO Copay ID Number for assistance program"
   },
   "security": {
     "card_number": "Card number if separate from member ID",
