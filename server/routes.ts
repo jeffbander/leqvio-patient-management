@@ -3272,10 +3272,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Map LEQVIO Copay Program fields (takes priority regardless of where found)
           if (extraction.leqvio_copay?.program_found) updates.leqvioCopayProgram = extraction.leqvio_copay.program_found;
-          if (extraction.leqvio_copay?.subscriber) updates.leqvioPatientId = extraction.leqvio_copay.subscriber;
+          if (extraction.leqvio_copay?.coverage_status) updates.leqvioPatientId = extraction.leqvio_copay.coverage_status;
           if (extraction.leqvio_copay?.effective_from) updates.leqvioEnrollmentDate = extraction.leqvio_copay.effective_from;
           if (extraction.leqvio_copay?.subscriber_id) updates.leqvioCopayIdNumber = extraction.leqvio_copay.subscriber_id;
-          if (extraction.leqvio_copay?.coverage_status) updates.leqvioGroupNumber = extraction.leqvio_copay.coverage_status;
+          if (extraction.leqvio_copay?.subscriber) updates.leqvioGroupNumber = extraction.leqvio_copay.subscriber;
           
           // Map BIN and PCN from pharmacy section (Epic structure may not have pharmacy object)
           if ((extraction as any).pharmacy?.bin) updates.leqvioBin = (extraction as any).pharmacy.bin;
@@ -3318,10 +3318,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Map LEQVIO Copay Program fields (takes priority regardless of where found)
           if (extraction.leqvio_copay?.program_found) updates.leqvioCopayProgram = extraction.leqvio_copay.program_found;
-          if (extraction.leqvio_copay?.subscriber) updates.leqvioPatientId = extraction.leqvio_copay.subscriber;
+          if (extraction.leqvio_copay?.coverage_status) updates.leqvioPatientId = extraction.leqvio_copay.coverage_status;
           if (extraction.leqvio_copay?.effective_from) updates.leqvioEnrollmentDate = extraction.leqvio_copay.effective_from;
           if (extraction.leqvio_copay?.subscriber_id) updates.leqvioCopayIdNumber = extraction.leqvio_copay.subscriber_id;
-          if (extraction.leqvio_copay?.coverage_status) updates.leqvioGroupNumber = extraction.leqvio_copay.coverage_status;
+          if (extraction.leqvio_copay?.subscriber) updates.leqvioGroupNumber = extraction.leqvio_copay.subscriber;
           
           // Map BIN and PCN from pharmacy section
           if (extraction.pharmacy?.bin) updates.leqvioBin = extraction.pharmacy.bin;
