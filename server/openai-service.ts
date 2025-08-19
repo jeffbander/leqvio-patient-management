@@ -160,6 +160,13 @@ export interface ExtractedInsuranceData {
     deductible: string;
     oop_max: string;
   };
+  leqvio_copay: {
+    program_found: boolean;
+    coverage_status: string;
+    subscriber: string;
+    effective_from: string;
+    subscriber_id: string;
+  };
   security: {
     card_number: string;
     barcode_data: string;
@@ -582,6 +589,13 @@ export async function extractInsuranceCardData(base64Image: string): Promise<Ext
           role: "system",
           content: `You are an insurance card OCR expert. Extract ALL insurance information from insurance card images (front or back).
 
+SPECIAL HANDLING FOR LEQVIO COPAY PROGRAM:
+If you find ANY mention of "LEQVIO Copay Program" or "LEQVIO" copay assistance anywhere on the card, extract these specific fields in the leqvio_copay section:
+- Coverage Status (Active, Inactive, etc.)
+- Subscriber name
+- Effective dates (from/to dates)  
+- Subscriber ID/Member ID
+
 Return JSON with this exact structure:
 {
   "insurer": {
@@ -621,6 +635,13 @@ Return JSON with this exact structure:
     "deductible": "Deductible amount",
     "oop_max": "Out of pocket maximum"
   },
+  "leqvio_copay": {
+    "program_found": "boolean - true if LEQVIO Copay Program is found",
+    "coverage_status": "string or empty - Coverage Status for LEQVIO",
+    "subscriber": "string or empty - Subscriber name for LEQVIO",
+    "effective_from": "string or empty - Effective from date for LEQVIO",
+    "subscriber_id": "string or empty - Subscriber ID for LEQVIO"
+  },
   "security": {
     "card_number": "Card number if separate from member ID",
     "barcode_data": "Any barcode/QR code data visible",
@@ -648,6 +669,7 @@ EXTRACTION RULES:
 - Include phone numbers with formatting: (xxx) xxx-xxxx
 - Dates in MM/DD/YYYY format
 - Dollar amounts with $ symbol
+- LEQVIO Copay Program data takes priority and should be captured regardless of where it appears on the card
 - Be thorough - insurance cards contain critical billing information`
         },
         {
@@ -710,6 +732,13 @@ EXTRACTION RULES:
         er_copay: result.cost_share?.er_copay || "",
         deductible: result.cost_share?.deductible || "",
         oop_max: result.cost_share?.oop_max || ""
+      },
+      leqvio_copay: {
+        program_found: result.leqvio_copay?.program_found || false,
+        coverage_status: result.leqvio_copay?.coverage_status || "",
+        subscriber: result.leqvio_copay?.subscriber || "",
+        effective_from: result.leqvio_copay?.effective_from || "",
+        subscriber_id: result.leqvio_copay?.subscriber_id || ""
       },
       security: {
         card_number: result.security?.card_number || "",
@@ -861,6 +890,13 @@ interface EpicInsuranceData {
     subscriberSSN: string;
     subscriberAddress: string;
   };
+  leqvio_copay: {
+    program_found: boolean;
+    coverage_status: string;
+    subscriber: string;
+    effective_from: string;
+    subscriber_id: string;
+  };
   metadata: {
     extractionConfidence: number;
     rawText: string;
@@ -878,6 +914,13 @@ export async function extractEpicInsuranceData(base64Image: string): Promise<Epi
           content: `You are an Epic EMR specialist expert at extracting insurance coverage data from Epic screenshots and insurance reports.
 
 Extract insurance information from Epic insurance coverage reports that show Primary and Secondary coverage sections.
+
+SPECIAL HANDLING FOR LEQVIO COPAY PROGRAM:
+If you find ANY mention of "LEQVIO Copay Program" or "LEQVIO" copay assistance anywhere in the Epic screenshot (even under secondary insurance), extract these specific fields in the leqvio_copay section:
+- Coverage Status (Active, Inactive, etc.)
+- Subscriber name
+- Effective dates (from/to dates)
+- Subscriber ID/Member ID
 
 Return JSON with this exact structure:
 {
@@ -903,6 +946,13 @@ Return JSON with this exact structure:
     "subscriberSSN": "Secondary subscriber SSN",
     "subscriberAddress": "Secondary subscriber address"
   },
+  "leqvio_copay": {
+    "program_found": "boolean - true if LEQVIO Copay Program is found",
+    "coverage_status": "string or empty - Coverage Status for LEQVIO",
+    "subscriber": "string or empty - Subscriber name for LEQVIO",
+    "effective_from": "string or empty - Effective from date for LEQVIO",
+    "subscriber_id": "string or empty - Subscriber ID for LEQVIO"
+  },
   "metadata": {
     "extractionConfidence": 0.95,
     "rawText": "Complete text extracted from the image",
@@ -914,6 +964,7 @@ EXTRACTION RULES:
 - Look for "Primary Visit Coverage" and "Secondary Visit Coverage" sections
 - Extract ALL visible insurance data from both sections including subscriber IDs
 - CRITICAL: Find and extract "ID" fields for both primary and secondary coverage (e.g., ID 4YW4RC9AW92, ID 890598658)
+- LEQVIO Copay Program data takes priority and should be captured regardless of where it appears in Epic
 - Use exact text as it appears in Epic
 - Empty string "" for missing fields in either primary or secondary
 - Include complete subscriber names, addresses, and SSNs
@@ -968,6 +1019,13 @@ EXTRACTION RULES:
         subscriberName: result.secondary?.subscriberName || "",
         subscriberSSN: result.secondary?.subscriberSSN || "",
         subscriberAddress: result.secondary?.subscriberAddress || ""
+      },
+      leqvio_copay: {
+        program_found: result.leqvio_copay?.program_found || false,
+        coverage_status: result.leqvio_copay?.coverage_status || "",
+        subscriber: result.leqvio_copay?.subscriber || "",
+        effective_from: result.leqvio_copay?.effective_from || "",
+        subscriber_id: result.leqvio_copay?.subscriber_id || ""
       },
       metadata: {
         extractionConfidence: Math.max(0, Math.min(1, result.metadata?.extractionConfidence || 0.8)),

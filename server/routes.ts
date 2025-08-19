@@ -89,6 +89,13 @@ Extract insurance information from this Epic EMR text. Look for and extract the 
 - Copay amount
 - Deductible amount
 
+SPECIAL HANDLING FOR LEQVIO COPAY PROGRAM:
+If you find ANY mention of "LEQVIO Copay Program" or "LEQVIO" copay assistance anywhere in the text (even under secondary insurance), extract these specific fields:
+- LEQVIO Coverage Status (Active, Inactive, etc.)
+- LEQVIO Subscriber name
+- LEQVIO Effective dates (from/to dates)
+- LEQVIO Subscriber ID/Member ID
+
 Epic text:
 ${epicText}
 
@@ -101,7 +108,12 @@ Return ONLY a JSON object with the extracted data using these exact keys:
   "secondaryMemberId": "string or null",
   "secondaryGroupNumber": "string or null",
   "copay": "string or null",
-  "deductible": "string or null"
+  "deductible": "string or null",
+  "leqvioCopayProgram": "boolean - true if LEQVIO Copay Program is found",
+  "leqvioCvgStatus": "string or null - Coverage Status for LEQVIO",
+  "leqvioSubscriber": "string or null - Subscriber name for LEQVIO",
+  "leqvioEffectiveFrom": "string or null - Effective from date for LEQVIO",
+  "leqvioSubscriberId": "string or null - Subscriber ID for LEQVIO"
 }
 `;
 
@@ -3145,6 +3157,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (extractedData.copay) updates.copay = extractedData.copay;
             if (extractedData.deductible) updates.deductible = extractedData.deductible;
             
+            // Map LEQVIO Copay Program fields (takes priority regardless of where found)
+            if (extractedData.leqvioCopayProgram) updates.leqvioCopayProgram = extractedData.leqvioCopayProgram;
+            if (extractedData.leqvioCvgStatus) updates.leqvioCvgStatus = extractedData.leqvioCvgStatus;
+            if (extractedData.leqvioSubscriber) updates.leqvioSubscriber = extractedData.leqvioSubscriber;
+            if (extractedData.leqvioEffectiveFrom) updates.leqvioEffectiveFrom = extractedData.leqvioEffectiveFrom;
+            if (extractedData.leqvioSubscriberId) updates.leqvioSubscriberId = extractedData.leqvioSubscriberId;
+            
             if (Object.keys(updates).length > 0) {
               await storage.updatePatient(parseInt(patientId), updates, user.currentOrganizationId);
               console.log('Patient insurance information automatically updated from Epic copy-paste:', updates);
@@ -3245,6 +3264,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (extraction.secondary?.groupNumber) updates.secondaryGroupId = extraction.secondary.groupNumber;
           if (extraction.secondary?.plan) updates.secondaryPlan = extraction.secondary.plan;
           
+          // Map LEQVIO Copay Program fields (takes priority regardless of where found)
+          if (extraction.leqvio_copay?.program_found) updates.leqvioCopayProgram = extraction.leqvio_copay.program_found;
+          if (extraction.leqvio_copay?.coverage_status) updates.leqvioCvgStatus = extraction.leqvio_copay.coverage_status;
+          if (extraction.leqvio_copay?.subscriber) updates.leqvioSubscriber = extraction.leqvio_copay.subscriber;
+          if (extraction.leqvio_copay?.effective_from) updates.leqvioEffectiveFrom = extraction.leqvio_copay.effective_from;
+          if (extraction.leqvio_copay?.subscriber_id) updates.leqvioSubscriberId = extraction.leqvio_copay.subscriber_id;
+          
           if (Object.keys(updates).length > 0) {
             await storage.updatePatient(patientId, updates, organizationId);
             console.log('Patient insurance information automatically updated from Epic screenshot:', updates);
@@ -3279,6 +3305,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (extraction.member?.member_id) updates.primaryInsuranceNumber = extraction.member.member_id;
           if (extraction.insurer?.group_number) updates.primaryGroupId = extraction.insurer.group_number;
           if (extraction.insurer?.plan_name) updates.primaryPlan = extraction.insurer.plan_name;
+          
+          // Map LEQVIO Copay Program fields (takes priority regardless of where found)
+          if (extraction.leqvio_copay?.program_found) updates.leqvioCopayProgram = extraction.leqvio_copay.program_found;
+          if (extraction.leqvio_copay?.coverage_status) updates.leqvioCvgStatus = extraction.leqvio_copay.coverage_status;
+          if (extraction.leqvio_copay?.subscriber) updates.leqvioSubscriber = extraction.leqvio_copay.subscriber;
+          if (extraction.leqvio_copay?.effective_from) updates.leqvioEffectiveFrom = extraction.leqvio_copay.effective_from;
+          if (extraction.leqvio_copay?.subscriber_id) updates.leqvioSubscriberId = extraction.leqvio_copay.subscriber_id;
           
           if (Object.keys(updates).length > 0) {
             await storage.updatePatient(patientId, updates, organizationId);
