@@ -889,20 +889,24 @@ export default function PatientDetail() {
   const handleEditLeqvio = () => {
     if (!patient) return
     setEditedData({
-      leqvioCvgStatus: patient.leqvioCvgStatus || '',
-      leqvioEffectiveFrom: patient.leqvioEffectiveFrom || '',
-      leqvioSubscriber: patient.leqvioSubscriber || '',
-      leqvioSubscriberId: patient.leqvioSubscriberId || ''
+      leqvioPatientId: patient.leqvioPatientId || '',
+      leqvioEnrollmentDate: patient.leqvioEnrollmentDate || '',
+      leqvioCopayIdNumber: patient.leqvioCopayIdNumber || '',
+      leqvioGroupNumber: patient.leqvioGroupNumber || '',
+      leqvioBin: patient.leqvioBin || '',
+      leqvioPcn: patient.leqvioPcn || ''
     })
     setIsEditingLeqvio(true)
   }
 
   const handleSaveLeqvio = () => {
     const updateData: any = {
-      leqvioCvgStatus: editedData.leqvioCvgStatus,
-      leqvioEffectiveFrom: editedData.leqvioEffectiveFrom,
-      leqvioSubscriber: editedData.leqvioSubscriber,
-      leqvioSubscriberId: editedData.leqvioSubscriberId
+      leqvioPatientId: editedData.leqvioPatientId,
+      leqvioEnrollmentDate: editedData.leqvioEnrollmentDate,
+      leqvioCopayIdNumber: editedData.leqvioCopayIdNumber,
+      leqvioGroupNumber: editedData.leqvioGroupNumber,
+      leqvioBin: editedData.leqvioBin,
+      leqvioPcn: editedData.leqvioPcn
     }
     
     // Remove undefined values
@@ -1489,67 +1493,166 @@ export default function PatientDetail() {
                 </div>
               </div>
 
-              {/* Authorization Information */}
-              <div className="border-t pt-6">
-                <Label className="flex items-center gap-2 text-gray-700 mb-4">
-                  <CheckCircle className="h-4 w-4" />
-                  Authorization Information
-                </Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4 text-sm">
-                    <div className="space-y-1">
-                      <span className="font-medium block">Auth Number:</span>
-                      {isEditingInsurance ? (
-                        <Input
-                          value={editedData.authNumber || ''}
-                          onChange={(e) => setEditedData({...editedData, authNumber: e.target.value})}
-                          className="w-full"
-                          placeholder="Authorization Number"
-                        />
-                      ) : (
-                        <span className="block text-gray-600">{patient.authNumber || 'Not provided'}</span>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <span className="font-medium block">Ref Number:</span>
-                      {isEditingInsurance ? (
-                        <Input
-                          value={editedData.refNumber || ''}
-                          onChange={(e) => setEditedData({...editedData, refNumber: e.target.value})}
-                          className="w-full"
-                          placeholder="Reference Number"
-                        />
-                      ) : (
-                        <span className="block text-gray-600">{patient.refNumber || 'Not provided'}</span>
-                      )}
+
+
+              {/* Bottom Row: LEQVIO Copay Program (left) and Authorization Information (right) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 pt-6 border-t">
+                {/* LEQVIO Copay Program - Bottom Left */}
+                {patient.leqvioCopayProgram && (
+                  <div>
+                    <Label className="flex items-center gap-2 text-gray-700 mb-4">
+                      <Shield className="h-4 w-4" />
+                      LEQVIO Copay Program
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-3 text-sm">
+                        <div className="space-y-1">
+                          <span className="font-medium block">Patient ID:</span>
+                          {isEditingInsurance ? (
+                            <Input
+                              value={editedData.leqvioPatientId || ''}
+                              onChange={(e) => setEditedData({...editedData, leqvioPatientId: e.target.value})}
+                              className="w-full"
+                              placeholder="LEQVIO Patient ID"
+                            />
+                          ) : (
+                            <span className="block text-gray-600">{patient.leqvioPatientId || 'Not provided'}</span>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <span className="font-medium block">Enrollment Date:</span>
+                          {isEditingInsurance ? (
+                            <Input
+                              type="date"
+                              value={editedData.leqvioEnrollmentDate || ''}
+                              onChange={(e) => setEditedData({...editedData, leqvioEnrollmentDate: e.target.value})}
+                              className="w-full"
+                            />
+                          ) : (
+                            <span className="block text-gray-600">{patient.leqvioEnrollmentDate || 'Not provided'}</span>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <span className="font-medium block">Co-pay ID Number:</span>
+                          {isEditingInsurance ? (
+                            <Input
+                              value={editedData.leqvioCopayIdNumber || ''}
+                              onChange={(e) => setEditedData({...editedData, leqvioCopayIdNumber: e.target.value})}
+                              className="w-full"
+                              placeholder="Co-pay ID Number"
+                            />
+                          ) : (
+                            <span className="block text-gray-600">{patient.leqvioCopayIdNumber || 'Not provided'}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-3 text-sm">
+                        <div className="space-y-1">
+                          <span className="font-medium block">Group Number:</span>
+                          {isEditingInsurance ? (
+                            <Input
+                              value={editedData.leqvioGroupNumber || ''}
+                              onChange={(e) => setEditedData({...editedData, leqvioGroupNumber: e.target.value})}
+                              className="w-full"
+                              placeholder="Group Number"
+                            />
+                          ) : (
+                            <span className="block text-gray-600">{patient.leqvioGroupNumber || 'Not provided'}</span>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <span className="font-medium block">BIN:</span>
+                          {isEditingInsurance ? (
+                            <Input
+                              value={editedData.leqvioBin || ''}
+                              onChange={(e) => setEditedData({...editedData, leqvioBin: e.target.value})}
+                              className="w-full"
+                              placeholder="BIN"
+                            />
+                          ) : (
+                            <span className="block text-gray-600">{patient.leqvioBin || 'Not provided'}</span>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <span className="font-medium block">PCN:</span>
+                          {isEditingInsurance ? (
+                            <Input
+                              value={editedData.leqvioPcn || ''}
+                              onChange={(e) => setEditedData({...editedData, leqvioPcn: e.target.value})}
+                              className="w-full"
+                              placeholder="PCN"
+                            />
+                          ) : (
+                            <span className="block text-gray-600">{patient.leqvioPcn || 'Not provided'}</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-4 text-sm">
-                    <div className="space-y-1">
-                      <span className="font-medium block">Start Date:</span>
-                      {isEditingInsurance ? (
-                        <Input
-                          value={editedData.startDate || ''}
-                          onChange={(e) => setEditedData({...editedData, startDate: e.target.value})}
-                          className="w-full"
-                          placeholder="MM/DD/YYYY"
-                        />
-                      ) : (
-                        <span className="block text-gray-600">{patient.startDate || 'Not provided'}</span>
-                      )}
+                )}
+
+                {/* Authorization Information - Bottom Right */}
+                <div>
+                  <Label className="flex items-center gap-2 text-gray-700 mb-4">
+                    <CheckCircle className="h-4 w-4" />
+                    Authorization Information
+                  </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3 text-sm">
+                      <div className="space-y-1">
+                        <span className="font-medium block">Auth Number:</span>
+                        {isEditingInsurance ? (
+                          <Input
+                            value={editedData.authNumber || ''}
+                            onChange={(e) => setEditedData({...editedData, authNumber: e.target.value})}
+                            className="w-full"
+                            placeholder="Authorization Number"
+                          />
+                        ) : (
+                          <span className="block text-gray-600">{patient.authNumber || 'Not provided'}</span>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <span className="font-medium block">Ref Number:</span>
+                        {isEditingInsurance ? (
+                          <Input
+                            value={editedData.refNumber || ''}
+                            onChange={(e) => setEditedData({...editedData, refNumber: e.target.value})}
+                            className="w-full"
+                            placeholder="Reference Number"
+                          />
+                        ) : (
+                          <span className="block text-gray-600">{patient.refNumber || 'Not provided'}</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <span className="font-medium block">End Date:</span>
-                      {isEditingInsurance ? (
-                        <Input
-                          value={editedData.endDate || ''}
-                          onChange={(e) => setEditedData({...editedData, endDate: e.target.value})}
-                          className="w-full"
-                          placeholder="MM/DD/YYYY"
-                        />
-                      ) : (
-                        <span className="block text-gray-600">{patient.endDate || 'Not provided'}</span>
-                      )}
+                    <div className="space-y-3 text-sm">
+                      <div className="space-y-1">
+                        <span className="font-medium block">Start Date:</span>
+                        {isEditingInsurance ? (
+                          <Input
+                            value={editedData.startDate || ''}
+                            onChange={(e) => setEditedData({...editedData, startDate: e.target.value})}
+                            className="w-full"
+                            placeholder="MM/DD/YYYY"
+                          />
+                        ) : (
+                          <span className="block text-gray-600">{patient.startDate || 'Not provided'}</span>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <span className="font-medium block">End Date:</span>
+                        {isEditingInsurance ? (
+                          <Input
+                            value={editedData.endDate || ''}
+                            onChange={(e) => setEditedData({...editedData, endDate: e.target.value})}
+                            className="w-full"
+                            placeholder="MM/DD/YYYY"
+                          />
+                        ) : (
+                          <span className="block text-gray-600">{patient.endDate || 'Not provided'}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1557,104 +1660,6 @@ export default function PatientDetail() {
             </div>
           </CardContent>
         </Card>
-
-        {/* LEQVIO Copay Program Information */}
-        {patient.leqvioCopayProgram && (
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  LEQVIO Copay Program
-                </CardTitle>
-                {!isEditingLeqvio ? (
-                  <Button onClick={handleEditLeqvio} variant="outline" size="sm">
-                    Edit
-                  </Button>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={handleSaveLeqvio} 
-                      size="sm"
-                      disabled={updatePatientMutation.isPending}
-                    >
-                      {updatePatientMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4" />
-                      )}
-                      Save
-                    </Button>
-                    <Button onClick={handleCancelLeqvio} variant="outline" size="sm">
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="font-medium">Coverage Status:</span>
-                    {isEditingLeqvio ? (
-                      <Input
-                        value={editedData.leqvioCvgStatus || ''}
-                        onChange={(e) => setEditedData({...editedData, leqvioCvgStatus: e.target.value})}
-                        className="w-48"
-                        placeholder="e.g., Active, Pending"
-                      />
-                    ) : (
-                      <span>{patient.leqvioCvgStatus || 'Not provided'}</span>
-                    )}
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Effective From:</span>
-                    {isEditingLeqvio ? (
-                      <Input
-                        type="date"
-                        value={editedData.leqvioEffectiveFrom || ''}
-                        onChange={(e) => setEditedData({...editedData, leqvioEffectiveFrom: e.target.value})}
-                        className="w-48"
-                      />
-                    ) : (
-                      <span>{patient.leqvioEffectiveFrom || 'Not provided'}</span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="font-medium">Subscriber:</span>
-                    {isEditingLeqvio ? (
-                      <Input
-                        value={editedData.leqvioSubscriber || ''}
-                        onChange={(e) => setEditedData({...editedData, leqvioSubscriber: e.target.value})}
-                        className="w-48"
-                        placeholder="Subscriber name"
-                      />
-                    ) : (
-                      <span>{patient.leqvioSubscriber || 'Not provided'}</span>
-                    )}
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Subscriber ID:</span>
-                    {isEditingLeqvio ? (
-                      <Input
-                        value={editedData.leqvioSubscriberId || ''}
-                        onChange={(e) => setEditedData({...editedData, leqvioSubscriberId: e.target.value})}
-                        className="w-48"
-                        placeholder="Subscriber ID number"
-                      />
-                    ) : (
-                      <span>{patient.leqvioSubscriberId || 'Not provided'}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Appointments Section */}
         <Card>

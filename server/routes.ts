@@ -110,10 +110,12 @@ Return ONLY a JSON object with the extracted data using these exact keys:
   "copay": "string or null",
   "deductible": "string or null",
   "leqvioCopayProgram": "boolean - true if LEQVIO Copay Program is found",
-  "leqvioCvgStatus": "string or null - Coverage Status for LEQVIO",
-  "leqvioSubscriber": "string or null - Subscriber name for LEQVIO",
-  "leqvioEffectiveFrom": "string or null - Effective from date for LEQVIO",
-  "leqvioSubscriberId": "string or null - Subscriber ID for LEQVIO"
+  "leqvioPatientId": "string or null - LEQVIO Patient ID",
+  "leqvioEnrollmentDate": "string or null - LEQVIO Enrollment Date",
+  "leqvioCopayIdNumber": "string or null - LEQVIO Co-pay ID Number",
+  "leqvioGroupNumber": "string or null - LEQVIO Group Number",
+  "leqvioBin": "string or null - LEQVIO BIN",
+  "leqvioPcn": "string or null - LEQVIO PCN"
 }
 `;
 
@@ -3159,10 +3161,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Map LEQVIO Copay Program fields (takes priority regardless of where found)
             if (extractedData.leqvioCopayProgram) updates.leqvioCopayProgram = extractedData.leqvioCopayProgram;
-            if (extractedData.leqvioCvgStatus) updates.leqvioCvgStatus = extractedData.leqvioCvgStatus;
-            if (extractedData.leqvioSubscriber) updates.leqvioSubscriber = extractedData.leqvioSubscriber;
-            if (extractedData.leqvioEffectiveFrom) updates.leqvioEffectiveFrom = extractedData.leqvioEffectiveFrom;
-            if (extractedData.leqvioSubscriberId) updates.leqvioSubscriberId = extractedData.leqvioSubscriberId;
+            if (extractedData.leqvioPatientId) updates.leqvioPatientId = extractedData.leqvioPatientId;
+            if (extractedData.leqvioEnrollmentDate) updates.leqvioEnrollmentDate = extractedData.leqvioEnrollmentDate;
+            if (extractedData.leqvioCopayIdNumber) updates.leqvioCopayIdNumber = extractedData.leqvioCopayIdNumber;
+            if (extractedData.leqvioGroupNumber) updates.leqvioGroupNumber = extractedData.leqvioGroupNumber;
+            if (extractedData.leqvioBin) updates.leqvioBin = extractedData.leqvioBin;
+            if (extractedData.leqvioPcn) updates.leqvioPcn = extractedData.leqvioPcn;
             
             if (Object.keys(updates).length > 0) {
               await storage.updatePatient(parseInt(patientId), updates, user.currentOrganizationId);
@@ -3266,10 +3270,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Map LEQVIO Copay Program fields (takes priority regardless of where found)
           if (extraction.leqvio_copay?.program_found) updates.leqvioCopayProgram = extraction.leqvio_copay.program_found;
-          if (extraction.leqvio_copay?.coverage_status) updates.leqvioCvgStatus = extraction.leqvio_copay.coverage_status;
-          if (extraction.leqvio_copay?.subscriber) updates.leqvioSubscriber = extraction.leqvio_copay.subscriber;
-          if (extraction.leqvio_copay?.effective_from) updates.leqvioEffectiveFrom = extraction.leqvio_copay.effective_from;
-          if (extraction.leqvio_copay?.subscriber_id) updates.leqvioSubscriberId = extraction.leqvio_copay.subscriber_id;
+          if (extraction.leqvio_copay?.coverage_status) updates.leqvioPatientId = extraction.leqvio_copay.coverage_status;
+          if (extraction.leqvio_copay?.subscriber) updates.leqvioEnrollmentDate = extraction.leqvio_copay.subscriber;
+          if (extraction.leqvio_copay?.effective_from) updates.leqvioCopayIdNumber = extraction.leqvio_copay.effective_from;
+          if (extraction.leqvio_copay?.subscriber_id) updates.leqvioGroupNumber = extraction.leqvio_copay.subscriber_id;
           
           if (Object.keys(updates).length > 0) {
             await storage.updatePatient(patientId, updates, organizationId);
@@ -3308,10 +3312,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Map LEQVIO Copay Program fields (takes priority regardless of where found)
           if (extraction.leqvio_copay?.program_found) updates.leqvioCopayProgram = extraction.leqvio_copay.program_found;
-          if (extraction.leqvio_copay?.coverage_status) updates.leqvioCvgStatus = extraction.leqvio_copay.coverage_status;
-          if (extraction.leqvio_copay?.subscriber) updates.leqvioSubscriber = extraction.leqvio_copay.subscriber;
-          if (extraction.leqvio_copay?.effective_from) updates.leqvioEffectiveFrom = extraction.leqvio_copay.effective_from;
-          if (extraction.leqvio_copay?.subscriber_id) updates.leqvioSubscriberId = extraction.leqvio_copay.subscriber_id;
+          if (extraction.leqvio_copay?.coverage_status) updates.leqvioPatientId = extraction.leqvio_copay.coverage_status;
+          if (extraction.leqvio_copay?.subscriber) updates.leqvioEnrollmentDate = extraction.leqvio_copay.subscriber;
+          if (extraction.leqvio_copay?.effective_from) updates.leqvioCopayIdNumber = extraction.leqvio_copay.effective_from;
+          if (extraction.leqvio_copay?.subscriber_id) updates.leqvioGroupNumber = extraction.leqvio_copay.subscriber_id;
           
           if (Object.keys(updates).length > 0) {
             await storage.updatePatient(patientId, updates, organizationId);
