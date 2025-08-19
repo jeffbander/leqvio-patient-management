@@ -2000,8 +2000,8 @@ export default function PatientDetail() {
 
         {activeTab === 'ai-analysis' && (
           <div className="space-y-6">
-            {/* Authorization AI and Denial AI Side by Side */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Authorization AI and Denial AI */}
+            <div className={`grid gap-6 ${(patient as any)?.authStatus === 'Denied' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
               {/* Authorization AI */}
               <Card className="border-l-4 border-l-blue-500 shadow-sm">
                 <CardHeader className="bg-gradient-to-r from-blue-50/50 to-white pb-4">
@@ -2113,7 +2113,7 @@ export default function PatientDetail() {
               </Card>
 
               {/* Denial AI Section - only show when auth status is Denied */}
-              {(patient as any)?.authStatus === 'Denied' ? (
+              {(patient as any)?.authStatus === 'Denied' && (
                 <Card className="border-l-4 border-l-red-500 shadow-sm">
                   <CardHeader className="bg-gradient-to-r from-red-50/50 to-white pb-4">
                     <div className="flex items-center gap-3">
@@ -2243,20 +2243,6 @@ export default function PatientDetail() {
                           </Button>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="border-l-4 border-l-gray-300 shadow-sm opacity-60">
-                  <CardContent className="flex items-center justify-center py-12">
-                    <div className="text-center">
-                      <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full mb-4">
-                        <AlertTriangle className="h-6 w-6 text-gray-400" />
-                      </div>
-                      <h3 className="text-lg font-medium text-gray-500 mb-2">Denial AI</h3>
-                      <p className="text-sm text-gray-400 max-w-xs">
-                        This feature becomes available when authorization status is "Denied"
-                      </p>
                     </div>
                   </CardContent>
                 </Card>
