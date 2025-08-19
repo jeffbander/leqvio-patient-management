@@ -2003,60 +2003,83 @@ export default function PatientDetail() {
             {/* Authorization AI and Denial AI Side by Side */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Authorization AI */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Authorization AI</CardTitle>
-                  <CardDescription>Send insurance and clinical information to see if LEQVIO can be approved</CardDescription>
+              <Card className="border-l-4 border-l-blue-500 shadow-sm">
+                <CardHeader className="bg-gradient-to-r from-blue-50/50 to-white pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full">
+                      <Shield className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg font-semibold text-gray-900">Authorization AI</CardTitle>
+                      <CardDescription className="text-sm text-gray-600 mt-1">
+                        Intelligent analysis of insurance and clinical data for LEQVIO authorization
+                      </CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="pt-6">
+                  <div className="space-y-6">
                     {/* Process History */}
                     {automationLogs.length > 0 && (
-                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <History className="mr-2 h-4 w-4 text-blue-600" />
-                            <span className="text-sm font-medium text-blue-800">Last Processed</span>
+                      <div className="bg-blue-50/50 border border-blue-200/50 rounded-xl p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <History className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-900">Processing History</span>
                           </div>
-                          <span className="text-sm text-blue-700">
-                            {new Date(automationLogs[0].timestamp || automationLogs[0].createdat).toLocaleString()}
-                          </span>
+                          <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">
+                            {automationLogs[0].iscompleted ? 'Completed' : 'In Progress'}
+                          </Badge>
                         </div>
-                        {automationLogs[0].iscompleted && (
-                          <p className="text-sm text-blue-700 mt-1">
-                            Status: Completed {automationLogs[0].agentresponse ? '✓' : '- Processing'}
-                          </p>
-                        )}
-                        <div className="flex items-center justify-between mt-2">
+                        <div className="text-sm text-blue-700 space-y-1">
+                          <div>Last processed: {new Date(automationLogs[0].timestamp || automationLogs[0].createdat).toLocaleString()}</div>
                           {automationLogs.length > 1 && (
-                            <p className="text-xs text-blue-600">
-                              Total processes: {automationLogs.length}
-                            </p>
+                            <div className="text-xs text-blue-600">Total processes: {automationLogs.length}</div>
                           )}
+                        </div>
+                        <div className="flex justify-end mt-3">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => setShowAigentsData(true)}
-                            className="text-xs"
+                            className="text-xs text-blue-700 hover:text-blue-900 hover:bg-blue-100/50 h-7"
                           >
-                            View AIGENTS Data
+                            <Eye className="h-3 w-3 mr-1" />
+                            View Details
                           </Button>
                         </div>
                       </div>
                     )}
                     
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">Ready to Process</p>
-                        <p className="text-sm text-gray-500">
-                          {documents.filter(d => d.documentType === 'epic_insurance_screenshot' || d.documentType === 'insurance_screenshot').length} insurance documents, {' '}
-                          {documents.filter(d => d.documentType === 'epic_screenshot' || d.documentType === 'clinical_note').length} clinical documents
-                        </p>
+                    {/* Documents Summary */}
+                    <div className="bg-gray-50/50 border border-gray-200/50 rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="h-4 w-4 text-gray-600" />
+                        <span className="text-sm font-medium text-gray-900">Document Summary</span>
                       </div>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <div className="flex justify-between">
+                          <span>Insurance Documents:</span>
+                          <Badge variant="secondary" className="h-5 text-xs">
+                            {documents.filter(d => d.documentType === 'epic_insurance_screenshot' || d.documentType === 'insurance_screenshot').length}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Clinical Documents:</span>
+                          <Badge variant="secondary" className="h-5 text-xs">
+                            {documents.filter(d => d.documentType === 'epic_screenshot' || d.documentType === 'clinical_note').length}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Action Button */}
+                    <div className="flex justify-center pt-2">
                       <Button 
                         onClick={() => processDataMutation.mutate()}
                         disabled={processDataMutation.isPending || documents.length === 0}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="bg-blue-600 hover:bg-blue-700 shadow-sm min-w-[160px]"
+                        size="lg"
                       >
                         {processDataMutation.isPending ? (
                           <>
@@ -2066,26 +2089,23 @@ export default function PatientDetail() {
                         ) : (
                           <>
                             <Upload className="mr-2 h-4 w-4" />
-                            Process Data
+                            Process Authorization
                           </>
                         )}
                       </Button>
                     </div>
                     
+                    {/* Success Result */}
                     {processResult && (
-                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <div className="flex items-center">
-                          <Shield className="mr-2 h-4 w-4 text-green-600" />
-                          <span className="text-sm font-medium text-green-800">
-                            Data Processed Successfully
-                          </span>
+                      <div className="bg-green-50/50 border border-green-200/50 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-900">Processing Complete</span>
                         </div>
-                        <p className="text-sm text-green-700 mt-1">
-                          Unique ID: {processResult.uniqueId}
-                        </p>
-                        <p className="text-sm text-green-700">
-                          {processResult.documentsProcessed.insurance} insurance and {processResult.documentsProcessed.clinical} clinical documents sent to AIGENTS
-                        </p>
+                        <div className="text-sm text-green-700 space-y-1">
+                          <div>Reference ID: <code className="text-xs bg-green-100 px-1 py-0.5 rounded">{processResult.uniqueId}</code></div>
+                          <div>Documents processed: {processResult.documentsProcessed.insurance + processResult.documentsProcessed.clinical} total</div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2094,33 +2114,37 @@ export default function PatientDetail() {
 
               {/* Denial AI Section - only show when auth status is Denied */}
               {(patient as any)?.authStatus === 'Denied' ? (
-                <Card className="border border-red-300 shadow-lg overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-red-50 to-red-50/30 border-b border-red-200">
-                    <CardTitle className="flex items-center gap-3 text-red-800">
-                      <div className="p-2 bg-red-100 rounded-lg">
+                <Card className="border-l-4 border-l-red-500 shadow-sm">
+                  <CardHeader className="bg-gradient-to-r from-red-50/50 to-white pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 bg-red-100 rounded-full">
                         <AlertTriangle className="h-5 w-5 text-red-600" />
                       </div>
                       <div>
-                        <div className="text-lg font-semibold">Denial AI</div>
-                        <div className="text-sm font-normal text-red-600 mt-1">Generate formal appeal letter</div>
+                        <CardTitle className="text-lg font-semibold text-gray-900">Denial AI</CardTitle>
+                        <CardDescription className="text-sm text-gray-600 mt-1">
+                          Generate professional appeal letters for denied authorizations
+                        </CardDescription>
                       </div>
-                    </CardTitle>
+                    </div>
                   </CardHeader>
-                  <CardContent className="p-6">
+                  <CardContent className="pt-6">
                     <div className="space-y-6">
                       {/* Step 1: Rejection Letter Upload */}
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-red-800">
-                          <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center text-xs font-semibold text-red-700">1</div>
-                          <h3 className="font-semibold text-sm">Add Rejection Letter (Optional)</h3>
+                      <div className="bg-red-50/30 border border-red-200/50 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">1</div>
+                          <h3 className="font-semibold text-sm text-red-900">Add Rejection Letter</h3>
+                          <Badge variant="secondary" className="text-xs ml-auto">Optional</Badge>
                         </div>
                         
-                        <div className="ml-8 space-y-3">
-                          <p className="text-xs text-gray-600">
-                            Upload or paste rejection letter to enhance appeal analysis
+                        <div className="space-y-4">
+                          <p className="text-xs text-red-700/80 mb-3">
+                            Upload or paste the rejection letter to enhance the appeal analysis
                           </p>
                           
-                          <div className="space-y-3">
+                          {/* Upload Options */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Image Upload */}
                             <div className="space-y-2">
                               <Label className="text-xs font-medium text-gray-700">Upload Image</Label>
@@ -2128,62 +2152,58 @@ export default function PatientDetail() {
                                 onFileSelect={handleRejectionImageUpload}
                                 accept="image/*"
                                 maxSizeMB={10}
-                                uploadText="Upload rejection letter"
-                                dragText="Drop image here"
-                                className="border-gray-300 hover:border-red-400 transition-colors h-20"
+                                className="border-red-200 hover:border-red-400 transition-colors h-16 text-xs"
                                 disabled={isUploadingRejection}
                               />
                               {isUploadingRejection && (
                                 <div className="flex items-center gap-2 text-xs text-red-600">
                                   <Loader2 className="h-3 w-3 animate-spin" />
-                                  <span>Extracting text...</span>
+                                  <span>Processing...</span>
                                 </div>
                               )}
                             </div>
 
-                            {/* Text Paste */}
+                            {/* Text Input */}
                             <div className="space-y-2">
-                              <Label className="text-xs font-medium text-gray-700">Or Paste Text</Label>
-                              <div className="space-y-2">
-                                <Textarea
-                                  value={rejectionLetterText}
-                                  onChange={(e) => setRejectionLetterText(e.target.value)}
-                                  placeholder="Paste rejection letter text here..."
-                                  className="min-h-[80px] resize-none text-xs"
-                                />
-                                {rejectionLetterText.trim() && (
-                                  <Button
-                                    onClick={() => saveRejectionLetterMutation.mutate(rejectionLetterText)}
-                                    disabled={saveRejectionLetterMutation.isPending}
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs"
-                                  >
-                                    {saveRejectionLetterMutation.isPending ? (
-                                      <>
-                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                        Saving...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Save className="h-3 w-3 mr-1" />
-                                        Save to Documents
-                                      </>
-                                    )}
-                                  </Button>
-                                )}
-                              </div>
+                              <Label className="text-xs font-medium text-gray-700">Paste Text</Label>
+                              <Textarea
+                                value={rejectionLetterText}
+                                onChange={(e) => setRejectionLetterText(e.target.value)}
+                                placeholder="Paste rejection letter text..."
+                                className="min-h-[64px] resize-none text-xs border-red-200 focus:border-red-400"
+                              />
+                              {rejectionLetterText.trim() && (
+                                <Button
+                                  onClick={() => saveRejectionLetterMutation.mutate(rejectionLetterText)}
+                                  disabled={saveRejectionLetterMutation.isPending}
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 text-xs border-red-300 text-red-700 hover:bg-red-50"
+                                >
+                                  {saveRejectionLetterMutation.isPending ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                      Saving...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Save className="h-3 w-3 mr-1" />
+                                      Save
+                                    </>
+                                  )}
+                                </Button>
+                              )}
                             </div>
                           </div>
                           
-                          {/* Preview extracted/pasted content */}
+                          {/* Preview */}
                           {(rejectionLetterExtracted || rejectionLetterText) && (
-                            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <div className="bg-white/60 border border-red-200/50 rounded-lg p-3 mt-3">
                               <div className="flex items-center gap-2 mb-2">
-                                <FileText className="h-3 w-3 text-gray-500" />
-                                <span className="text-xs font-medium text-gray-700">Rejection Letter Content</span>
+                                <FileText className="h-3 w-3 text-red-500" />
+                                <span className="text-xs font-medium text-red-800">Letter Preview</span>
                               </div>
-                              <div className="text-xs text-gray-600 max-h-24 overflow-y-auto whitespace-pre-wrap bg-white p-2 rounded border">
+                              <div className="text-xs text-red-700/80 max-h-20 overflow-y-auto whitespace-pre-wrap bg-red-50/30 p-2 rounded border border-red-100">
                                 {rejectionLetterExtracted || rejectionLetterText}
                               </div>
                             </div>
@@ -2192,31 +2212,31 @@ export default function PatientDetail() {
                       </div>
 
                       {/* Step 2: Generate Appeal */}
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-red-800">
-                          <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center text-xs font-semibold text-red-700">2</div>
-                          <h3 className="font-semibold text-sm">Generate Appeal Letter</h3>
+                      <div className="bg-green-50/30 border border-green-200/50 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">2</div>
+                          <h3 className="font-semibold text-sm text-green-900">Generate Appeal Letter</h3>
                         </div>
                         
-                        <div className="ml-8">
-                          <p className="text-xs text-gray-600 mb-3">
-                            Create professional appeal letter based on patient data
-                          </p>
-                          
+                        <p className="text-xs text-green-700/80 mb-4">
+                          Create a professional appeal letter using patient data and clinical evidence
+                        </p>
+                        
+                        <div className="flex justify-center">
                           <Button 
                             onClick={() => runDenialAIMutation.mutate()}
                             disabled={runDenialAIMutation.isPending}
-                            size="sm"
-                            className="bg-red-600 hover:bg-red-700 text-white"
+                            className="bg-red-600 hover:bg-red-700 text-white shadow-sm min-w-[140px]"
+                            size="lg"
                           >
                             {runDenialAIMutation.isPending ? (
                               <>
-                                <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                 Generating...
                               </>
                             ) : (
                               <>
-                                <FileText className="h-3 w-3 mr-2" />
+                                <FileSearch className="h-4 w-4 mr-2" />
                                 Generate Appeal
                               </>
                             )}
@@ -2227,11 +2247,16 @@ export default function PatientDetail() {
                   </CardContent>
                 </Card>
               ) : (
-                <Card className="border-dashed border-gray-300">
-                  <CardContent className="flex items-center justify-center h-full py-8">
-                    <div className="text-center text-gray-500">
-                      <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Denial AI available when authorization status is "Denied"</p>
+                <Card className="border-l-4 border-l-gray-300 shadow-sm opacity-60">
+                  <CardContent className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full mb-4">
+                        <AlertTriangle className="h-6 w-6 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-500 mb-2">Denial AI</h3>
+                      <p className="text-sm text-gray-400 max-w-xs">
+                        This feature becomes available when authorization status is "Denied"
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
