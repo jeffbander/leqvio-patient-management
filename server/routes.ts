@@ -3272,9 +3272,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Map LEQVIO Copay Program fields (takes priority regardless of where found)
           if (extraction.leqvio_copay?.program_found) updates.leqvioCopayProgram = extraction.leqvio_copay.program_found;
-          if (extraction.leqvio_copay?.subscriber_id) updates.leqvioPatientId = extraction.leqvio_copay.subscriber_id;
+          if (extraction.leqvio_copay?.patient_id) updates.leqvioPatientId = extraction.leqvio_copay.patient_id;
           if (extraction.leqvio_copay?.effective_from) updates.leqvioEnrollmentDate = extraction.leqvio_copay.effective_from;
-          if (extraction.leqvio_copay?.coverage_status) updates.leqvioCopayIdNumber = extraction.leqvio_copay.coverage_status;
+          if (extraction.leqvio_copay?.subscriber_id) updates.leqvioCopayIdNumber = extraction.leqvio_copay.subscriber_id;
           // Note: subscriber (name) is not mapped to avoid name confusion
           
           // Map BIN and PCN from pharmacy section (Epic structure may not have pharmacy object)
@@ -3326,33 +3326,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const leqvioData = extraction.leqvio_copay || {};
           
           if (leqvioData.program_found) {
-            // Smart mapping - identify actual LEQVIO data vs primary insurance overlap
-            const allLeqvioFields = [leqvioData.coverage_status, leqvioData.subscriber_id, leqvioData.group_id].filter(Boolean);
-            
-            // Find LEQVIO Patient ID (should be different from primary member ID)
-            const leqvioPatientId = allLeqvioFields.find(field => 
-              field && 
-              field !== extraction.member?.member_id && // Not the primary member ID
-              field !== extraction.insurer?.group_number && // Not the primary group
-              /^\d+$/.test(field) && // Numeric ID
-              field.length >= 6 // Reasonable length for patient ID
-            );
-            if (leqvioPatientId) updates.leqvioPatientId = leqvioPatientId;
+            // Map LEQVIO Patient ID directly from the dedicated field
+            if (leqvioData.patient_id && /^\d+$/.test(leqvioData.patient_id)) {
+              updates.leqvioPatientId = leqvioData.patient_id;
+            }
             
             // Map enrollment date from effective_from field
             if (leqvioData.effective_from && /^\d{2}\/\d{2}\/\d{4}$/.test(leqvioData.effective_from)) {
               updates.leqvioEnrollmentDate = leqvioData.effective_from;
             }
             
-            // Find LEQVIO Co-pay ID (alphanumeric, different from primary data)
-            const leqvioCopayId = allLeqvioFields.find(field => 
-              field && 
-              field !== extraction.member?.member_id &&
-              field !== extraction.insurer?.group_number &&
-              /^[A-Z0-9]+$/i.test(field) &&
-              field.length > 8 // Longer alphanumeric codes
-            );
-            if (leqvioCopayId) updates.leqvioCopayIdNumber = leqvioCopayId;
+            // Map LEQVIO Co-pay ID directly from the dedicated field
+            if (leqvioData.subscriber_id && /^[A-Z0-9]+$/i.test(leqvioData.subscriber_id)) {
+              updates.leqvioCopayIdNumber = leqvioData.subscriber_id;
+            }
             
             // Only map LEQVIO Group if it's specifically provided and different from primary
             if (leqvioData.group_id && leqvioData.group_id !== extraction.insurer?.group_number) {

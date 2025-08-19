@@ -162,11 +162,12 @@ export interface ExtractedInsuranceData {
   };
   leqvio_copay: {
     program_found: boolean;
-    coverage_status: string;
+    patient_id: string;
     subscriber: string;
     effective_from: string;
     subscriber_id: string;
     group_id: string;
+    coverage_status: string;
   };
   security: {
     card_number: string;
@@ -592,10 +593,11 @@ export async function extractInsuranceCardData(base64Image: string): Promise<Ext
 
 SPECIAL HANDLING FOR LEQVIO COPAY PROGRAM:
 If you find ANY mention of "LEQVIO Copay Program" or "LEQVIO" copay assistance anywhere on the card, extract these specific fields in the leqvio_copay section:
-- coverage_status: The LEQVIO Patient ID (numeric or alphanumeric ID unique to LEQVIO program)
+- patient_id: The LEQVIO Patient ID (numeric ID typically 7-8 digits, like 2431706)
 - subscriber: The patient/subscriber name enrolled in LEQVIO program  
 - effective_from: The enrollment date or effective date for LEQVIO coverage (MM/DD/YYYY format)
-- subscriber_id: The LEQVIO Copay ID Number or Member ID for copay assistance
+- subscriber_id: The LEQVIO Copay ID Number (alphanumeric code like K53100755401)
+- coverage_status: The coverage status (Active/Inactive/Pending)
 
 Return JSON with this exact structure:
 {
@@ -638,11 +640,12 @@ Return JSON with this exact structure:
   },
   "leqvio_copay": {
     "program_found": "boolean - true if LEQVIO Copay Program is found",
-    "coverage_status": "string or empty - Coverage status (Active/Inactive)",
+    "patient_id": "string or empty - LEQVIO Patient ID (numeric, typically 7-8 digits)",
     "subscriber": "string or empty - Patient/subscriber name enrolled in LEQVIO",
     "effective_from": "string or empty - LEQVIO enrollment/effective date (MM/DD/YYYY)",
-    "subscriber_id": "string or empty - LEQVIO Copay ID Number for assistance program",
-    "group_id": "string or empty - LEQVIO Group ID or Group Number"
+    "subscriber_id": "string or empty - LEQVIO Copay ID Number (alphanumeric code)",
+    "group_id": "string or empty - LEQVIO Group ID or Group Number",
+    "coverage_status": "string or empty - Coverage status (Active/Inactive/Pending)"
   },
   "security": {
     "card_number": "Card number if separate from member ID",
@@ -737,11 +740,12 @@ EXTRACTION RULES:
       },
       leqvio_copay: {
         program_found: result.leqvio_copay?.program_found || false,
-        coverage_status: result.leqvio_copay?.coverage_status || "",
+        patient_id: result.leqvio_copay?.patient_id || "",
         subscriber: result.leqvio_copay?.subscriber || "",
         effective_from: result.leqvio_copay?.effective_from || "",
         subscriber_id: result.leqvio_copay?.subscriber_id || "",
-        group_id: result.leqvio_copay?.group_id || ""
+        group_id: result.leqvio_copay?.group_id || "",
+        coverage_status: result.leqvio_copay?.coverage_status || ""
       },
       security: {
         card_number: result.security?.card_number || "",
@@ -895,10 +899,11 @@ interface EpicInsuranceData {
   };
   leqvio_copay: {
     program_found: boolean;
-    coverage_status: string;
+    patient_id: string;
     subscriber: string;
     effective_from: string;
     subscriber_id: string;
+    coverage_status: string;
   };
   metadata: {
     extractionConfidence: number;
@@ -920,10 +925,11 @@ Extract insurance information from Epic insurance coverage reports that show Pri
 
 SPECIAL HANDLING FOR LEQVIO COPAY PROGRAM:
 If you find ANY mention of "LEQVIO Copay Program" or "LEQVIO" copay assistance anywhere in the Epic screenshot (even under secondary insurance), extract these specific fields in the leqvio_copay section:
-- Coverage Status (Active, Inactive, etc.)
+- Patient ID: LEQVIO Patient ID (numeric, typically 7-8 digits like 2431706)
 - Subscriber name
 - Effective dates (from/to dates)
-- Subscriber ID/Member ID
+- Subscriber ID: LEQVIO Copay ID Number (alphanumeric like K53100755401)
+- Coverage Status (Active, Inactive, etc.)
 
 Return JSON with this exact structure:
 {
@@ -951,10 +957,11 @@ Return JSON with this exact structure:
   },
   "leqvio_copay": {
     "program_found": "boolean - true if LEQVIO Copay Program is found",
-    "coverage_status": "string or empty - Coverage Status for LEQVIO",
+    "patient_id": "string or empty - LEQVIO Patient ID (numeric, typically 7-8 digits)",
     "subscriber": "string or empty - Subscriber name for LEQVIO",
     "effective_from": "string or empty - Effective from date for LEQVIO",
-    "subscriber_id": "string or empty - Subscriber ID for LEQVIO"
+    "subscriber_id": "string or empty - LEQVIO Copay ID Number (alphanumeric code)",
+    "coverage_status": "string or empty - Coverage Status for LEQVIO"
   },
   "metadata": {
     "extractionConfidence": 0.95,
@@ -1025,10 +1032,11 @@ EXTRACTION RULES:
       },
       leqvio_copay: {
         program_found: result.leqvio_copay?.program_found || false,
-        coverage_status: result.leqvio_copay?.coverage_status || "",
+        patient_id: result.leqvio_copay?.patient_id || "",
         subscriber: result.leqvio_copay?.subscriber || "",
         effective_from: result.leqvio_copay?.effective_from || "",
-        subscriber_id: result.leqvio_copay?.subscriber_id || ""
+        subscriber_id: result.leqvio_copay?.subscriber_id || "",
+        coverage_status: result.leqvio_copay?.coverage_status || ""
       },
       metadata: {
         extractionConfidence: Math.max(0, Math.min(1, result.metadata?.extractionConfidence || 0.8)),
