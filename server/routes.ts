@@ -2834,7 +2834,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for insurance and authorization changes and log to notes
       const insuranceFields = [
         'primaryInsurance', 'primaryPlan', 'primaryInsuranceNumber', 'primaryGroupId',
-        'secondaryInsurance', 'secondaryPlan', 'secondaryInsuranceNumber', 'secondaryGroupId'
+        'secondaryInsurance', 'secondaryPlan', 'secondaryInsuranceNumber', 'secondaryGroupId',
+        'leqvioCopayProgram', 'leqvioPatientId', 'leqvioEnrollmentDate', 'leqvioCopayIdNumber',
+        'leqvioGroupNumber', 'leqvioBin', 'leqvioPcn'
       ];
       const authFieldsToTrack = ['authNumber', 'refNumber', 'startDate', 'endDate', 'authStatus'];
       
@@ -3275,6 +3277,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (extraction.leqvio_copay?.effective_from) updates.leqvioCopayIdNumber = extraction.leqvio_copay.effective_from;
           if (extraction.leqvio_copay?.subscriber_id) updates.leqvioGroupNumber = extraction.leqvio_copay.subscriber_id;
           
+          // Map BIN and PCN from pharmacy section (Epic structure may not have pharmacy object)
+          if ((extraction as any).pharmacy?.bin) updates.leqvioBin = (extraction as any).pharmacy.bin;
+          if ((extraction as any).pharmacy?.pcn) updates.leqvioPcn = (extraction as any).pharmacy.pcn;
+          
           if (Object.keys(updates).length > 0) {
             await storage.updatePatient(patientId, updates, organizationId);
             console.log('Patient insurance information automatically updated from Epic screenshot:', updates);
@@ -3316,6 +3322,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (extraction.leqvio_copay?.subscriber) updates.leqvioEnrollmentDate = extraction.leqvio_copay.subscriber;
           if (extraction.leqvio_copay?.effective_from) updates.leqvioCopayIdNumber = extraction.leqvio_copay.effective_from;
           if (extraction.leqvio_copay?.subscriber_id) updates.leqvioGroupNumber = extraction.leqvio_copay.subscriber_id;
+          
+          // Map BIN and PCN from pharmacy section
+          if (extraction.pharmacy?.bin) updates.leqvioBin = extraction.pharmacy.bin;
+          if (extraction.pharmacy?.pcn) updates.leqvioPcn = extraction.pharmacy.pcn;
           
           if (Object.keys(updates).length > 0) {
             await storage.updatePatient(patientId, updates, organizationId);
