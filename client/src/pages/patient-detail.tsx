@@ -525,19 +525,17 @@ export default function PatientDetail() {
     onSuccess: (data) => {
       toast({
         title: "Success",
-        description: "Document uploaded and processed successfully"
+        description: "Document uploaded successfully. Processing data in the background..."
       })
-      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] })
-      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}`] })
-      setSelectedFile(null)
       
-      // If insurance data was extracted, show it
-      if (data.extractedData && Object.keys(data.extractedData).length > 0) {
-        toast({
-          title: "Data Extracted",
-          description: "Insurance information has been extracted and saved"
-        })
+      // Start polling for processing status
+      const documentId = data.document?.id
+      if (documentId) {
+        pollDocumentStatus(documentId)
       }
+      
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] })
+      setSelectedFile(null)
     },
     onError: (error) => {
       toast({
@@ -547,6 +545,49 @@ export default function PatientDetail() {
       })
     }
   })
+
+  // Function to poll document processing status
+  const pollDocumentStatus = async (documentId: number, attempts = 0, maxAttempts = 30) => {
+    if (attempts >= maxAttempts) {
+      console.log(`Stopped polling document ${documentId} after ${maxAttempts} attempts`)
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/patients/${patientId}/documents/${documentId}/status`)
+      if (!response.ok) {
+        console.error('Failed to check document status')
+        return
+      }
+      
+      const status = await response.json()
+      
+      if (status.processingStatus === 'completed') {
+        // Processing completed successfully
+        queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] })
+        queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}`] })
+        
+        if (status.extractedData) {
+          toast({
+            title: "Processing Complete",
+            description: "Document processed and patient information updated automatically"
+          })
+        }
+      } else if (status.processingStatus === 'failed') {
+        // Processing failed
+        toast({
+          title: "Processing Failed",
+          description: status.processingError || "Document processing encountered an error",
+          variant: "destructive"
+        })
+      } else if (status.processingStatus === 'processing' || status.processingStatus === 'pending') {
+        // Still processing, check again in 2 seconds
+        setTimeout(() => pollDocumentStatus(documentId, attempts + 1, maxAttempts), 2000)
+      }
+    } catch (error) {
+      console.error('Error checking document status:', error)
+    }
+  }
 
   const saveRejectionLetterMutation = useMutation({
     mutationFn: async (rejectionText: string) => {
@@ -1961,7 +2002,31 @@ export default function PatientDetail() {
                           {doc.documentType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} • 
                           {' '}{format(new Date(doc.createdAt), 'MMM d, yyyy h:mm a')}
                         </p>
-                        {doc.metadata && Object.keys(doc.metadata).length > 0 && (
+                        {/* Processing Status Indicator */}
+                        {doc.processingStatus === 'pending' && (
+                          <p className="text-sm text-blue-600 mt-1 flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Processing...
+                          </p>
+                        )}
+                        {doc.processingStatus === 'processing' && (
+                          <p className="text-sm text-blue-600 mt-1 flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Extracting data...
+                          </p>
+                        )}
+                        {doc.processingStatus === 'completed' && doc.extractedData && (
+                          <p className="text-sm text-green-600 mt-1">
+                            ✓ Data extracted and processed
+                          </p>
+                        )}
+                        {doc.processingStatus === 'failed' && (
+                          <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Processing failed
+                          </p>
+                        )}
+                        {(!doc.processingStatus || doc.processingStatus === 'completed') && doc.metadata && Object.keys(doc.metadata).length > 0 && (
                           <p className="text-sm text-green-600 mt-1">
                             ✓ Data extracted
                           </p>

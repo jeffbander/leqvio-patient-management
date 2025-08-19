@@ -3204,29 +3204,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create patient document with OCR extraction - use upload.any() to handle any field name
-  app.post('/api/patients/:id/documents', upload.any(), async (req, res) => {
+  // Async processing function for OCR extraction
+  async function processDocumentAsync(documentId: number, patientId: number, documentType: string, fileBuffer: Buffer, fileName: string, organizationId: number) {
     try {
-      const patientId = parseInt(req.params.id);
-      const { documentType } = req.body;
-      const files = req.files as Express.Multer.File[] | undefined;
-      const file = files?.[0]; // Get first file from files array
+      console.log(`Starting async processing for document ${documentId} (${documentType})`);
       
-      if (!file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-      }
+      // Update status to processing
+      await storage.updatePatientDocument(documentId, {
+        processingStatus: 'processing'
+      });
       
       let extractedData = '';
       let metadata: any = {};
       
       // Use OpenAI to extract data from the document
       if (documentType === 'epic_insurance_screenshot') {
-        const base64Image = file.buffer.toString('base64');
+        const base64Image = fileBuffer.toString('base64');
         
         console.log('Processing Epic insurance screenshot...');
-        console.log('Original file mimetype:', file.mimetype);
-        console.log('Original file name:', file.originalname);
-        console.log('File size:', file.buffer.length);
+        console.log('Original file name:', fileName);
+        console.log('File size:', fileBuffer.length);
         
         try {
           const { extractEpicInsuranceData } = await import('./openai-service');
@@ -3235,42 +3232,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metadata = extraction;
           
           // Automatically map and update patient insurance fields
-          const user = await getUserFromSession(req);
-          if (user && user.currentOrganizationId) {
-            const updates: any = {};
+          const updates: any = {};
+          
+          // Map Epic insurance data to patient fields
+          if (extraction.primary?.payer) updates.primaryInsurance = extraction.primary.payer;
+          if (extraction.primary?.subscriberId) updates.primaryInsuranceNumber = extraction.primary.subscriberId;
+          if (extraction.primary?.groupNumber) updates.primaryGroupId = extraction.primary.groupNumber;
+          if (extraction.primary?.plan) updates.primaryPlan = extraction.primary.plan;
+          
+          if (extraction.secondary?.payer) updates.secondaryInsurance = extraction.secondary.payer;
+          if (extraction.secondary?.subscriberId) updates.secondaryInsuranceNumber = extraction.secondary.subscriberId;
+          if (extraction.secondary?.groupNumber) updates.secondaryGroupId = extraction.secondary.groupNumber;
+          if (extraction.secondary?.plan) updates.secondaryPlan = extraction.secondary.plan;
+          
+          if (Object.keys(updates).length > 0) {
+            await storage.updatePatient(patientId, updates, organizationId);
+            console.log('Patient insurance information automatically updated from Epic screenshot:', updates);
             
-            // Map Epic insurance data to patient fields
-            if (extraction.primary?.payer) updates.primaryInsurance = extraction.primary.payer;
-            if (extraction.primary?.subscriberId) updates.primaryInsuranceNumber = extraction.primary.subscriberId;
-            if (extraction.primary?.groupNumber) updates.primaryGroupId = extraction.primary.groupNumber;
-            if (extraction.primary?.plan) updates.primaryPlan = extraction.primary.plan;
+            // Log the insurance update in patient notes
+            const changeLog = `Updated: Epic screenshot insurance data - ${new Date().toLocaleString()}`;
+            const changeDetails = Object.entries(updates).map(([key, value]) => `  ${key}: ${value}`).join('\n');
+            const logEntry = `${changeLog}\n${changeDetails}`;
             
-            if (extraction.secondary?.payer) updates.secondaryInsurance = extraction.secondary.payer;
-            if (extraction.secondary?.subscriberId) updates.secondaryInsuranceNumber = extraction.secondary.subscriberId;
-            if (extraction.secondary?.groupNumber) updates.secondaryGroupId = extraction.secondary.groupNumber;
-            if (extraction.secondary?.plan) updates.secondaryPlan = extraction.secondary.plan;
+            await addInsuranceChangeToNotes(patientId, logEntry, organizationId);
             
-            if (Object.keys(updates).length > 0) {
-              await storage.updatePatient(patientId, updates, user.currentOrganizationId);
-              console.log('Patient insurance information automatically updated from Epic screenshot:', updates);
-              
-              // Log the insurance update in patient notes
-              const changeLog = `Updated: Epic screenshot insurance data - ${new Date().toLocaleString()}`;
-              const changeDetails = Object.entries(updates).map(([key, value]) => `  ${key}: ${value}`).join('\n');
-              const logEntry = `${changeLog}\n${changeDetails}`;
-              
-              await addInsuranceChangeToNotes(patientId, logEntry, user.currentOrganizationId);
-              
-              // Store the updated fields to return to frontend
-              metadata.updatedFields = updates;
-            }
+            // Store the updated fields to return to frontend
+            metadata.updatedFields = updates;
           }
         } catch (ocrError) {
           console.error('Epic insurance extraction failed:', ocrError);
           // Continue without extraction
         }
       } else if (documentType === 'insurance_screenshot') {
-        const base64Image = file.buffer.toString('base64');
+        const base64Image = fileBuffer.toString('base64');
         
         try {
           const extraction = await extractInsuranceCardData(base64Image);
@@ -3281,7 +3275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Continue without extraction
         }
       } else if (documentType === 'epic_screenshot') {
-        const base64Image = file.buffer.toString('base64');
+        const base64Image = fileBuffer.toString('base64');
         
         try {
           const extraction = await extractPatientInfoFromScreenshot(base64Image);
@@ -3294,7 +3288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (documentType === 'clinical_note') {
         // For clinical notes, store the text content directly
         try {
-          const textContent = file.buffer.toString('utf-8');
+          const textContent = fileBuffer.toString('utf-8');
           extractedData = textContent; // Store as plain text, not JSON
           metadata = { 
             contentType: 'clinical_text',
@@ -3305,145 +3299,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Clinical note processing failed:', error);
           // Continue without extraction
         }
-      } else if (documentType === 'medical_document') {
-        // Check if it's a PDF file
-        const isPDF = file.mimetype === 'application/pdf' || 
-                     file.mimetype === 'application/x-pdf' || 
-                     file.originalname.toLowerCase().endsWith('.pdf');
-        
-        if (!isPDF) {
-          return res.status(400).json({ error: 'Only PDF files are allowed for medical documents' });
-        }
-        // Handle PDF document extraction
-        try {
-          console.log('Processing PDF medical document:', file.originalname);
-          const { extractPatientInfoFromPDF } = await import('./openai-service');
-          const extraction = await extractPatientInfoFromPDF(file.buffer);
-          extractedData = JSON.stringify(extraction);
-          metadata = {
-            ...extraction,
-            contentType: 'pdf_document',
-            fileName: file.originalname,
-            fileSize: file.buffer.length,
-            timestamp: new Date().toISOString()
-          };
-          
-          // Auto-update patient information from PDF extraction if available
-          const user = await getUserFromSession(req);
-          if (user && user.currentOrganizationId && extraction.confidence > 0.5) {
-            const updates: any = {};
-            
-            // Map PDF extraction data to patient fields
-            if (extraction.patient_first_name) updates.firstName = extraction.patient_first_name;
-            if (extraction.patient_last_name) updates.lastName = extraction.patient_last_name;
-            if (extraction.date_of_birth) updates.dateOfBirth = extraction.date_of_birth;
-            if (extraction.patient_address) updates.address = extraction.patient_address;
-            if (extraction.patient_home_phone) updates.phone = extraction.patient_home_phone;
-            if (extraction.patient_cell_phone) updates.cellPhone = extraction.patient_cell_phone;
-            if (extraction.patient_email) updates.email = extraction.patient_email;
-            if (extraction.provider_name) updates.orderingMD = extraction.provider_name;
-            if (extraction.account_number) updates.mrn = extraction.account_number;
-            
-            if (Object.keys(updates).length > 0) {
-              await storage.updatePatient(patientId, updates, user.currentOrganizationId);
-              console.log('Patient information automatically updated from PDF document:', updates);
-              
-              // Log the PDF update in patient notes
-              const changeLog = `Updated: PDF document data extracted - ${new Date().toLocaleString()}`;
-              const changeDetails = Object.entries(updates).map(([key, value]) => `  ${key}: ${value}`).join('\n');
-              const logEntry = `${changeLog}\n${changeDetails}`;
-              
-              await addInsuranceChangeToNotes(patientId, logEntry, user.currentOrganizationId);
-              
-              // Store the updated fields to return to frontend
-              metadata.updatedFields = updates;
-            }
-          }
-        } catch (pdfError) {
-          console.error('PDF extraction failed:', pdfError);
-          // Continue without extraction
-          metadata = {
-            contentType: 'pdf_document',
-            fileName: file.originalname,
-            fileSize: file.buffer.length,
-            timestamp: new Date().toISOString(),
-            extractionError: 'PDF extraction failed'
-          };
-        }
       }
+
+      // Update document with processing results
+      await storage.updatePatientDocument(documentId, {
+        extractedData,
+        metadata,
+        processingStatus: 'completed'
+      });
       
-      // Save document record
+      console.log(`Async processing completed for document ${documentId}`);
+    } catch (error) {
+      console.error(`Async processing failed for document ${documentId}:`, error);
+      
+      // Update document with error status
+      await storage.updatePatientDocument(documentId, {
+        processingStatus: 'failed',
+        processingError: error.message
+      });
+    }
+  }
+
+  // Create patient document with immediate response and async processing
+  app.post('/api/patients/:id/documents', upload.any(), async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const { documentType } = req.body;
+      const files = req.files as Express.Multer.File[] | undefined;
+      const file = files?.[0];
+      
+      if (!file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      // Get user organization for async processing
+      const user = await getUserFromSession(req);
+      if (!user || !user.currentOrganizationId) {
+        return res.status(401).json({ error: 'User not authenticated or not associated with an organization' });
+      }
+
+      // Create document record immediately with pending status
       const document = await storage.createPatientDocument({
         patientId,
         documentType,
         fileName: file.originalname,
         fileUrl: '', // In production, upload to cloud storage
-        extractedData,
-        metadata
+        extractedData: '',
+        metadata: {
+          contentType: file.mimetype,
+          fileSize: file.buffer.length,
+          timestamp: new Date().toISOString()
+        },
+        processingStatus: 'pending'
       });
-      
-      // Note: Epic insurance data mapping is now handled above in the extraction block
-      
-      // Handle regular insurance card screenshots
-      if (documentType === 'insurance_screenshot') {
-        try {
-          const base64Image = file.buffer.toString('base64');
-          
-          const { extractInsuranceCardData } = await import('./openai-service');
-          const insuranceData = await extractInsuranceCardData(base64Image);
-          
-          const updates: any = {};
-          
-          // Map insurance card data to patient fields
-          if (insuranceData.insurer?.name) updates.primaryInsurance = insuranceData.insurer.name;
-          if (insuranceData.member?.member_id) updates.primaryInsuranceNumber = insuranceData.member.member_id;
-          if (insuranceData.insurer?.group_number) updates.primaryGroupId = insuranceData.insurer.group_number;
-          if (insuranceData.member?.subscriber_name) {
-            // Try to extract first/last name if not already set
-            const nameParts = insuranceData.member.subscriber_name.split(' ');
-            if (nameParts.length >= 2 && !updates.firstName) {
-              updates.firstName = nameParts[0];
-              updates.lastName = nameParts.slice(1).join(' ');
-            }
-          }
-          if (insuranceData.insurer?.plan_name) updates.primaryPlan = insuranceData.insurer.plan_name;
-          
-          if (Object.keys(updates).length > 0) {
-            const user = await getUserFromSession(req);
-            if (user && user.currentOrganizationId) {
-              await storage.updatePatient(patientId, updates, user.currentOrganizationId);
-              console.log('Patient insurance information automatically updated from insurance card:', updates);
-              
-              // Log the insurance update in patient notes
-              const changeLog = `Updated: Insurance card data extracted - ${new Date().toLocaleString()}`;
-              const changeDetails = Object.entries(updates).map(([key, value]) => `  ${key}: ${value}`).join('\n');
-              const logEntry = `${changeLog}\n${changeDetails}`;
-              
-              await addInsuranceChangeToNotes(patientId, logEntry, user.currentOrganizationId);
-            }
-          }
-          
-          // Store the extracted insurance data as metadata
-          metadata = insuranceData;
-          extractedData = JSON.stringify(insuranceData);
-        } catch (error) {
-          console.error('Insurance card extraction failed:', error);
-          // Continue without extraction
-        }
-      }
-      
-      // Save extracted data for later processing - don't trigger AIGENTS automatically
-      
+
+      // Return immediate response
       res.json({ 
-        document, 
-        extractedData: metadata,
-        updatedFields: metadata.updatedFields || null
+        document: {
+          id: document.id,
+          patientId: document.patientId,
+          documentType: document.documentType,
+          fileName: document.fileName,
+          processingStatus: 'pending',
+          createdAt: document.createdAt
+        }
       });
+
+      // Start async processing (don't await)
+      processDocumentAsync(
+        document.id, 
+        patientId, 
+        documentType, 
+        file.buffer, 
+        file.originalname, 
+        user.currentOrganizationId
+      ).catch(error => {
+        console.error('Async processing error:', error);
+      });
+
     } catch (error) {
       console.error('Error creating patient document:', error);
       res.status(500).json({ error: 'Failed to create patient document' });
     }
   });
+
+  // Get document processing status
+  app.get('/api/patients/:id/documents/:documentId/status', async (req, res) => {
+    try {
+      const documentId = parseInt(req.params.documentId);
+      const documents = await storage.getPatientDocuments(parseInt(req.params.id));
+      const document = documents.find(doc => doc.id === documentId);
+      
+      if (!document) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+      
+      res.json({
+        id: document.id,
+        processingStatus: document.processingStatus || 'completed',
+        processingError: document.processingError,
+        extractedData: document.extractedData,
+        metadata: document.metadata
+      });
+    } catch (error) {
+      console.error('Error checking document status:', error);
+      res.status(500).json({ error: 'Failed to check document status' });
+    }
+  });
+
+
 
   // Process patient data and send to AIGENTS
   app.post('/api/patients/:id/process', async (req, res) => {

@@ -208,6 +208,8 @@ export const patientDocuments = pgTable("patient_documents", {
   fileUrl: text("file_url"),
   extractedData: text("extracted_data"), // OCR extracted text
   metadata: jsonb("metadata"), // Additional structured data from OCR
+  processingStatus: text("processing_status").default("pending"), // 'pending', 'processing', 'completed', 'failed'
+  processingError: text("processing_error"), // Error message if processing failed
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

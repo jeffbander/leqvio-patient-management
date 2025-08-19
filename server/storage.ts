@@ -103,6 +103,7 @@ export interface IStorage {
   // Patient Documents
   createPatientDocument(document: InsertPatientDocument): Promise<PatientDocument>;
   getPatientDocuments(patientId: number): Promise<PatientDocument[]>;
+  updatePatientDocument(documentId: number, updates: { processingStatus?: string; processingError?: string; extractedData?: string; metadata?: any }): Promise<PatientDocument | undefined>;
   deletePatientDocument(documentId: number): Promise<boolean>;
   
   // E-Signature Forms
@@ -847,6 +848,20 @@ export class DatabaseStorage implements IStorage {
       .from(patientDocuments)
       .where(eq(patientDocuments.patientId, patientId))
       .orderBy(desc(patientDocuments.createdAt));
+  }
+
+  async updatePatientDocument(documentId: number, updates: { processingStatus?: string; processingError?: string; extractedData?: string; metadata?: any }): Promise<PatientDocument | undefined> {
+    try {
+      const [updatedDocument] = await db
+        .update(patientDocuments)
+        .set(updates)
+        .where(eq(patientDocuments.id, documentId))
+        .returning();
+      return updatedDocument;
+    } catch (error) {
+      console.error('Error updating patient document:', error);
+      return undefined;
+    }
   }
 
   async deletePatientDocument(documentId: number): Promise<boolean> {
