@@ -416,7 +416,7 @@ export default function ESignatureForm() {
               </div>
               
               {/* Document Upload Options */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Card>
                   <CardContent className="p-4">
                     <div className="space-y-4">
@@ -466,34 +466,6 @@ export default function ESignatureForm() {
                 </Card>
 
 
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="space-y-4">
-                      <div className="text-center">
-                        <Upload className="h-8 w-8 mx-auto mb-2 text-orange-600" />
-                        <h3 className="font-medium mb-2">Upload PDF Document</h3>
-                        <p className="text-sm text-gray-600">Upload PDF documents like LEQVIO forms, medical records, or lab results</p>
-                      </div>
-                      {uploadDocumentMutation.isPending ? (
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-gray-400" />
-                          <p className="text-sm text-gray-600">Uploading PDF...</p>
-                        </div>
-                      ) : (
-                        <DragDropFileUpload
-                          onFileSelect={(file) => {
-                            uploadDocumentMutation.mutate({ file, documentType: 'pdf_document' });
-                          }}
-                          accept=".pdf,application/pdf"
-                          maxSizeMB={25}
-                          placeholder="Drag and drop PDF here"
-                          className="[&>div:last-child]:p-2"
-                        />
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
 
                 <Card>
                   <CardContent className="p-4">
@@ -896,52 +868,7 @@ export default function ESignatureForm() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Primary Insurance (Optional)</CardTitle>
-            <CardDescription>Enter primary insurance information if available</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="primaryInsurance">Insurance Provider</Label>
-                <Input
-                  id="primaryInsurance"
-                  name="primaryInsurance"
-                  value={formData.primaryInsurance}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div>
-                <Label htmlFor="primaryPlan">Plan Name</Label>
-                <Input
-                  id="primaryPlan"
-                  name="primaryPlan"
-                  value={formData.primaryPlan}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div>
-                <Label htmlFor="primaryInsuranceNumber">Member/Policy Number</Label>
-                <Input
-                  id="primaryInsuranceNumber"
-                  name="primaryInsuranceNumber"
-                  value={formData.primaryInsuranceNumber}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div>
-                <Label htmlFor="primaryGroupId">Group ID</Label>
-                <Input
-                  id="primaryGroupId"
-                  name="primaryGroupId"
-                  value={formData.primaryGroupId}
-                  onChange={handleInputChange}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
 
         <Card>
           <CardHeader>
