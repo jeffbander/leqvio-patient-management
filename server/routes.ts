@@ -3322,25 +3322,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Map LEQVIO Copay Program fields - Try multiple approaches to find the Patient ID
           if (extraction.leqvio_copay?.program_found) updates.leqvioCopayProgram = extraction.leqvio_copay.program_found;
           
-          // Smart mapping based on data patterns - find the right data regardless of which field it's in
+          // Map LEQVIO Patient ID from primary insurance member ID (this is the correct patient ID)
+          if (extraction.member?.member_id) {
+            updates.leqvioPatientId = extraction.member.member_id;
+          }
+          
+          // Smart mapping for LEQVIO-specific fields from leqvio_copay section
           const leqvioData = extraction.leqvio_copay || {};
           const allFields = [leqvioData.coverage_status, leqvioData.subscriber, leqvioData.effective_from, leqvioData.subscriber_id].filter(Boolean);
           
-          // Find date field (MM/DD/YYYY pattern)
+          // Find date field (MM/DD/YYYY pattern) for enrollment date
           const dateField = allFields.find(field => /^\d{2}\/\d{2}\/\d{4}$/.test(field));
           if (dateField) updates.leqvioEnrollmentDate = dateField;
           
-          // Find ID field (alphanumeric, longer than 8 chars, not a name or date)
-          const idField = allFields.find(field => 
+          // Find long alphanumeric field for LEQVIO Co-pay ID Number (like K53100755401)
+          const copayIdField = allFields.find(field => 
             field && 
             field.length > 8 && 
             /^[A-Z0-9]+$/i.test(field) && 
             !/^\d{2}\/\d{2}\/\d{4}$/.test(field) &&
             !/\s/.test(field) // No spaces (not a name)
           );
-          if (idField) updates.leqvioPatientId = idField;
+          if (copayIdField) updates.leqvioCopayIdNumber = copayIdField;
           
-          // Don't map names or short status fields to avoid confusion
+          // Don't map names to avoid confusion
           
           // Map BIN and PCN from pharmacy section
           if (extraction.pharmacy?.bin) updates.leqvioBin = extraction.pharmacy.bin;
