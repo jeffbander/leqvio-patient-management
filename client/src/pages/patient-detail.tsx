@@ -2148,13 +2148,20 @@ export default function PatientDetail() {
                             {/* Image Upload */}
                             <div className="space-y-2">
                               <Label className="text-xs font-medium text-gray-700">Upload Image</Label>
-                              <DragDropFileUpload
-                                onFileSelect={handleRejectionImageUpload}
-                                accept="image/*"
-                                maxSizeMB={10}
-                                className="border-red-200 hover:border-red-400 transition-colors h-16 text-xs"
-                                disabled={isUploadingRejection}
-                              />
+                              <div className="h-16 overflow-hidden">
+                                <DragDropFileUpload
+                                  onFileSelect={handleRejectionImageUpload}
+                                  accept="image/*"
+                                  maxSizeMB={10}
+                                  className="border-red-200 hover:border-red-400 transition-colors text-xs [&>div]:!h-16 [&>div]:!p-2 [&>div>div]:!space-y-0"
+                                  disabled={isUploadingRejection}
+                                >
+                                  <div className="flex flex-col items-center justify-center h-full space-y-1">
+                                    <Upload className="h-4 w-4 text-gray-400" />
+                                    <p className="text-xs text-gray-600">Drop image here</p>
+                                  </div>
+                                </DragDropFileUpload>
+                              </div>
                               {isUploadingRejection && (
                                 <div className="flex items-center gap-2 text-xs text-red-600">
                                   <Loader2 className="h-3 w-3 animate-spin" />
