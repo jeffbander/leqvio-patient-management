@@ -110,7 +110,12 @@ ${pdfText}`
 
   const result = response.choices[0].message.content;
   const cleanResult = result?.replace(/```json\n?|\n?```/g, '').trim();
-  return JSON.parse(cleanResult || '{}');
+  try {
+    return JSON.parse(cleanResult || '{}');
+  } catch (error) {
+    console.error('JSON parse error in extractPatientInfoFromPDFWithOpenAI:', error);
+    return {};
+  }
 }
 
 export interface ExtractedPatientData {
@@ -490,7 +495,13 @@ EXTRACTION RULES:
       max_tokens: 2000,
     });
 
-    const result = JSON.parse(response.choices[0].message.content || "{}");
+    let result;
+    try {
+      result = JSON.parse(response.choices[0].message.content || "{}");
+    } catch (error) {
+      console.error('JSON parse error in extractPatientInfoFromScreenshot:', error);
+      result = {};
+    }
     
     // Merge with defaults and ensure all fields exist
     const extractedData = { ...responseFields };
@@ -566,7 +577,13 @@ Rules:
       max_tokens: 1000,
     });
 
-    const result = JSON.parse(response.choices[0].message.content || "{}");
+    let result;
+    try {
+      result = JSON.parse(response.choices[0].message.content || "{}");
+    } catch (error) {
+      console.error('JSON parse error in extractPatientDataFromImage:', error);
+      result = {};
+    }
     
     return {
       firstName: result.firstName || "",
@@ -703,7 +720,13 @@ EXTRACTION RULES:
       max_tokens: 2000,
     });
 
-    const result = JSON.parse(response.choices[0].message.content || "{}");
+    let result;
+    try {
+      result = JSON.parse(response.choices[0].message.content || "{}");
+    } catch (error) {
+      console.error('JSON parse error in extractInsuranceCardData:', error);
+      result = {};
+    }
     
     // Ensure all required fields exist with defaults
     const extractedData: ExtractedInsuranceData = {
@@ -856,7 +879,13 @@ Look for patterns like:
       max_tokens: 200
     });
     
-    const result = JSON.parse(response.choices[0].message.content || "{}");
+    let result;
+    try {
+      result = JSON.parse(response.choices[0].message.content || "{}");
+    } catch (error) {
+      console.error('JSON parse error in extractPatientInfoFromTranscript:', error);
+      result = {};
+    }
     
     if (result.foundPatient && result.firstName && result.lastName && result.dateOfBirth) {
       // Generate source ID
@@ -1016,7 +1045,13 @@ EXTRACTION RULES:
       max_tokens: 2000,
     });
 
-    const result = JSON.parse(response.choices[0].message.content || "{}");
+    let result;
+    try {
+      result = JSON.parse(response.choices[0].message.content || "{}");
+    } catch (error) {
+      console.error('JSON parse error in extractEpicInsuranceData:', error);
+      result = {};
+    }
     
     // Ensure all required fields exist with defaults
     const extractedData: EpicInsuranceData = {
@@ -1213,7 +1248,12 @@ Extract the patient information and return valid JSON only.`
         if (jsonMatch) {
           const jsonOnly = jsonMatch[0].replace(/\*\*(.*?)\*\*/g, '$1');
           console.log("Attempting to parse extracted JSON:", jsonOnly);
-          extractedData = JSON.parse(jsonOnly);
+          try {
+            extractedData = JSON.parse(jsonOnly);
+          } catch (jsonParseError) {
+            console.error('JSON parse error in fallback attempt:', jsonParseError);
+            throw parseError;
+          }
         } else {
           throw parseError;
         }
@@ -1380,7 +1420,13 @@ Return JSON with extracted data. Use empty strings if information is not clearly
       max_tokens: 1000
     });
 
-    const result = JSON.parse(response.choices[0].message.content || '{}');
+    let result;
+    try {
+      result = JSON.parse(response.choices[0].message.content || '{}');
+    } catch (error) {
+      console.error('JSON parse error in extractLeqvioFormData:', error);
+      result = {};
+    }
     console.log("LEQVIO Vision API raw result:", result);
     
     // Normalize the result format
@@ -1517,7 +1563,13 @@ Return JSON with extracted data:
     });
 
     const result = response.choices[0].message.content;
-    const extractedData = JSON.parse(result || '{}');
+    let extractedData;
+    try {
+      extractedData = JSON.parse(result || '{}');
+    } catch (error) {
+      console.error('JSON parse error in extractPatientInfoFromPDFText:', error);
+      extractedData = {};
+    }
     
     console.log("AI PDF text extraction result:", {
       patientName: `${extractedData.patient_first_name || ''} ${extractedData.patient_last_name || ''}`,
@@ -1660,7 +1712,13 @@ Focus on extracting real patient data, not form labels or PDF artifacts.`;
     // Handle different content types and remove markdown code blocks if present
     const resultText = typeof result === 'string' ? result : JSON.stringify(result);
     const cleanResult = resultText?.replace(/```json\n?|\n?```/g, '').trim();
-    const extractedData = JSON.parse(cleanResult || '{}');
+    let extractedData;
+    try {
+      extractedData = JSON.parse(cleanResult || '{}');
+    } catch (error) {
+      console.error('JSON parse error in extractPatientInfoFromPDFTextWithMistral:', error);
+      extractedData = {};
+    }
     
     console.log("Mistral PDF text extraction result:", {
       patientName: `${extractedData.patient_first_name || ''} ${extractedData.patient_last_name || ''}`,
@@ -1759,7 +1817,13 @@ Return valid JSON only.`
       max_tokens: 1000
     });
 
-    const extractedData = JSON.parse(response.choices[0].message.content || '{}');
+    let extractedData;
+    try {
+      extractedData = JSON.parse(response.choices[0].message.content || '{}');
+    } catch (error) {
+      console.error('JSON parse error in extractPatientInfoFromText:', error);
+      extractedData = {};
+    }
     console.log("OpenAI text extraction result:", extractedData);
 
     // If no patient name found, create placeholder

@@ -153,7 +153,13 @@ Return ONLY a JSON object with the extracted data using these exact keys:
         jsonText = jsonText.slice(3, -3).trim();
       }
       
-      const parsedData = JSON.parse(jsonText);
+      let parsedData;
+      try {
+        parsedData = JSON.parse(jsonText);
+      } catch (error) {
+        console.error('JSON parse error in routes.ts:', error);
+        throw error;
+      }
       
       // Clean up the data - remove null/empty values
       const cleanedData: any = {};
@@ -1054,7 +1060,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Also check in agentResponse if it's structured
         if (!denialAppealLetter && agentResponse) {
           try {
-            const responseData = typeof agentResponse === 'string' ? JSON.parse(agentResponse) : agentResponse;
+            const responseData = typeof agentResponse === 'string' 
+              ? (() => {
+                  try {
+                    return JSON.parse(agentResponse);
+                  } catch (error) {
+                    console.error('JSON parse error in routes.ts (agentResponse):', error);
+                    return {};
+                  }
+                })() 
+              : agentResponse;
             if (responseData.Denial_Appeal_Letter) {
               denialAppealLetter = responseData.Denial_Appeal_Letter;
             } else if (responseData.output_variables && responseData.output_variables.Denial_Appeal_Letter) {
@@ -3585,7 +3600,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Add extracted insurance data if available
           if (doc.extractedData) {
             try {
-              const extracted = JSON.parse(doc.extractedData);
+              let extracted;
+              try {
+                extracted = JSON.parse(doc.extractedData);
+              } catch (parseError) {
+                console.error('JSON parse error in routes.ts (extractedData):', parseError);
+                extracted = {};
+              }
               
               // Handle Epic insurance screenshot format
               if (extracted.primary) {
@@ -3664,7 +3685,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Add extracted data if available
           if (doc.extractedData) {
             try {
-              const extracted = JSON.parse(doc.extractedData);
+              let extracted;
+              try {
+                extracted = JSON.parse(doc.extractedData);
+              } catch (parseError) {
+                console.error('JSON parse error in routes.ts (extractedData):', parseError);
+                extracted = {};
+              }
               if (typeof extracted === 'object') {
                 clinicalText += `   Extracted Information:\n`;
                 Object.entries(extracted).forEach(([key, value]) => {
@@ -3706,7 +3733,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const doc of insuranceDocuments) {
           if (doc.extractedData) {
             try {
-              const extracted = JSON.parse(doc.extractedData);
+              let extracted;
+              try {
+                extracted = JSON.parse(doc.extractedData);
+              } catch (parseError) {
+                console.error('JSON parse error in routes.ts (extractedData):', parseError);
+                extracted = {};
+              }
               
               // Handle Epic insurance screenshot format
               if (extracted.primary) {
@@ -3775,7 +3808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               combinedClinicalInfo += `   Clinical Content:\n`;
               try {
                 // Try to parse as JSON first (for backwards compatibility)
-                const extracted = JSON.parse(doc.extractedData);
+                let extracted;\n                try {\n                  extracted = JSON.parse(doc.extractedData);\n                } catch (parseError) {\n                  console.error('JSON parse error in routes.ts (extractedData parse):', parseError);\n                  extracted = {};\n                }
                 if (typeof extracted === 'string') {
                   combinedClinicalInfo += `${extracted}\n`;
                 } else if (extracted.rawText || extracted.content || extracted.text) {
@@ -3797,7 +3830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } else {
               // For other clinical documents (like epic_screenshot), use existing structured approach
               try {
-                const extracted = JSON.parse(doc.extractedData);
+                let extracted;\n                try {\n                  extracted = JSON.parse(doc.extractedData);\n                } catch (parseError) {\n                  console.error('JSON parse error in routes.ts (extractedData parse):', parseError);\n                  extracted = {};\n                }
                 if (typeof extracted === 'object') {
                   combinedClinicalInfo += `   Extracted Information:\n`;
                   Object.entries(extracted).forEach(([key, value]) => {
@@ -3826,7 +3859,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (doc.extractedData) {
             try {
-              const extracted = JSON.parse(doc.extractedData);
+              let extracted;
+              try {
+                extracted = JSON.parse(doc.extractedData);
+              } catch (parseError) {
+                console.error('JSON parse error in routes.ts (extractedData):', parseError);
+                extracted = {};
+              }
               if (extracted.primary) {
                 combinedClinicalInfo += `   Extracted Primary Insurance:\n`;
                 if (extracted.primary.payer) combinedClinicalInfo += `     Payer: ${extracted.primary.payer}\n`;
@@ -4035,7 +4074,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Add extracted insurance data if available
           if (doc.extractedData) {
             try {
-              const extracted = JSON.parse(doc.extractedData);
+              let extracted;
+              try {
+                extracted = JSON.parse(doc.extractedData);
+              } catch (parseError) {
+                console.error('JSON parse error in routes.ts (extractedData):', parseError);
+                extracted = {};
+              }
               if (extracted.primary) {
                 insuranceText += `   Primary Insurance: ${extracted.primary.payer || 'Not specified'}\n`;
                 insuranceText += `   Plan: ${extracted.primary.plan || 'Not specified'}\n`;
@@ -4077,7 +4122,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (doc.extractedData) {
             try {
-              const extracted = JSON.parse(doc.extractedData);
+              let extracted;
+              try {
+                extracted = JSON.parse(doc.extractedData);
+              } catch (parseError) {
+                console.error('JSON parse error in routes.ts (extractedData):', parseError);
+                extracted = {};
+              }
               clinicalText += `   Content: ${JSON.stringify(extracted, null, 2)}\n`;
             } catch (e) {
               // If not JSON, treat as plain text
