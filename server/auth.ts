@@ -23,9 +23,32 @@ export async function sendMagicLink(email: string, baseUrl: string): Promise<{ s
     // Create magic link
     const magicLink = `${baseUrl}/api/auth/verify?token=${token}`;
     
-    // For development/demo purposes, return the magic link directly
-    // In production, this would send via email
-    console.log(`Magic link for ${email}: ${magicLink}`);
+    // Send magic link via email
+    const emailSent = await sendEmail({
+      to: email,
+      from: process.env.SENDGRID_FROM_EMAIL || "noreply@yourdomain.com",
+      subject: "Your LEQVIO Login Link",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2c5aa0;">LEQVIO Patient Management</h2>
+          <p>Click the link below to log in to your account:</p>
+          <a href="${magicLink}" style="display: inline-block; background-color: #2c5aa0; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 16px 0;">
+            Log In to LEQVIO
+          </a>
+          <p style="color: #666; font-size: 14px;">This link will expire in 15 minutes.</p>
+          <p style="color: #666; font-size: 12px;">If you didn't request this login link, you can safely ignore this email.</p>
+        </div>
+      `,
+      text: `Log in to LEQVIO Patient Management: ${magicLink}\n\nThis link will expire in 15 minutes.`
+    });
+    
+    if (!emailSent) {
+      console.error("Failed to send magic link email");
+      return { success: false };
+    }
+    
+    // Also log to console for development
+    console.log(`Magic link sent to ${email}: ${magicLink}`);
     
     return { success: true, magicLink };
   } catch (error) {
@@ -59,7 +82,15 @@ export async function verifyLoginToken(token: string): Promise<{ success: boolea
       user = await storage.createUser({
         email: tokenRecord.email,
         name: null,
+        password: "magic_link_auth", // Placeholder for magic link authentication
       });
+      
+      // Auto-assign new users to default organization
+      try {
+        await storage.assignUserToDefaultOrganization(user.id);
+      } catch (error) {
+        console.warn("Failed to assign user to default organization:", error);
+      }
     }
     
     // Update last login

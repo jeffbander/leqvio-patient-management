@@ -62,6 +62,7 @@ export interface IStorage {
   updateUserPassword(id: number, hashedPassword: string): Promise<void>;
   deleteUser(id: number): Promise<void>;
   deleteOrganization(id: number): Promise<void>;
+  assignUserToDefaultOrganization(userId: number): Promise<void>;
   
   // Login tokens
   createLoginToken(token: InsertLoginToken): Promise<LoginToken>;
@@ -226,6 +227,51 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ lastLoginAt: new Date() })
       .where(eq(users.id, id));
+  }
+
+  async assignUserToDefaultOrganization(userId: number): Promise<void> {
+    // Get or create default organization
+    let defaultOrg = await db.select().from(organizations).where(eq(organizations.name, "Default Organization")).limit(1);
+    
+    if (defaultOrg.length === 0) {
+      // Create default organization if it doesn't exist
+      const [newOrg] = await db
+        .insert(organizations)
+        .values({
+          name: "Default Organization",
+          description: "Default organization for new users",
+        })
+        .returning();
+      defaultOrg = [newOrg];
+    }
+
+    // Check if user is already a member
+    const existingMembership = await db
+      .select()
+      .from(organizationMemberships)
+      .where(
+        and(
+          eq(organizationMemberships.userId, userId),
+          eq(organizationMemberships.organizationId, defaultOrg[0].id)
+        )
+      )
+      .limit(1);
+
+    if (existingMembership.length === 0) {
+      // Add user to default organization
+      await db.insert(organizationMemberships).values({
+        userId,
+        organizationId: defaultOrg[0].id,
+        role: "owner",
+        isActive: true,
+      });
+
+      // Set as user's current organization
+      await db
+        .update(users)
+        .set({ currentOrganizationId: defaultOrg[0].id })
+        .where(eq(users.id, userId));
+    }
   }
 
   // Multi-organization support methods
