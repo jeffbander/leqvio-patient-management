@@ -1,7 +1,8 @@
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+// Use dynamic import to avoid module issues
+const pdfjsLib = require('pdfjs-dist');
 
-// Set up the worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs';
+// Disable worker to avoid path issues
+pdfjsLib.GlobalWorkerOptions.workerSrc = false;
 
 /**
  * Extract text from PDF buffer using pdf.js

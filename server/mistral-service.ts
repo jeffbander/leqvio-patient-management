@@ -1,5 +1,5 @@
 import { Mistral } from "@mistralai/mistralai";
-import { extractTextFromPDF, extractMedicalPDFData } from "./pdf-extractor";
+import { extractTextFromPDF, extractMedicalPDFData } from "./pdf-text-extractor";
 
 // Initialize Mistral client
 const mistral = new Mistral({
