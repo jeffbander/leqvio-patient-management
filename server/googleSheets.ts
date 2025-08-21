@@ -8,7 +8,7 @@ export class GoogleSheetsService {
   constructor() {
     // Initialize Google Auth
     if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
-      const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+      let credentials;\n      try {\n        credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);\n      } catch (error) {\n        console.error('JSON parse error in googleSheets.ts:', error);\n        return;\n      }
       this.auth = new google.auth.GoogleAuth({
         credentials,
         scopes: ['https://www.googleapis.com/auth/spreadsheets'],

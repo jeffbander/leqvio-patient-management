@@ -116,7 +116,7 @@ class GoogleSheetsService {
         return;
       }
 
-      const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+      let credentials;\n      try {\n        credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);\n      } catch (error) {\n        console.error('JSON parse error in google-sheets-service.ts:', error);\n        return;\n      }
       
       this.auth = new GoogleAuth({
         credentials,
