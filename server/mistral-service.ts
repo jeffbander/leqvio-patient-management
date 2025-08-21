@@ -1,8 +1,5 @@
 import { Mistral } from "@mistralai/mistralai";
-import fs from "fs";
-
-// Dynamic import for pdf-parse to avoid test file issues
-const pdfParse = (buffer: Buffer) => import("pdf-parse").then(mod => mod.default(buffer));
+import { extractTextFromPDF, extractMedicalPDFData } from "./pdf-extractor";
 
 // Initialize Mistral client
 const mistral = new Mistral({
@@ -67,10 +64,10 @@ export async function extractPDFWithMistral(
   documentType: string = "medical_document"
 ): Promise<PDFExtractionResult> {
   try {
-    // First, extract raw text from PDF
-    const pdfData = await pdfParse(pdfBuffer);
+    // First, extract raw text from PDF using our enhanced extractor
+    const pdfData = await extractMedicalPDFData(pdfBuffer);
     const rawText = pdfData.text;
-    const pageCount = pdfData.numpages;
+    const pageCount = 1; // We'll get this from pdfData if needed
     
     if (!rawText || rawText.trim().length === 0) {
       return {
