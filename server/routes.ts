@@ -7,10 +7,8 @@ import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { insertAutomationLogSchema, insertCustomChainSchema, userLoginSchema, userRegisterSchema, insertPatientSchema } from "@shared/schema";
 import { sendMagicLink, verifyLoginToken } from "./auth";
-import { extractPatientDataFromImage, extractInsuranceCardData, transcribeAudio, extractPatientInfoFromScreenshot, extractPatientInfoFromPDF } from "./openai-service";
+import { extractPatientDataFromImage, extractInsuranceCardData, extractPatientInfoFromScreenshot, extractPatientInfoFromPDF } from "./openai-service";
 import { generateLEQVIOPDF } from "./pdf-generator";
-import { googleSheetsService } from "./google-sheets-service";
-import { setupAppsheetRoutes } from "./appsheet-routes-fixed";
 import { registerUser, loginUser, requireAuth, getUserFromSession } from "./password-auth";
 // Using the openai instance directly instead of a service object
 
@@ -1148,8 +1146,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configure multer for multipart form data
   const upload = multer();
 
-  // Setup AppSheet-compatible API routes
-  setupAppsheetRoutes(app);
 
   // Health check
   app.get("/api/health", (req, res) => {
@@ -1162,131 +1158,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // CSV export for AppSheet setup - SIMPLE URL
-  app.get('/api/patients-csv', async (req, res) => {
-    try {
-      const patients = await storage.getAllPatients();
-      
-      if (patients.length === 0) {
-        return res.status(404).json({ error: 'No patients found' });
-      }
-
-      // Get automation logs for AI analysis data
-      const patientsWithAnalysis = await Promise.all(
-        patients.map(async (patient) => {
-          const automationLogs = await storage.getPatientAutomationLogs(patient.id);
-          const latestWebhookData = automationLogs.length > 0 && automationLogs[0].webhookPayload
-            ? automationLogs[0].webhookPayload
-            : null;
-          
-          const furtherAnalysis = latestWebhookData?.websearch || latestWebhookData?.webSearch || latestWebhookData?.web_search || '';
-          const letterOfMedicalNecessity = latestWebhookData?.lettofneed || latestWebhookData?.letterOfNeed || latestWebhookData?.letter_of_need || '';
-          
-          const latestAnalysis = automationLogs.length > 0 && automationLogs[0].agentResponse 
-            ? parseAigentsResponse(automationLogs[0].agentResponse)
-            : null;
-
-          return {
-            ...patient,
-            furtherAnalysis,
-            letterOfMedicalNecessity,
-            approvalLikelihood: latestAnalysis?.approvalLikelihood || '',
-            criteriaAssessment: latestAnalysis?.criteriaItems.map(item => 
-              `${item.status === 'passed' ? '✓' : item.status === 'failed' ? '✗' : '?'} ${item.text}`
-            ).join('; ') || '',
-            documentationGaps: latestAnalysis?.documentationGaps.join('; ') || '',
-            recommendations: latestAnalysis?.recommendations.join('; ') || ''
-          };
-        })
-      );
-
-      // Create CSV headers
-      const headers = [
-        'ID', 'FirstName', 'LastName', 'DateOfBirth', 'Phone', 'Email', 'Address', 'MRN',
-        'OrderingMD', 'Diagnosis', 'Status', 'PrimaryInsurance', 'PrimaryPlan', 
-        'PrimaryInsuranceNumber', 'PrimaryGroupId', 'SecondaryInsurance', 'SecondaryPlan',
-        'SecondaryInsuranceNumber', 'SecondaryGroupId', 'FurtherAnalysis', 
-        'LetterOfMedicalNecessity', 'ApprovalLikelihood', 'CriteriaAssessment',
-        'DocumentationGaps', 'Recommendations', 'CreatedAt', 'UpdatedAt'
-      ];
-
-      // Create CSV content
-      let csvContent = headers.join(',') + '\n';
-      
-      patientsWithAnalysis.forEach(patient => {
-        const row = [
-          patient.id,
-          `"${patient.firstName || ''}"`,
-          `"${patient.lastName || ''}"`,
-          patient.dateOfBirth || '',
-          `"${patient.phone || ''}"`,
-          `"${patient.email || ''}"`,
-          `"${(patient.address || '').replace(/"/g, '""')}"`,  
-          `"${patient.mrn || ''}"`,
-          `"${(patient.orderingMD || '').replace(/"/g, '""')}"`,
-          `"${patient.diagnosis || ''}"`,
-          patient.status || '',
-          `"${patient.primaryInsurance || ''}"`,
-          `"${patient.primaryPlan || ''}"`,
-          `"${patient.primaryInsuranceNumber || ''}"`,
-          `"${patient.primaryGroupId || ''}"`,
-          `"${patient.secondaryInsurance || ''}"`,
-          `"${patient.secondaryPlan || ''}"`,
-          `"${patient.secondaryInsuranceNumber || ''}"`,
-          `"${patient.secondaryGroupId || ''}"`,
-          `"${(patient.furtherAnalysis || '').replace(/"/g, '""')}"`,
-          `"${(patient.letterOfMedicalNecessity || '').replace(/"/g, '""')}"`,
-          `"${patient.approvalLikelihood || ''}"`,
-          `"${(patient.criteriaAssessment || '').replace(/"/g, '""')}"`,
-          `"${(patient.documentationGaps || '').replace(/"/g, '""')}"`,
-          `"${(patient.recommendations || '').replace(/"/g, '""')}"`,
-          patient.createdAt || '',
-          patient.updatedAt || ''
-        ];
-        csvContent += row.join(',') + '\n';
-      });
-
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename="patients.csv"');
-      res.send(csvContent);
-
-    } catch (error) {
-      console.error('CSV export error:', error);
-      res.status(500).json({ error: 'Failed to export CSV' });
-    }
-  });
-
-  // Google Sheets sync endpoints
-  app.post('/api/google-sheets/sync', async (req, res) => {
-    try {
-      const result = await googleSheetsService.syncPatients();
-      if (result.success) {
-        res.json(result);
-      } else {
-        res.status(400).json(result);
-      }
-    } catch (error) {
-      console.error('Google Sheets sync error:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Internal server error during sync' 
-      });
-    }
-  });
-
-  app.get('/api/google-sheets/status', async (req, res) => {
-    try {
-      const status = await googleSheetsService.getStatus();
-      res.json(status);
-    } catch (error) {
-      console.error('Google Sheets status error:', error);
-      res.status(500).json({ 
-        configured: false, 
-        hasCredentials: false, 
-        error: 'Failed to check status' 
-      });
-    }
-  });
 
   // Webhook health check
   app.get("/webhook/agents/health", (req, res) => {
@@ -2297,35 +2168,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Audio transcription endpoint
-  app.post("/api/transcribe-audio", upload.single('audio'), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No audio file uploaded" });
-      }
-
-      const isFinal = req.body.isFinal === 'true';
-      
-      // Transcribe audio using OpenAI Whisper
-      const transcriptionResult = await transcribeAudio(req.file.buffer, isFinal);
-      
-      console.log("Audio transcription completed:", {
-        fileName: req.file.originalname,
-        isFinal: isFinal,
-        textLength: transcriptionResult.text.length,
-        patientFound: !!transcriptionResult.patientInfo
-      });
-      
-      res.json(transcriptionResult);
-    } catch (error) {
-      console.error("Audio transcription error:", error);
-      res.status(500).json({ 
-        error: "Failed to transcribe audio",
-        details: (error as Error).message 
-      });
-    }
-  });
-
 
 
   // Patient Management Routes
@@ -2449,18 +2291,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Legacy endpoint - redirects to new Google Sheets sync
-  app.post('/api/patients/sync-to-sheets', async (req, res) => {
-    try {
-      const result = await googleSheetsService.syncPatients();
-      res.json(result);
-    } catch (error) {
-      console.error('Error syncing to Google Sheets:', error);
-      res.status(500).json({ error: 'Failed to sync to Google Sheets' });
-    }
-  });
-
-  // Legacy status endpoint - use /api/google-sheets/status instead
 
   // Helper function to parse AIGENTS response (same as frontend)
   const parseAigentsResponse = (response: string) => {
@@ -3808,7 +3638,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               combinedClinicalInfo += `   Clinical Content:\n`;
               try {
                 // Try to parse as JSON first (for backwards compatibility)
-                let extracted;\n                try {\n                  extracted = JSON.parse(doc.extractedData);\n                } catch (parseError) {\n                  console.error('JSON parse error in routes.ts (extractedData parse):', parseError);\n                  extracted = {};\n                }
+                let extracted;
+                try {
+                  extracted = JSON.parse(doc.extractedData);
+                } catch (parseError) {
+                  console.error('JSON parse error in routes.ts (extractedData parse):', parseError);
+                  extracted = {};
+                }
                 if (typeof extracted === 'string') {
                   combinedClinicalInfo += `${extracted}\n`;
                 } else if (extracted.rawText || extracted.content || extracted.text) {
@@ -3830,7 +3666,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } else {
               // For other clinical documents (like epic_screenshot), use existing structured approach
               try {
-                let extracted;\n                try {\n                  extracted = JSON.parse(doc.extractedData);\n                } catch (parseError) {\n                  console.error('JSON parse error in routes.ts (extractedData parse):', parseError);\n                  extracted = {};\n                }
+                let extracted;
+                try {
+                  extracted = JSON.parse(doc.extractedData);
+                } catch (parseError) {
+                  console.error('JSON parse error in routes.ts (extractedData parse):', parseError);
+                  extracted = {};
+                }
                 if (typeof extracted === 'object') {
                   combinedClinicalInfo += `   Extracted Information:\n`;
                   Object.entries(extracted).forEach(([key, value]) => {
