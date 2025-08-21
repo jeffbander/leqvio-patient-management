@@ -9,6 +9,7 @@ import { insertAutomationLogSchema, insertCustomChainSchema, userLoginSchema, us
 import { sendMagicLink, verifyLoginToken } from "./auth";
 import { extractPatientDataFromImage, extractInsuranceCardData, extractPatientInfoFromScreenshot, extractPatientInfoFromPDF } from "./openai-service";
 import { generateLEQVIOPDF } from "./pdf-generator";
+import { extractPDFWithMistral, combineExtractionResults, validateMistralKey } from "./mistral-service";
 import { registerUser, loginUser, requireAuth, getUserFromSession } from "./password-auth";
 // Using the openai instance directly instead of a service object
 
@@ -1148,13 +1149,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Health check
-  app.get("/api/health", (req, res) => {
+  app.get("/api/health", async (req, res) => {
     console.log(`[HEALTH] Health check requested at ${new Date().toISOString()}`);
+    
+    // Check Mistral API status
+    const mistralConfigured = await validateMistralKey();
+    
     res.json({ 
       status: "ok", 
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development'
+      environment: process.env.NODE_ENV || 'development',
+      services: {
+        mistral: mistralConfigured ? "configured" : "not_configured",
+        openai: process.env.OPENAI_API_KEY ? "configured" : "not_configured",
+        sendgrid: process.env.SENDGRID_API_KEY ? "configured" : "not_configured"
+      }
     });
   });
 
@@ -1793,14 +1803,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let uploadExtractedData: any = null;
       
       if (fileExtension === 'pdf') {
-        // For PDF files, use advanced extraction methods
-        console.log("Processing PDF file for patient creation using advanced extraction");
+        // For PDF files, use Mistral first, then OpenAI as fallback
+        console.log("Processing PDF file for patient creation using Mistral AI");
         
         try {
-          uploadExtractedData = await extractPatientInfoFromPDF(req.file.buffer, req.file.originalname);
+          // Try Mistral first for better medical document understanding
+          const mistralResult = await extractPDFWithMistral(req.file.buffer, "medical_form");
+          
+          if (mistralResult.success) {
+            console.log("Mistral PDF extraction successful:", {
+              confidence: mistralResult.confidence,
+              documentType: mistralResult.data?.documentType
+            });
+            
+            // Convert Mistral format to expected format
+            uploadExtractedData = {
+              patient_first_name: mistralResult.data?.firstName || "",
+              patient_last_name: mistralResult.data?.lastName || "",
+              date_of_birth: mistralResult.data?.dateOfBirth || "",
+              patient_address: mistralResult.data?.address || "",
+              patient_phone: mistralResult.data?.phone || "",
+              patient_email: mistralResult.data?.email || "",
+              mrn: mistralResult.data?.mrn || "",
+              primary_insurance: mistralResult.data?.primaryInsurance || "",
+              primary_insurance_plan: mistralResult.data?.primaryPlan || "",
+              primary_insurance_number: mistralResult.data?.primaryInsuranceNumber || "",
+              primary_group_id: mistralResult.data?.primaryGroupId || "",
+              ordering_md: mistralResult.data?.orderingMD || "",
+              diagnosis: mistralResult.data?.diagnosis || "",
+              confidence: mistralResult.confidence || 0,
+              extraction_method: "mistral",
+              raw_text: mistralResult.data?.rawText
+            };
+          } else {
+            // Fallback to OpenAI if Mistral fails
+            console.log("Mistral extraction failed, falling back to OpenAI");
+            uploadExtractedData = await extractPatientInfoFromPDF(req.file.buffer, req.file.originalname);
+            uploadExtractedData.extraction_method = "openai";
+          }
+          
           console.log("PDF extraction successful:", {
             name: `${uploadExtractedData.patient_first_name} ${uploadExtractedData.patient_last_name}`,
-            confidence: uploadExtractedData.confidence
+            confidence: uploadExtractedData.confidence,
+            method: uploadExtractedData.extraction_method
           });
         } catch (error) {
           console.log("PDF processing error:", error);

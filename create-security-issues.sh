@@ -8,7 +8,7 @@ REPO="jeffbander/leqvio-patient-management"
 echo "Creating HIPAA Compliance GitHub Issues..."
 
 # Issue 1: HTTPS and Security Headers
-gh issue create \
+"C:\Program Files\GitHub CLI\gh.exe" issue create \
   --repo $REPO \
   --title "[SECURITY] Implement HTTPS and Security Headers" \
   --body "## Priority
@@ -44,7 +44,7 @@ Implement HTTPS enforcement and security headers for all application routes.
   --label "security,hipaa,priority:critical"
 
 # Issue 2: Audit Logging
-gh issue create \
+"C:\Program Files\GitHub CLI\gh.exe" issue create \
   --repo $REPO \
   --title "[SECURITY] Implement Comprehensive Audit Logging" \
   --body "## Priority
@@ -73,7 +73,7 @@ Create audit logging system for all PHI access and modifications.
   --label "security,hipaa,priority:critical,compliance"
 
 # Issue 3: File Encryption
-gh issue create \
+"C:\Program Files\GitHub CLI\gh.exe" issue create \
   --repo $REPO \
   --title "[SECURITY] Encrypt File Storage" \
   --body "## Priority
@@ -100,7 +100,7 @@ Implement encryption for all uploaded files (insurance cards, documents).
   --label "security,hipaa,priority:critical,encryption"
 
 # Issue 4: Session Security
-gh issue create \
+"C:\Program Files\GitHub CLI\gh.exe" issue create \
   --repo $REPO \
   --title "[SECURITY] Implement Session Security" \
   --body "## Priority
@@ -128,7 +128,7 @@ Enhance session security with timeout and secure configuration.
   --label "security,hipaa,priority:critical,authentication"
 
 # Issue 5: RBAC
-gh issue create \
+"C:\Program Files\GitHub CLI\gh.exe" issue create \
   --repo $REPO \
   --title "[SECURITY] Implement Role-Based Access Control (RBAC)" \
   --body "## Priority
@@ -151,7 +151,7 @@ Add role-based access control system with different permission levels.
   --label "security,hipaa,priority:high,feature"
 
 # Issue 6: Field Encryption
-gh issue create \
+"C:\Program Files\GitHub CLI\gh.exe" issue create \
   --repo $REPO \
   --title "[SECURITY] Add Field-Level Encryption" \
   --body "## Priority
@@ -180,7 +180,7 @@ Implement field-level encryption for sensitive PHI fields.
   --label "security,hipaa,priority:high,encryption,database"
 
 # Issue 7: Rate Limiting
-gh issue create \
+"C:\Program Files\GitHub CLI\gh.exe" issue create \
   --repo $REPO \
   --title "[SECURITY] Implement Rate Limiting and DDoS Protection" \
   --body "## Priority
@@ -212,7 +212,7 @@ Add rate limiting to prevent abuse and protect against DDoS attacks.
   --label "security,hipaa,priority:high,infrastructure"
 
 # Issue 8: DLP
-gh issue create \
+"C:\Program Files\GitHub CLI\gh.exe" issue create \
   --repo $REPO \
   --title "[SECURITY] Implement Data Loss Prevention (DLP)" \
   --body "## Priority
@@ -235,7 +235,7 @@ Add DLP measures to prevent unauthorized data exposure.
   --label "security,hipaa,priority:medium,compliance"
 
 # Issue 9: MFA
-gh issue create \
+"C:\Program Files\GitHub CLI\gh.exe" issue create \
   --repo $REPO \
   --title "[SECURITY] Add Multi-Factor Authentication (MFA)" \
   --body "## Priority
@@ -266,7 +266,7 @@ Implement MFA using TOTP (Time-based One-Time Password).
   --label "security,hipaa,priority:medium,authentication,feature"
 
 # Issue 10: Backups
-gh issue create \
+"C:\Program Files\GitHub CLI\gh.exe" issue create \
   --repo $REPO \
   --title "[SECURITY] Implement Automated Backups" \
   --body "## Priority
