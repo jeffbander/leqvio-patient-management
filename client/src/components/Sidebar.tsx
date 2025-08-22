@@ -9,7 +9,8 @@ import {
   Menu,
   X,
   LogOut,
-  User
+  User,
+  Shield
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
@@ -49,6 +50,12 @@ const navigation = [
     name: 'Account',
     href: '/account',
     icon: User,
+  },
+  {
+    name: 'Audit Logs',
+    href: '/audit-logs',
+    icon: Shield,
+    adminOnly: true,
   },
 ]
 
@@ -117,7 +124,13 @@ export function Sidebar({ className }: SidebarProps) {
 
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-1">
-            {navigation.map((item) => {
+            {navigation.filter((item: any) => {
+              // Filter out admin-only items for non-admin users
+              if (item.adminOnly && (!user?.role || (user.role !== 'admin' && user.role !== 'owner'))) {
+                return false;
+              }
+              return true;
+            }).map((item) => {
               const isActive = location === item.href || 
                 (item.href === '/patients' && location.startsWith('/patient/') && location !== '/patient/new')
               

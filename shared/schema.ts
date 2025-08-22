@@ -300,6 +300,34 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
   }),
 }));
 
+// Audit Logs table for HIPAA compliance
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  organizationId: integer("organization_id").references(() => organizations.id),
+  action: text("action").notNull(), // VIEW_PATIENT, UPDATE_PATIENT, DELETE_PATIENT, LOGIN, LOGOUT, etc.
+  resourceType: text("resource_type"), // 'patient', 'user', 'organization', etc.
+  resourceId: integer("resource_id"), // ID of the resource being accessed
+  details: jsonb("details"), // Additional context about the action
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  sessionId: text("session_id"),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  // Fields for data retention policy
+  retentionDate: timestamp("retention_date").notNull(), // When this record should be purged (7 years)
+});
+
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [auditLogs.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [auditLogs.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
 // Insert schemas for new tables
 // Organization schemas
 export const insertOrganizationSchema = createInsertSchema(organizations).omit({
@@ -357,6 +385,18 @@ export const insertAppointmentSchema = createInsertSchema(appointments).omit({
   status: z.string().default("Scheduled"),
 });
 
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  timestamp: true,
+}).extend({
+  // Auto-calculate retention date as 7 years from now
+  retentionDate: z.date().default(() => {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() + 7);
+    return date;
+  }),
+});
+
 // Organization types
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
@@ -374,3 +414,5 @@ export type ESignatureForm = typeof eSignatureForms.$inferSelect;
 export type InsertESignatureForm = z.infer<typeof insertESignatureFormSchema>;
 export type Appointment = typeof appointments.$inferSelect;
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
