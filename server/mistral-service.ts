@@ -63,13 +63,99 @@ export async function extractPDFWithMistral(
   pdfBuffer: Buffer,
   documentType: string = "medical_document"
 ): Promise<PDFExtractionResult> {
+  console.log("=== MISTRAL OCR API EXTRACTION STARTED ===");
+  console.log("Document type:", documentType);
+  console.log("PDF buffer size:", pdfBuffer.length, "bytes");
+  
   try {
-    // First, extract raw text from PDF using our enhanced extractor
-    const pdfData = await extractMedicalPDFData(pdfBuffer);
-    const rawText = pdfData.text;
-    const pageCount = 1; // We'll get this from pdfData if needed
+    // Convert PDF buffer to base64 for Mistral OCR API
+    console.log("Step 1: Converting PDF to base64...");
+    const base64PDF = pdfBuffer.toString('base64');
+    console.log("Base64 size:", base64PDF.length, "characters");
+    
+    // Use Mistral OCR API to extract text from PDF
+    console.log("Step 2: Calling Mistral OCR API...");
+    console.log("Using API key:", process.env.MISTRAL_API_KEY ? "Key is configured" : "NO API KEY!");
+    
+    let ocrResponse;
+    let rawText = "";
+    let ocrData: any = null;
+    
+    try {
+      // Make direct HTTP call to Mistral OCR API
+      console.log("Making direct HTTP call to Mistral OCR API...");
+      
+      const response = await fetch('https://api.mistral.ai/v1/ocr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "mistral-ocr-latest",
+          document: {
+            type: "document_url",
+            document_url: `data:application/pdf;base64,${base64PDF}`
+          },
+          include_image_base64: false
+        })
+      });
+      
+      if (response.ok) {
+        ocrData = await response.json();
+        console.log("Step 3: OCR API response received");
+        console.log("OCR response structure:", Object.keys(ocrData));
+        
+        // Extract text from OCR response - Mistral returns text in pages array
+        if (ocrData && ocrData.pages && Array.isArray(ocrData.pages)) {
+          console.log("Found pages array with", ocrData.pages.length, "pages");
+          // Combine text from all pages - Mistral returns markdown in each page
+          rawText = ocrData.pages.map((page: any) => {
+            if (typeof page === 'string') {
+              return page;
+            } else if (page.markdown) {
+              return page.markdown; // This is where the text is!
+            } else if (page.content) {
+              return page.content;
+            } else if (page.text) {
+              return page.text;
+            } else {
+              console.log("Page structure:", Object.keys(page));
+              return ''; // Return empty string instead of JSON
+            }
+          }).join('\n\n');
+          console.log("OCR extracted text length:", rawText.length, "characters");
+          console.log("First 500 chars of OCR text:", rawText.substring(0, 500));
+        } else if (ocrData && ocrData.content) {
+          rawText = ocrData.content;
+          console.log("OCR extracted text length:", rawText.length, "characters");
+          console.log("First 200 chars of OCR text:", rawText.substring(0, 200));
+        } else if (ocrData && ocrData.text) {
+          rawText = ocrData.text;
+          console.log("OCR extracted text length:", rawText.length, "characters");
+          console.log("First 200 chars of OCR text:", rawText.substring(0, 200));
+        } else {
+          console.log("WARNING: No content in OCR response");
+          console.log("Full OCR response (first 1000 chars):", JSON.stringify(ocrData).substring(0, 1000));
+        }
+      } else {
+        const errorText = await response.text();
+        console.error("OCR API HTTP Error:", response.status, errorText);
+        throw new Error(`OCR API failed: ${response.status} ${errorText}`);
+      }
+    } catch (ocrError: any) {
+      console.error("OCR API Error:", ocrError?.message || ocrError);
+      
+      // Fallback to pdf-text-extractor for basic extraction
+      console.log("Step 2b: Falling back to local PDF text extraction...");
+      const pdfData = await extractMedicalPDFData(pdfBuffer);
+      rawText = pdfData.text;
+      console.log("Local extraction text length:", rawText?.length || 0, "characters");
+      console.log("First 200 chars of local text:", rawText?.substring(0, 200));
+    }
     
     if (!rawText || rawText.trim().length === 0) {
+      console.log("ERROR: No text content found in PDF");
       return {
         success: false,
         error: "No text content found in PDF",
@@ -123,6 +209,8 @@ Return a JSON object with these fields (use null if not found):
   "documentDate": "date of document"
 }`;
 
+    console.log("Step 4: Using Mistral chat to analyze extracted text...");
+    
     const response = await mistral.chat.complete({
       model: "mistral-large-latest",
       messages: [
@@ -133,15 +221,30 @@ Return a JSON object with these fields (use null if not found):
       response_format: { type: "json_object" },
     });
 
+    console.log("Step 5: Mistral chat response received");
+    
     if (!response.choices?.[0]?.message?.content) {
+      console.log("ERROR: No response content from Mistral AI");
       throw new Error("No response from Mistral AI");
     }
+    
+    console.log("Mistral chat response length:", response.choices[0].message.content.length);
 
     let extractedData;
     try {
-      extractedData = JSON.parse(response.choices[0].message.content);
+      // Mistral sometimes returns JSON with markdown backticks, clean them
+      let jsonContent = response.choices[0].message.content;
+      if (jsonContent.startsWith('```json')) {
+        jsonContent = jsonContent.replace(/^```json\n/, '').replace(/\n```$/, '');
+      } else if (jsonContent.startsWith('```')) {
+        jsonContent = jsonContent.replace(/^```\n/, '').replace(/\n```$/, '');
+      }
+      
+      extractedData = JSON.parse(jsonContent);
+      console.log("Step 6: Mistral response parsed successfully");
+      console.log("Extracted data fields:", Object.keys(extractedData));
     } catch (parseError) {
-      console.error("Failed to parse Mistral response:", parseError);
+      console.error("ERROR: Failed to parse Mistral chat response:", parseError);
       return {
         success: false,
         error: "Failed to parse AI response",
@@ -151,20 +254,28 @@ Return a JSON object with these fields (use null if not found):
     // Calculate confidence based on how many fields were extracted
     const fields = Object.values(extractedData).filter(v => v !== null && v !== undefined);
     const confidence = fields.length > 0 ? (fields.length / Object.keys(extractedData).length) : 0;
+    
+    console.log("Step 7: Extraction complete");
+    console.log("Fields extracted:", fields.length, "out of", Object.keys(extractedData).length);
+    console.log("Confidence score:", Math.round(confidence * 100), "%");
+    console.log("Patient name extracted:", extractedData.patientName || "Not found");
+    console.log("=== MISTRAL OCR EXTRACTION COMPLETE ===");
 
     return {
       success: true,
       data: {
         ...extractedData,
-        rawText: rawText.substring(0, 5000), // Include first 5000 chars of raw text
-        pageCount,
+        rawText: rawText, // Include FULL text, not truncated
+        fullDocument: rawText, // Full OCR content for display
+        pageCount: ocrData?.pages?.length || 1,
         documentType: extractedData.documentType || documentType,
       },
       confidence: Math.round(confidence * 100),
     };
 
   } catch (error) {
-    console.error("Mistral PDF extraction error:", error);
+    console.error("=== MISTRAL OCR EXTRACTION FAILED ===");
+    console.error("Error details:", error);
     return {
       success: false,
       error: `PDF extraction failed: ${(error as Error).message}`,

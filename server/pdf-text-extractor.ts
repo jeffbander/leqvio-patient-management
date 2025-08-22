@@ -138,8 +138,16 @@ export async function extractMedicalPDFData(pdfBuffer: Buffer): Promise<{
   fields: Record<string, string>;
   confidence: number;
 }> {
+  console.log("  >> PDF-TEXT-EXTRACTOR: Starting medical PDF extraction");
+  console.log("  >> Buffer size:", pdfBuffer.length, "bytes");
+  
   try {
     const result = await extractTextFromPDFBuffer(pdfBuffer);
+    console.log("  >> Text extraction result:", {
+      textLength: result.text?.length || 0,
+      pageCount: result.pageCount,
+      fieldsFound: Object.keys(result.fields).length
+    });
     
     // Build the fields object with proper types
     const fields: Record<string, string> = {};
