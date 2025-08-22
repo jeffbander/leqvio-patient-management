@@ -5,13 +5,17 @@ import session from "express-session";
 import fetch from "node-fetch";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
-import { insertAutomationLogSchema, insertCustomChainSchema, userLoginSchema, userRegisterSchema, insertPatientSchema } from "@shared/schema";
+import { insertAutomationLogSchema, insertCustomChainSchema, userLoginSchema, userRegisterSchema, insertPatientSchema, auditLogs } from "@shared/schema";
+import { db } from "./db";
+import { desc, sql } from "drizzle-orm";
 import { sendMagicLink, verifyLoginToken } from "./auth";
 import { extractPatientDataFromImage, extractInsuranceCardData, extractPatientInfoFromScreenshot, extractPatientInfoFromPDF } from "./openai-service";
 import { generateLEQVIOPDF } from "./pdf-generator";
 import { extractPDFWithMistral, combineExtractionResults, validateMistralKey } from "./mistral-service";
 import { extractMedicalPDFData } from "./pdf-text-extractor";
 import { registerUser, loginUser, requireAuth, getUserFromSession } from "./password-auth";
+import { AuditLogger } from "./audit-service";
+import { auditMiddleware, auditPatientAccess, auditDocumentAccess } from "./audit-middleware";
 // Using the openai instance directly instead of a service object
 
 // Helper function to add insurance changes to patient notes
@@ -412,6 +416,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Apply analytics middleware to all routes
   app.use(analyticsMiddleware);
   
+  // Apply audit middleware to all API routes
+  app.use('/api', auditMiddleware);
+  
   // Authentication Routes
   app.post('/api/auth/register', async (req, res) => {
     try {
@@ -476,38 +483,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, password } = req.body;
       
-      // Find user by email
-      const user = await storage.getUserByEmail(email);
-      if (!user) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
+      // Use the improved loginUser function with audit logging
+      const result = await loginUser({ email, password }, req);
       
-      // Check password
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+      if (!result.success || !result.user) {
+        return res.status(401).json({ error: result.error || 'Invalid credentials' });
       }
       
       // Create session
-      (req.session as any).userId = user.id;
-      
-      // Update last login and clear temp password
-      await storage.updateUserLastLogin(user.id);
+      (req.session as any).userId = result.user.id;
+      (req.session as any).organizationId = result.user.currentOrganizationId;
       
       // Clear temporary password on first successful login
-      if (user.tempPassword) {
-        await storage.updateUser(user.id, { tempPassword: null });
+      if (result.user.tempPassword) {
+        await storage.updateUser(result.user.id, { tempPassword: null });
       }
       
       // Get user's current organization with role
-      const currentOrg = await storage.getUserCurrentOrganization(user.id);
+      const currentOrg = await storage.getUserCurrentOrganization(result.user.id);
       
       res.json({ 
+        message: 'Login successful',
         user: { 
-          id: user.id, 
-          email: user.email, 
-          name: user.name, 
-          organizationId: user.currentOrganizationId,
+          id: result.user.id, 
+          email: result.user.email, 
+          name: result.user.name, 
+          currentOrganizationId: result.user.currentOrganizationId,
           role: currentOrg?.role || 'user' 
         }
       });
@@ -517,16 +518,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/auth/logout', (req, res) => {
-    req.session.destroy((err) => {
-      if (err) {
-        console.error('Logout error:', err);
-        res.status(500).json({ error: 'Failed to logout' });
-      } else {
-        res.clearCookie('connect.sid');
-        res.json({ message: 'Logged out successfully' });
-      }
-    });
+  app.post('/api/auth/logout', async (req, res) => {
+    try {
+      // Log logout event before destroying session
+      const context = AuditLogger.extractContext(req);
+      await AuditLogger.logAuthentication('LOGOUT', {
+        ...context,
+        userId: (req.session as any)?.userId,
+        organizationId: (req.session as any)?.organizationId,
+      });
+      
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Logout error:', err);
+          res.status(500).json({ error: 'Failed to logout' });
+        } else {
+          res.clearCookie('connect.sid');
+          res.json({ message: 'Logged out successfully' });
+        }
+      });
+    } catch (error) {
+      console.error('Logout audit logging error:', error);
+      // Continue with logout even if audit logging fails
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Logout error:', err);
+          res.status(500).json({ error: 'Failed to logout' });
+        } else {
+          res.clearCookie('connect.sid');
+          res.json({ message: 'Logged out successfully' });
+        }
+      });
+    }
   });
 
   app.get('/api/auth/user', async (req, res) => {
@@ -1256,6 +1279,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json({ message: "Logged out successfully" });
     });
+  });
+
+  // Audit Logs API - Admin only
+  app.get('/api/audit-logs', requireAuth, async (req, res) => {
+    try {
+      const user = await getUserFromSession(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      // Check if user is admin (you may need to adjust this based on your role system)
+      const currentOrg = await storage.getUserCurrentOrganization(user.id);
+      if (!currentOrg || (currentOrg.role !== 'admin' && currentOrg.role !== 'owner')) {
+        return res.status(403).json({ error: 'Admin privileges required' });
+      }
+
+      // Log the audit log access
+      const context = AuditLogger.extractContext(req);
+      await AuditLogger.log({
+        action: 'VIEW_AUDIT_LOGS',
+        context: {
+          ...context,
+          userId: user.id,
+          organizationId: user.currentOrganizationId,
+        },
+        details: {
+          adminUser: user.email,
+        },
+      });
+
+      // Fetch audit logs with pagination
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 100;
+      const offset = (page - 1) * limit;
+
+      const logs = await db
+        .select({
+          id: auditLogs.id,
+          userId: auditLogs.userId,
+          organizationId: auditLogs.organizationId,
+          action: auditLogs.action,
+          resourceType: auditLogs.resourceType,
+          resourceId: auditLogs.resourceId,
+          details: auditLogs.details,
+          ipAddress: auditLogs.ipAddress,
+          userAgent: auditLogs.userAgent,
+          sessionId: auditLogs.sessionId,
+          timestamp: auditLogs.timestamp,
+        })
+        .from(auditLogs)
+        .orderBy(desc(auditLogs.timestamp))
+        .limit(limit)
+        .offset(offset);
+
+      // Enhance with user and organization names
+      const enhancedLogs = await Promise.all(logs.map(async (log) => {
+        let userName = null;
+        let organizationName = null;
+
+        if (log.userId) {
+          try {
+            const logUser = await storage.getUser(log.userId);
+            userName = logUser?.name || logUser?.email;
+          } catch (error) {
+            // User may have been deleted
+            userName = `User ID: ${log.userId}`;
+          }
+        }
+
+        if (log.organizationId) {
+          try {
+            const org = await storage.getOrganization(log.organizationId);
+            organizationName = org?.name;
+          } catch (error) {
+            // Organization may have been deleted
+            organizationName = `Org ID: ${log.organizationId}`;
+          }
+        }
+
+        return {
+          ...log,
+          userName,
+          organizationName,
+        };
+      }));
+
+      res.json(enhancedLogs);
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+      res.status(500).json({ error: 'Failed to fetch audit logs' });
+    }
   });
 
   // Automation logs endpoints
@@ -2295,7 +2409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's patients
-  app.get('/api/patients', async (req, res) => {
+  app.get('/api/patients', auditPatientAccess, async (req, res) => {
     const userId = (req.session as any).userId;
     if (!userId) {
       return res.status(401).json({ message: 'Authentication required' });
@@ -2563,7 +2677,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get specific patient
-  app.get('/api/patients/:id', async (req, res) => {
+  app.get('/api/patients/:id', auditPatientAccess, async (req, res) => {
     try {
       const userId = (req.session as any).userId;
       if (!userId) {
@@ -2590,7 +2704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update patient
-  app.patch('/api/patients/:id', requireAuth, async (req, res) => {
+  app.patch('/api/patients/:id', requireAuth, auditPatientAccess, async (req, res) => {
     try {
       const user = await getUserFromSession(req);
       if (!user) {
@@ -2793,7 +2907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete patient
-  app.delete('/api/patients/:id', requireAuth, async (req, res) => {
+  app.delete('/api/patients/:id', requireAuth, auditPatientAccess, async (req, res) => {
     try {
       const user = await getUserFromSession(req);
       if (!user) {
@@ -2815,7 +2929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get patient documents
-  app.get('/api/patients/:id/documents', async (req, res) => {
+  app.get('/api/patients/:id/documents', auditDocumentAccess, async (req, res) => {
     try {
       const userId = (req.session as any).userId;
       if (!userId) {
@@ -3075,7 +3189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete patient document
-  app.delete('/api/patients/:id/documents/:documentId', async (req, res) => {
+  app.delete('/api/patients/:id/documents/:documentId', auditDocumentAccess, async (req, res) => {
     try {
       const patientId = parseInt(req.params.id);
       const documentId = parseInt(req.params.documentId);
@@ -3364,7 +3478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Create patient document with immediate response and async processing
-  app.post('/api/patients/:id/documents', upload.any(), async (req, res) => {
+  app.post('/api/patients/:id/documents', upload.any(), auditDocumentAccess, async (req, res) => {
     try {
       const patientId = parseInt(req.params.id);
       const { documentType } = req.body;

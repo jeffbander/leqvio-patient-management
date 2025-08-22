@@ -6,6 +6,7 @@ import helmet from "helmet";
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { initializeScheduledTasks, stopScheduledTasks } from "./scheduled-tasks";
 
 const app = express();
 
@@ -112,5 +113,21 @@ app.use((req, res, next) => {
     host: "localhost",
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Initialize scheduled tasks for HIPAA compliance
+    initializeScheduledTasks();
+  });
+  
+  // Graceful shutdown handling
+  process.on('SIGINT', () => {
+    console.log('\n[SHUTDOWN] Received SIGINT, shutting down gracefully...');
+    stopScheduledTasks();
+    process.exit(0);
+  });
+  
+  process.on('SIGTERM', () => {
+    console.log('\n[SHUTDOWN] Received SIGTERM, shutting down gracefully...');
+    stopScheduledTasks();
+    process.exit(0);
   });
 })();
