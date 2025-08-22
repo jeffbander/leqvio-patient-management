@@ -10,6 +10,7 @@ import { sendMagicLink, verifyLoginToken } from "./auth";
 import { extractPatientDataFromImage, extractInsuranceCardData, extractPatientInfoFromScreenshot, extractPatientInfoFromPDF } from "./openai-service";
 import { generateLEQVIOPDF } from "./pdf-generator";
 import { extractPDFWithMistral, combineExtractionResults, validateMistralKey } from "./mistral-service";
+import { extractMedicalPDFData } from "./pdf-text-extractor";
 import { registerUser, loginUser, requireAuth, getUserFromSession } from "./password-auth";
 // Using the openai instance directly instead of a service object
 
@@ -394,15 +395,17 @@ const analyticsMiddleware = (req: any, res: any, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Session configuration
+  // Session configuration with secure settings
   app.use(session({
     secret: process.env.SESSION_SECRET || 'fallback-secret-key',
     resave: false,
     saveUninitialized: false,
+    rolling: true, // Reset expiry on activity
     cookie: {
-      secure: false, // Set to true in production with HTTPS
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      secure: process.env.NODE_ENV === 'production', // Secure in production
+      httpOnly: true, // Prevent XSS attacks
+      sameSite: 'strict', // CSRF protection
+      maxAge: 15 * 60 * 1000, // 15 minutes for HIPAA compliance
     },
   }));
 
@@ -1133,16 +1136,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Configure session
-  app.use(session({
-    secret: process.env.SESSION_SECRET || 'fallback-secret-for-dev',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: false, // Set to true in production with HTTPS
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-  }));
+  // Configure session (duplicate - removing)
+  // Session is already configured above with secure settings
 
   // Configure multer for multipart form data
   const upload = multer();
@@ -1998,103 +1993,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       if (fileExtension === 'pdf') {
-        // For PDF files (like LEQVIO forms), extract text directly instead of using vision
-        const pdfText = req.file.buffer.toString('utf-8');
+        // For PDF files, use Mistral AI first, then fallback to OpenAI
+        console.log("Processing PDF file with Mistral AI extraction...");
+        
+        const startTime = Date.now(); // Add this line to define startTime
         
         // Get extraction type from request body
         const extractionType = req.body?.extractionType || 'clinical_notes';
         
-        console.log("Processing PDF file with extraction type:", extractionType);
-        console.log("PDF text length:", pdfText.length);
-        console.log("PDF text preview:", pdfText.substring(0, 200));
+        // First try Mistral AI extraction
+        const mistralResult = await extractPDFWithMistral(req.file.buffer, extractionType);
         
-        // Always handle PDF files with text extraction, regardless of extraction type
-        const extractedData = {
-          patient_first_name: "John",
-          patient_last_name: "Doe", 
-          patient_sex: "Male",
-          patient_home_phone: "(555) 123-4567",
-          patient_cell_phone: "(555) 987-6543",
-          patient_address: "123 Main St, Anytown, ST 12345",
-          provider_name: "Dr. Smith",
-          signature_date: "01/15/2025",
-          rawData: pdfText,
-          confidence: 0.1
-        };
+        let extractedData;
+        let extractionMethod = 'mistral';
         
-        // Extract fields from the LEQVIO form text - comprehensive patterns
-        const firstNameMatch = pdfText.match(/First Name:\s*([^\n\r\t]+)/i) || 
-                               pdfText.match(/First:\s*([^\n\r\t]+)/i);
-        const lastNameMatch = pdfText.match(/Last Name:\s*([^\n\r\t]+)/i) || 
-                              pdfText.match(/Last:\s*([^\n\r\t]+)/i);
-        const sexMatch = pdfText.match(/Sex:\s*(Male|Female|M|F)/i) ||
-                        pdfText.match(/Gender:\s*(Male|Female|M|F)/i);
-        const homePhoneMatch = pdfText.match(/Home\s*Phone[^:]*:\s*([^\n\r\t]+)/i) ||
-                              pdfText.match(/Phone[^:]*:\s*([^\n\r\t]+).*Home/i);
-        const cellPhoneMatch = pdfText.match(/Cell\s*Phone[^:]*:\s*([^\n\r\t]+)/i) ||
-                              pdfText.match(/Mobile[^:]*:\s*([^\n\r\t]+)/i) ||
-                              pdfText.match(/Phone[^:]*:\s*([^\n\r\t]+).*Mobile/i);
-        const addressMatch = pdfText.match(/Address:\s*([^\n\r\t]+)/i) ||
-                            pdfText.match(/Street[^:]*:\s*([^\n\r\t]+)/i);
-        const signatureDateMatch = pdfText.match(/Date of Signature[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i) ||
-                                   pdfText.match(/Signature Date[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i) ||
-                                   pdfText.match(/Date:[^\/\d]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
-        const providerMatch = pdfText.match(/Prescriber Name:\s*([^\n\r\t]+)/i) ||
-                             pdfText.match(/Provider Name:\s*([^\n\r\t]+)/i) ||
-                             pdfText.match(/Doctor:\s*([^\n\r\t]+)/i) ||
-                             pdfText.match(/Physician:\s*([^\n\r\t]+)/i);
-        
-        if (firstNameMatch) {
-          let firstName = firstNameMatch[1].trim();
-          firstName = firstName.replace(/\s+/g, ' ');
-          if (firstName && firstName !== '') extractedData.patient_first_name = firstName;
-        }
-        if (lastNameMatch) {
-          let lastName = lastNameMatch[1].trim();
-          lastName = lastName.replace(/\s+/g, ' ');
-          if (lastName && lastName !== '') extractedData.patient_last_name = lastName;
-        }
-        if (sexMatch) {
-          let sex = sexMatch[1].trim();
-          if (sex === 'M') sex = 'Male';
-          if (sex === 'F') sex = 'Female';
-          extractedData.patient_sex = sex;
-        }
-        if (homePhoneMatch) {
-          extractedData.patient_home_phone = homePhoneMatch[1].trim();
-        }
-        if (cellPhoneMatch) {
-          extractedData.patient_cell_phone = cellPhoneMatch[1].trim();
-        }
-        if (addressMatch) {
-          extractedData.patient_address = addressMatch[1].trim();
-        }
-        if (signatureDateMatch) {
-          extractedData.signature_date = signatureDateMatch[1].trim();
-        }
-        if (providerMatch) {
-          extractedData.provider_name = providerMatch[1].trim();
+        if (mistralResult.success && mistralResult.data) {
+          console.log("Mistral extraction successful, confidence:", mistralResult.confidence);
+          
+          // Map Mistral data to expected format
+          extractedData = {
+            patient_first_name: mistralResult.data.firstName || "Unknown",
+            patient_last_name: mistralResult.data.lastName || "Unknown", 
+            patient_sex: mistralResult.data.sex || "Unknown",
+            patient_home_phone: mistralResult.data.phone || "",
+            patient_cell_phone: mistralResult.data.cellPhone || "",
+            patient_address: mistralResult.data.address || "",
+            provider_name: mistralResult.data.orderingMD || mistralResult.data.practiceInfo || "",
+            signature_date: mistralResult.data.documentDate || "",
+            mrn: mistralResult.data.mrn || "",
+            dateOfBirth: mistralResult.data.dateOfBirth || "",
+            diagnosis: mistralResult.data.diagnosis || "",
+            insurance: mistralResult.data.primaryInsurance || "",
+            insuranceNumber: mistralResult.data.primaryInsuranceNumber || "",
+            rawData: mistralResult.data.rawText || "",
+            fullDocument: mistralResult.data.fullDocument || mistralResult.data.rawText || "",
+            confidence: (mistralResult.confidence || 0) / 100
+          };
+        } else {
+          console.log("Mistral extraction failed, using fallback extraction...");
+          extractionMethod = 'fallback';
+          
+          // Fallback to pdf-text-extractor for basic extraction
+          const pdfData = await extractMedicalPDFData(req.file.buffer);
+          
+          extractedData = {
+            patient_first_name: pdfData.fields.firstName || "Unknown",
+            patient_last_name: pdfData.fields.lastName || "Unknown", 
+            patient_sex: "Unknown",
+            patient_home_phone: pdfData.fields.phone || "",
+            patient_cell_phone: "",
+            patient_address: pdfData.fields.address || "",
+            provider_name: pdfData.fields.provider || "",
+            signature_date: "",
+            mrn: pdfData.fields.mrn || "",
+            dateOfBirth: pdfData.fields.dateOfBirth || "",
+            diagnosis: pdfData.fields.diagnosis || "",
+            insurance: pdfData.fields.insurance || "",
+            rawData: pdfData.text || "",
+            confidence: (pdfData.confidence || 0) / 100
+          };
         }
         
-        console.log("LEQVIO PDF extraction completed:", {
+        console.log("PDF extraction completed:", {
           fileName: req.file.originalname,
           extractionType,
+          extractionMethod,
+          confidence: extractedData.confidence,
           extractedFields: {
             firstName: extractedData.patient_first_name,
             lastName: extractedData.patient_last_name,
-            sex: extractedData.patient_sex,
-            homePhone: extractedData.patient_home_phone,
-            cellPhone: extractedData.patient_cell_phone,
+            mrn: extractedData.mrn,
+            dateOfBirth: extractedData.dateOfBirth,
+            phone: extractedData.patient_home_phone,
             address: extractedData.patient_address,
-            provider: extractedData.provider_name,
-            signatureDate: extractedData.signature_date
+            insurance: extractedData.insurance,
+            diagnosis: extractedData.diagnosis,
+            provider: extractedData.provider_name
           }
         });
         
         const responseData = {
           extractedData: extractedData,
-          processingTime_ms: 50,
-          extractionType: extractionType
+          processingTime_ms: Date.now() - startTime,
+          extractionType: extractionType,
+          extractionMethod: extractionMethod,
+          confidence: extractedData.confidence
         };
         
         return res.json(responseData);
@@ -3313,6 +3296,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error) {
           console.error('Clinical note processing failed:', error);
           // Continue without extraction
+        }
+      } else if (documentType === 'rejection_letter') {
+        // For rejection letters, use Mistral OCR to extract full document
+        try {
+          console.log('Processing rejection letter with Mistral OCR...');
+          const mistralResult = await extractPDFWithMistral(fileBuffer, 'rejection_letter');
+          
+          if (mistralResult.success && mistralResult.data) {
+            // Store the FULL OCR text as extractedData
+            extractedData = mistralResult.data.fullDocument || mistralResult.data.rawText || '';
+            metadata = {
+              contentType: 'rejection_letter',
+              extractionMethod: 'mistral_ocr',
+              confidence: mistralResult.confidence,
+              pageCount: mistralResult.data.pageCount || 1,
+              patientName: mistralResult.data.patientName || '',
+              insuranceCompany: mistralResult.data.primaryInsurance || '',
+              denialDate: mistralResult.data.documentDate || '',
+              wordCount: extractedData.split(/\s+/).length,
+              timestamp: new Date().toISOString()
+            };
+            console.log('Rejection letter OCR complete:', {
+              textLength: extractedData.length,
+              confidence: mistralResult.confidence
+            });
+          } else {
+            // Fallback to basic text extraction
+            const pdfData = await extractMedicalPDFData(fileBuffer);
+            extractedData = pdfData.text || '';
+            metadata = {
+              contentType: 'rejection_letter',
+              extractionMethod: 'fallback',
+              confidence: pdfData.confidence,
+              wordCount: extractedData.split(/\s+/).length,
+              timestamp: new Date().toISOString()
+            };
+          }
+        } catch (error) {
+          console.error('Rejection letter processing failed:', error);
+          extractedData = '';
+          metadata = {
+            contentType: 'rejection_letter',
+            error: (error as Error).message,
+            timestamp: new Date().toISOString()
+          };
         }
       }
 
